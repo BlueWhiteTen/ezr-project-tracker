@@ -2538,3 +2538,29 @@ def cost_wall_fixings_save(request, pk):
     cost.wall_fixings = max(0, int(data.get('wall_fixings', 0)))
     cost.save()
     return JsonResponse({'ok': True, 'wall_fixings': cost.wall_fixings})
+
+
+def create_superuser_once(request):
+    """One-time superuser creation. Disabled after first use."""
+    from django.contrib.auth.models import User
+    # Only works if no superuser exists yet
+    if User.objects.filter(is_superuser=True).exists():
+        from django.http import HttpResponse
+        return HttpResponse("Superuser already exists. This URL is disabled.", status=403)
+    if request.method == 'POST':
+        email = request.POST.get('email','').strip()
+        password = request.POST.get('password','').strip()
+        if email and password:
+            user, created = User.objects.get_or_create(
+                username=email,
+                defaults={'email': email, 'is_active': True, 'is_staff': True, 'is_superuser': True}
+            )
+            if not created:
+                user.is_active = True
+                user.is_staff = True
+                user.is_superuser = True
+            user.set_password(password)
+            user.save()
+            from django.http import HttpResponse
+            return HttpResponse(f"✅ Superuser '{email}' created. You can now log in. Delete or disable this URL.", status=200)
+    return render(request, 'projects/setup_superuser.html', {})
