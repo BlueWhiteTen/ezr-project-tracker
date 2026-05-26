@@ -141,6 +141,9 @@ select.form-input{cursor:pointer;}
   .dash-col-rams { display: none; }
   .dash-col-assignee { display: none; }
 
+  /* Show nav links inside sidebar on mobile */
+  .sb-mobile-nav { display: block !important; }
+
   /* Sidebar shown as bottom drawer when menu open */
   .left-sidebar.mobile-open {
     display: flex !important;
@@ -217,6 +220,12 @@ select.form-input{cursor:pointer;}
 
 {% if user.is_authenticated %}
 <div class="left-sidebar">
+  <div class="sb-mobile-nav" style="display:none;border-bottom:1px solid #333;padding:.5rem 0;">
+    <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}sb-active{% endif %}">🏠 Dashboard</a>
+    <a href="{% url 'calendar_view' %}" class="{% if request.resolver_match.url_name == 'calendar_view' %}sb-active{% endif %}">📅 Calendar</a>
+    <a href="{% url 'week_view' %}" class="{% if request.resolver_match.url_name == 'week_view' %}sb-active{% endif %}">📋 Next 2 Weeks</a>
+    <a href="{% url 'board_view' %}" class="{% if request.resolver_match.url_name == 'board_view' %}sb-active{% endif %}">📊 Board</a>
+  </div>
   <div class="sb-section">
     <a href="{% url 'customer_list' %}" class="{% if request.resolver_match.url_name == 'customer_list' or request.resolver_match.url_name == 'customer_detail' %}sb-active{% endif %}">Customers</a>
     <a href="{% url 'stock_list' %}" class="{% if request.resolver_match.url_name == 'stock_list' %}sb-active{% endif %}">Stock</a>
