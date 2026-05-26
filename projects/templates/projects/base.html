@@ -96,13 +96,103 @@ select.form-input{cursor:pointer;}
 .card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.5rem;box-shadow:var(--shadow);}
 
 {% block extra_style %}{% endblock %}
+
+/* ── MOBILE RESPONSIVE ─────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* Hide sidebar on mobile */
+  .left-sidebar { display: none; }
+
+  /* Main content full width */
+  .main-content { margin-left: 0; padding: 0; }
+
+  /* Shorter nav */
+  .top-nav { height: 58px; padding: 0 .75rem; }
+  .main-content { margin-top: 58px; min-height: calc(100vh - 58px); }
+  .main-content-no-sidebar { margin-top: 58px; min-height: calc(100vh - 58px); }
+
+  /* Hide nav links and search on mobile — keep logo + icons + hamburger */
+  .nav-links { display: none; }
+  .nav-so-wrap { display: none; }
+  .nav-user { display: none; }
+  .nav-logout { display: none; }
+  .nav-logo img { height: 32px; }
+
+  /* Show mobile menu button */
+  .nav-mobile-menu { display: flex !important; }
+
+  /* Shrink nav icons */
+  .nav-icon { width: 34px; height: 34px; font-size: .85rem; }
+
+  /* Container padding */
+  .container { padding: 1rem .75rem; }
+
+  /* Tables scroll horizontally */
+  .table-wrap, table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Stack form columns */
+  .form-2col { grid-template-columns: 1fr !important; }
+
+  /* Bigger touch targets */
+  .btn { padding: .6rem 1rem; font-size: .9rem; }
+  .form-input { padding: .65rem .85rem; font-size: 1rem; }
+
+  /* Dashboard table — hide less important columns */
+  .dash-col-rams { display: none; }
+  .dash-col-assignee { display: none; }
+
+  /* Sidebar shown as bottom drawer when menu open */
+  .left-sidebar.mobile-open {
+    display: flex !important;
+    top: 58px;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: auto;
+    max-height: 60vh;
+    overflow-y: auto;
+    z-index: 1001;
+    border-right: none;
+    border-bottom: 1px solid #333;
+    box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  }
+  .left-sidebar.mobile-open .sb-section { flex: none; }
+  .left-sidebar.mobile-open .sb-bottom { border-top: 1px solid #333; }
+
+  /* Mobile menu overlay */
+  .mobile-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.5);
+    z-index: 1000;
+    top: 58px;
+  }
+  .mobile-overlay.active { display: block; }
+
+  /* Cost grid single column */
+  .cost-grid { grid-template-columns: 1fr !important; }
+
+  /* Picking list adjustments */
+  .pl-code { font-size: .75rem; }
+}
+
+@media (max-width: 480px) {
+  .container { padding: .75rem .5rem; }
+  .form-header { flex-direction: column; align-items: flex-start; gap: .5rem; }
+  .form-header > div { flex-wrap: wrap; }
+}
 </style>
 </head>
 <body>
 
 <nav class="top-nav">
-  <div class="nav-logo">
-    <a href="{% url 'dashboard' %}"><img src="{% static 'logo.png' %}" alt="EZR Shelving"></a>
+  <div style="display:flex;align-items:center;gap:.75rem;">
+    <button class="nav-mobile-menu" id="mobile-menu-btn" onclick="toggleMobileMenu()"
+      style="display:none;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:var(--rad);width:42px;height:42px;color:#fff;font-size:1.2rem;cursor:pointer;align-items:center;justify-content:center;">☰</button>
+    <div class="nav-logo">
+      <a href="{% url 'dashboard' %}"><img src="{% static 'logo.png' %}" alt="EZR Shelving"></a>
+    </div>
   </div>
   {% if user.is_authenticated %}
   <div class="nav-links">
@@ -140,6 +230,7 @@ select.form-input{cursor:pointer;}
     <button id="theme-btn" onclick="toggleTheme()">Dark mode</button>
   </div>
 </div>
+<div class="mobile-overlay" id="mobile-overlay" onclick="toggleMobileMenu()"></div>
 <div class="main-content">
 {% else %}
 <div class="main-content-no-sidebar">
@@ -211,5 +302,13 @@ pollCounts();
 setInterval(pollCounts, 30000);
 </script>
 {% block extra_js %}{% endblock %}
+<script>
+function toggleMobileMenu(){
+  const sb = document.querySelector('.left-sidebar');
+  const overlay = document.getElementById('mobile-overlay');
+  sb.classList.toggle('mobile-open');
+  overlay.classList.toggle('active');
+}
+</script>
 </body>
 </html>
