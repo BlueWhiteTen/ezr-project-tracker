@@ -1,0 +1,77 @@
+{% extends 'projects/base.html' %}
+{% block title %}{{ customer.name }} — Customers{% endblock %}
+{% block extra_style %}
+.layout{display:grid;grid-template-columns:320px 1fr;gap:1.4rem;align-items:start;}
+.form-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.5rem;box-shadow:var(--shadow);margin-bottom:1.2rem;}
+.section-title{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:.85rem;padding-bottom:.4rem;border-bottom:1px solid var(--bdr);}
+.proj-row{display:flex;align-items:center;gap:.75rem;padding:.65rem 0;border-bottom:.5px solid var(--bdr);font-size:.875rem;}
+.proj-row:last-child{border-bottom:none;}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.2rem;}
+.stat-box{background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--rad);padding:.85rem;text-align:center;}
+.stat-val{font-size:1.5rem;font-weight:700;color:var(--acc);}
+.stat-lbl{font-size:.72rem;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;}
+@media(max-width:768px){.layout{grid-template-columns:1fr;}}
+{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.4rem;flex-wrap:wrap;padding-top:.5rem;">
+  <a href="{% url 'customer_list' %}" class="btn btn-ghost btn-sm">← Customers</a>
+  <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">{{ customer.name }}</h1>
+</div>
+
+<div class="layout">
+  <!-- Left: edit form + stats -->
+  <div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-val">{{ projects|length }}</div><div class="stat-lbl">Total Projects</div></div>
+      <div class="stat-box"><div class="stat-val">{{ projects|length }}</div><div class="stat-lbl">This Year</div></div>
+    </div>
+    <div class="form-card">
+      <div class="section-title">Contact Details</div>
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-group" style="background:var(--acc-bg);border:1px solid var(--acc-bdr);border-radius:var(--rad);padding:.85rem;margin-bottom:.85rem;">
+          <label class="form-label" style="color:var(--acc);font-weight:600;">⚠ Important Notes</label>
+          <textarea class="form-input" name="important_notes" rows="4" placeholder="e.g. Always use blue posts, max shelf depth 400mm, RAL9016 finish…" style="background:var(--surf);">{{ customer.important_notes }}</textarea>
+        </div>
+        <div class="form-group"><label class="form-label">Company Name</label><input class="form-input" name="name" value="{{ customer.name }}"></div>
+        <div class="form-group"><label class="form-label">Contact Name</label><input class="form-input" name="contact_name" value="{{ customer.contact_name }}" placeholder="John Smith"></div>
+        <div class="form-group"><label class="form-label">Phone</label><input class="form-input" name="phone" value="{{ customer.phone }}" placeholder="+44 7700 000000"></div>
+        <div class="form-group"><label class="form-label">Email</label><input class="form-input" name="email" type="email" value="{{ customer.email }}" placeholder="contact@company.com"></div>
+        <div class="form-group"><label class="form-label">Address</label><textarea class="form-input" name="address" rows="3" placeholder="Full address…">{{ customer.address }}</textarea></div>
+        <div class="form-group" style="margin-bottom:0;"><label class="form-label">Notes</label><textarea class="form-input" name="notes" rows="3" placeholder="Any notes about this customer…">{{ customer.notes }}</textarea></div>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:1rem;">Save Changes</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Right: project history -->
+  <div>
+    {% if customer.important_notes %}
+    <div class="form-card" style="border-color:rgba(212,112,10,.4);background:var(--acc-bg);margin-bottom:1.2rem;">
+      <div class="section-title" style="color:var(--acc);">⚠ Important Notes</div>
+      <p style="font-size:.9rem;color:var(--txt);white-space:pre-wrap;line-height:1.6;">{{ customer.important_notes }}</p>
+    </div>
+    {% endif %}
+
+    <div class="form-card">
+      <div class="section-title">Project History ({{ projects|length }})</div>
+      {% if projects %}
+        {% for p in projects %}
+        <div class="proj-row">
+          <div style="flex:1;">
+            <div style="font-weight:500;">{{ p.project_name }}</div>
+            <div style="font-size:.75rem;color:var(--mut);">
+              {% if p.installation_date %}Installed {{ p.installation_date|date:"d M Y" }}{% elif p.delivery_date %}Delivery {{ p.delivery_date|date:"d M Y" }}{% else %}Created {{ p.created_at|date:"d M Y" }}{% endif %}
+            </div>
+          </div>
+          <span class="badge badge-{{ p.status }}">{{ p.get_status_display }}</span>
+          <a href="{% url 'project_edit' p.pk %}" class="btn btn-ghost btn-sm">Open</a>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div style="color:var(--mut);font-size:.875rem;">No projects found for {{ customer.name }}</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

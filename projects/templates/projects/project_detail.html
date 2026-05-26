@@ -1,0 +1,201 @@
+{% extends 'projects/base.html' %}
+{% block title %}{{ project.project_name }} — Project Tracker{% endblock %}
+
+{% block extra_style %}
+.detail-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.detail-title { font-size: 1.6rem; font-weight: 600; margin-bottom: .3rem; }
+.detail-sub { color: var(--muted); font-size: .95rem; }
+.detail-actions { display: flex; gap: .75rem; align-items: center; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 1.5rem; }
+
+.detail-field { margin-bottom: .2rem; }
+.detail-field-label {
+    font-size: .75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    margin-bottom: .3rem;
+}
+.detail-field-value { font-size: .95rem; }
+
+.section-title {
+    font-size: .8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    padding-bottom: .5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.tag {
+    display: inline-flex; align-items: center; gap: .3rem;
+    padding: .2rem .7rem;
+    border-radius: 99px;
+    font-size: .8rem;
+    font-weight: 600;
+}
+.tag-yes { background: rgba(45,212,160,.1); color: var(--green); }
+.tag-no  { background: rgba(123,130,160,.1); color: var(--muted); }
+
+.notes-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    font-size: .9rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    color: var(--text);
+}
+.notes-empty { color: var(--muted); font-style: italic; }
+
+.meta-info { color: var(--muted); font-size: .8rem; margin-top: 2rem; }
+.editor-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--accent2);
+    color: #fff;
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    vertical-align: middle;
+    margin: 0 .2rem;
+    text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+}
+{% endblock %}
+
+{% block content %}
+<div class="detail-header">
+    <div>
+        <div class="detail-title">{{ project.project_name }}</div>
+        <div class="detail-sub">{{ project.customer }} &mdash; {{ project.location }}</div>
+    </div>
+    <div class="detail-actions">
+        <span class="badge badge-{{ project.status }}">{{ project.get_status_display }}</span>
+        <a href="{% url 'project_edit' project.pk %}" class="btn btn-primary">Edit Project</a>
+        <a href="{% url 'dashboard' %}" class="btn btn-ghost">← Back</a>
+    </div>
+</div>
+
+<!-- Core Details -->
+<div class="card" style="margin-bottom:1.5rem;">
+    <div class="section-title">Project Details</div>
+    <div class="grid-3">
+        <div class="detail-field">
+            <div class="detail-field-label">Customer</div>
+            <div class="detail-field-value">{{ project.customer }}</div>
+        </div>
+        <div class="detail-field">
+            <div class="detail-field-label">Location</div>
+            <div class="detail-field-value">{{ project.location }}</div>
+        </div>
+        <div class="detail-field">
+            <div class="detail-field-label">Status</div>
+            <div class="detail-field-value"><span class="badge badge-{{ project.status }}">{{ project.get_status_display }}</span></div>
+        </div>
+    </div>
+    <div class="grid-3">
+        <div class="detail-field">
+            <div class="detail-field-label">Delivery Date</div>
+            <div class="detail-field-value">{{ project.delivery_date|date:"d F Y"|default:"Not set" }}</div>
+        </div>
+        <div class="detail-field">
+            <div class="detail-field-label">Assigned To</div>
+            <div class="detail-field-value">{{ project.assigned_to.get_full_name|default:project.assigned_to.username|default:"Unassigned" }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Installation -->
+<div class="card" style="margin-bottom:1.5rem;">
+    <div class="section-title">Installation</div>
+    <div class="grid-3" style="margin-bottom:{% if project.requires_installation %}1rem{% else %}0{% endif %}">
+        <div class="detail-field">
+            <div class="detail-field-label">Requires Installation</div>
+            <div class="detail-field-value">
+                {% if project.requires_installation %}
+                    <span class="tag tag-yes">✓ Yes</span>
+                {% else %}
+                    <span class="tag tag-no">No</span>
+                {% endif %}
+            </div>
+        </div>
+        {% if project.requires_installation %}
+        <div class="detail-field">
+            <div class="detail-field-label">Installation Date</div>
+            <div class="detail-field-value">{{ project.installation_date|date:"d F Y"|default:"TBC" }}</div>
+        </div>
+        <div class="detail-field">
+            <div class="detail-field-label">RAMS Required</div>
+            <div class="detail-field-value">
+                {% if project.rams_required %}
+                    <span class="tag tag-yes">✓ Required</span>
+                {% else %}
+                    <span class="tag tag-no">Not Required</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% if project.requires_installation and project.installation_notes %}
+    <div class="detail-field">
+        <div class="detail-field-label">Installation Notes</div>
+        <div class="notes-box">{{ project.installation_notes }}</div>
+    </div>
+    {% elif project.requires_installation %}
+    <div class="detail-field">
+        <div class="detail-field-label">Installation Notes</div>
+        <div class="notes-empty">No installation notes added.</div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Notes -->
+<div class="card" style="margin-bottom:1.5rem;">
+    <div class="section-title">General Notes</div>
+    {% if project.notes %}
+    <div class="notes-box">{{ project.notes }}</div>
+    {% else %}
+    <span class="notes-empty">No notes added.</span>
+    {% endif %}
+</div>
+
+<!-- Meta + Delete -->
+<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+    <div class="meta-info">
+        Created {{ project.created_at|date:"d M Y, H:i" }}
+        {% if project.created_by %} by {{ project.created_by.get_full_name|default:project.created_by.username }}{% endif %}
+        &nbsp;·&nbsp; Last updated {{ project.updated_at|date:"d M Y, H:i" }}
+        {% if project.last_edited_by %}
+        &nbsp;·&nbsp; Last edited by
+        <span class="editor-avatar" title="{{ project.last_edited_by.get_full_name|default:project.last_edited_by.username }}">
+            {% with name=project.last_edited_by.get_full_name|default:project.last_edited_by.username %}
+            {{ name|slice:":1" }}{% if project.last_edited_by.last_name %}{{ project.last_edited_by.last_name|slice:":1" }}{% endif %}
+            {% endwith %}
+        </span>
+        {{ project.last_edited_by.get_full_name|default:project.last_edited_by.username }}
+        {% endif %}
+    </div>
+    <a href="{% url 'project_delete' project.pk %}" class="btn btn-danger btn-sm">Delete Project</a>
+</div>
+{% endblock %}

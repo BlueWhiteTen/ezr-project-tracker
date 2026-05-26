@@ -1,0 +1,36 @@
+{% extends 'projects/base.html' %}
+{% block title %}Notifications — Project Tracker{% endblock %}
+{% block extra_style %}
+.notif-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);}
+.notif-row{display:flex;align-items:flex-start;gap:.9rem;padding:.9rem 1.2rem;border-bottom:0.5px solid var(--bdr);transition:background .12s;}
+.notif-row:last-child{border-bottom:none;}
+.notif-row:hover{background:var(--surf2);}
+.notif-row.unread{background:var(--acc-bg);border-left:3px solid var(--acc);}
+.notif-icon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
+.notif-icon-tag{background:var(--acc-bg);border:1px solid var(--acc-bdr);}
+.notif-icon-msg{background:var(--grn-bg);border:1px solid rgba(22,163,74,.2);}
+.notif-body{flex:1;font-size:.875rem;color:var(--txt2);}
+.notif-time{font-size:.75rem;color:var(--mut);white-space:nowrap;}
+.empty{text-align:center;padding:3rem;color:var(--mut);}
+{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.3rem;">
+  <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">Notifications</h1>
+  <span style="font-size:.85rem;color:var(--mut);">Last 50</span>
+</div>
+<div class="notif-card">
+  {% if notifications %}
+  {% for n in notifications %}
+  <{% if n.link %}a href="{{ n.link }}"{% else %}div{% endif %} class="notif-row {% if not n.read %}unread{% endif %}">
+    <div class="notif-icon {% if n.type == 'tag' %}notif-icon-tag{% else %}notif-icon-msg{% endif %}">
+      {% if n.type == 'tag' %}@{% else %}✉{% endif %}
+    </div>
+    <div class="notif-body">{{ n.text }}</div>
+    <div class="notif-time">{{ n.timestamp|date:"d M Y, H:i" }}</div>
+  </{% if n.link %}a{% else %}div{% endif %}>
+  {% endfor %}
+  {% else %}
+  <div class="empty">No notifications yet</div>
+  {% endif %}
+</div>
+{% endblock %}

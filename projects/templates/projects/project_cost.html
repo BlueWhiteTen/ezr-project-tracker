@@ -1,0 +1,1055 @@
+{% extends 'projects/base.html' %}
+{% block title %}Costing — {{ project.project_name }}{% endblock %}
+{% block extra_style %}
+.cost-page{max-width:1600px;}
+.cost-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:1rem;padding-top:.5rem;}
+.cost-grid{display:grid;grid-template-columns:1fr 520px;gap:1.4rem;align-items:start;}
+.cost-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow);overflow:hidden;}
+.cost-card-head{padding:.85rem 1.2rem;border-bottom:1px solid var(--bdr);background:var(--surf2);font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);}
+.cost-card-body{padding:1.1rem;}
+/* Lines table */
+.cost-table{width:100%;border-collapse:collapse;}
+.cost-table th{text-align:left;padding:.5rem .75rem;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);border-bottom:2px solid var(--bdr);}
+.cost-table td{padding:.55rem .75rem;font-size:.875rem;border-bottom:.5px solid var(--bdr);vertical-align:middle;}
+.cost-table tr:last-child td{border-bottom:none;}
+.cost-table tr:hover td{background:var(--surf2);}
+.line-type{font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:99px;text-transform:uppercase;}
+.lt-frame{background:#ede9fe;color:#6d28d9;}
+.lt-shelf{background:#d1fae5;color:#065f46;}
+.lt-stock{background:var(--acc-bg);color:var(--acc);}
+.lt-ns{background:var(--surf2);color:var(--mut2);}
+.lt-inhang{background:#fef3c7;color:#92400e;}
+.lt-outhang{background:#fde8c8;color:#9a3412;}
+.lt-wipe{background:#e0f2fe;color:#0369a1;}
+.lt-mesh{background:#f0fdf4;color:#166534;}
+.lt-loadsign{background:#fdf4ff;color:#7e22ce;}
+.lt-toptie{background:#f1f5f9;color:#475569;}
+.lt-beams{background:#e0f2fe;color:#075985;}
+.lt-extras{background:#fdf4ff;color:#6b21a8;}
+[data-theme=dark] .lt-beams{background:rgba(7,89,133,.2);color:#7dd3fc;}
+[data-theme=dark] .lt-extras{background:rgba(107,33,168,.2);color:#d8b4fe;}
+[data-theme=dark] .lt-inhang{background:rgba(146,64,14,.2);color:#fcd34d;}
+[data-theme=dark] .lt-outhang{background:rgba(154,52,18,.2);color:#fdba74;}
+[data-theme=dark] .lt-wipe{background:rgba(3,105,161,.2);color:#7dd3fc;}
+[data-theme=dark] .lt-mesh{background:rgba(22,101,52,.2);color:#86efac;}
+[data-theme=dark] .lt-loadsign{background:rgba(126,34,206,.2);color:#d8b4fe;}
+[data-theme=dark] .lt-toptie{background:rgba(71,85,105,.2);color:#94a3b8;}
+[data-theme=dark] .lt-frame{background:rgba(109,40,217,.2);color:#c4b5fd;}
+[data-theme=dark] .lt-shelf{background:rgba(6,95,70,.2);color:#6ee7b7;}
+.inline-num{width:75px;text-align:right;background:transparent;border:1px solid transparent;border-radius:4px;padding:2px 5px;font-size:.875rem;color:var(--txt);}
+.inline-num:focus{border-color:var(--acc);background:var(--surf);outline:none;}
+/* Summary card */
+.sum-row{display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:.5px solid var(--bdr);font-size:.9rem;}
+.sum-row:last-child{border-bottom:none;}
+.sum-label{color:var(--txt2);}
+.sum-value{font-weight:600;font-family:var(--fm);}
+.sum-total{font-size:1.1rem;color:var(--acc);}
+.markup-row{display:flex;align-items:center;gap:.5rem;padding:.5rem 0;border-bottom:.5px solid var(--bdr);}
+.pct-input{width:80px;text-align:right;padding:5px 10px;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--surf);color:var(--txt);font-size:.9rem;}
+/* Add line forms */
+.add-tabs{display:flex;gap:4px;margin-bottom:1rem;flex-wrap:wrap;}
+.add-tab{background:none;border:1px solid var(--bdr);border-radius:var(--rad);padding:5px 12px;font-size:.78rem;font-weight:600;cursor:pointer;color:var(--mut);transition:all .15s;}
+.add-tab.active,.add-tab:hover{background:var(--acc-bg);border-color:var(--acc-bdr);color:var(--acc);}
+.add-panel{display:none;}
+.add-panel.active{display:block;}
+.add-row{display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;}
+.mel-toggle{display:flex;align-items:center;gap:.4rem;font-size:.82rem;cursor:pointer;white-space:nowrap;}
+/* Multi-row input grids */
+.mr-grid{width:100%;border-collapse:collapse;margin-bottom:.25rem;}
+.mr-grid th{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);padding:.3rem .4rem;border-bottom:1px solid var(--bdr);text-align:left;}
+.mr-grid td{padding:.3rem .3rem;}
+.mr-grid .row-num{font-size:.72rem;color:var(--mut);width:22px;text-align:center;padding-right:.4rem;}
+.mr-grid input[type=number]{width:65px;}
+.mr-grid .mel-cb{display:flex;align-items:center;justify-content:center;}
+.row-sel{font-size:.82rem !important;padding:4px 6px !important;}
+/* Product search */
+.prod-search-wrap{position:relative;flex:1;min-width:180px;}
+.prod-dd{position:fixed;background:var(--surf);border:1px solid var(--acc);border-radius:var(--rad);z-index:9999;max-height:220px;overflow-y:auto;display:none;box-shadow:0 8px 24px rgba(0,0,0,.2);}
+.prod-dd-item{padding:.55rem .85rem;cursor:pointer;border-bottom:.5px solid var(--bdr);}
+.prod-dd-item:hover,.prod-dd-item.selected{background:var(--acc-bg);}
+.prod-code{font-family:var(--fm);font-weight:700;color:var(--acc);font-size:.8rem;}
+/* Material price settings */
+.mat-setting{display:flex;align-items:center;gap:.6rem;padding:.4rem 0;}
+.mat-setting label{font-size:.82rem;color:var(--txt2);min-width:90px;}
+.mat-input{width:80px;padding:3px 7px;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--surf);color:var(--txt);font-size:.85rem;text-align:right;}
+{% endblock %}
+
+{% block content %}
+<div class="cost-page">
+<div class="cost-hdr">
+  <div style="display:flex;align-items:center;gap:1rem;">
+    <a href="{% url 'project_edit' project.pk %}" class="btn btn-ghost btn-sm">← {{ project.project_name }}</a>
+    <h1 style="font-size:1.4rem;font-weight:600;letter-spacing:-.02em;">Costing</h1>
+  </div>
+  <div style="display:flex;gap:.6rem;">
+    <button class="btn btn-ghost" onclick="saveAndPrint()">🖨 Print</button>
+    <a href="{% url 'customer_quote' project.pk %}" target="_blank" class="btn btn-ghost">📄 Quote</a>
+    <button class="btn btn-primary" onclick="generatePickingList()" style="background:#0f766e;box-shadow:none;">📦 Generate Picking List</button>
+    <button class="btn btn-primary" onclick="saveHeader(false)" style="background:#7c3aed;">Save</button>
+  </div>
+</div>
+
+<div class="cost-grid">
+<!-- LEFT: lines -->
+<div>
+  <div class="cost-card" style="margin-bottom:1.2rem;">
+    <div class="cost-card-head">Cost Lines</div>
+    <div style="overflow-x:auto;">
+    <table class="cost-table">
+      <thead><tr>
+        <th>Type</th><th>Description</th>
+        <th style="text-align:center;">Melamine</th>
+        <th style="text-align:right;">Qty</th>
+        <th style="text-align:right;">Unit Cost</th>
+        <th style="text-align:right;">Total</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="cost-tbody">
+      {% for line in lines %}
+      <tr id="cl-{{ line.pk }}">
+        <td><span class="line-type lt-{{ line.line_type }}">{{ line.get_line_type_display }}</span></td>
+        <td>{{ line.description }}</td>
+        <td style="text-align:center;">
+          {% if line.line_type == 'shelf' %}
+          <input type="checkbox" class="form-checkbox" {% if line.melamine %}checked{% endif %}
+            onchange="toggleMelamine({{ line.pk }}, this.checked)">
+          {% else %}—{% endif %}
+        </td>
+        <td style="text-align:right;">
+          <input type="number" class="inline-num" value="{{ line.quantity|floatformat:0 }}" min="1" step="1"
+            onblur="updateLine({{ line.pk }}, 'quantity', this.value)"
+            onkeydown="if(event.key==='Enter')this.blur()">
+        </td>
+        <td style="text-align:right;">
+          {% if line.line_type == 'ns' %}
+          <input type="number" class="inline-num" value="{{ line.unit_cost|floatformat:2 }}" step="0.01"
+            onblur="updateLine({{ line.pk }}, 'unit_cost', this.value)"
+            onkeydown="if(event.key==='Enter')this.blur()">
+          {% else %}
+          <span id="uc-{{ line.pk }}" style="font-family:var(--fm);font-size:.82rem;color:var(--mut2);">£{{ line.unit_cost|floatformat:2 }}</span>
+          {% endif %}
+        </td>
+        <td style="text-align:right;font-weight:600;font-family:var(--fm);" id="total-{{ line.pk }}">
+          £{{ line.line_total|floatformat:2 }}
+        </td>
+        <td>
+          <button onclick="deleteLine({{ line.pk }})" style="background:none;border:none;color:var(--mut);cursor:pointer;padding:2px 6px;border-radius:4px;font-size:.9rem;">✕</button>
+        </td>
+      </tr>
+      {% empty %}
+      <tr id="empty-row"><td colspan="7" style="text-align:center;color:var(--mut);padding:1.5rem;">No lines yet — add items below</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <!-- PROJECT ACCESSORIES -->
+  <div class="cost-card" style="margin-bottom:1.2rem;">
+    <div class="cost-card-head" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>Project Accessories</span>
+      <span style="font-size:.72rem;color:var(--mut);font-weight:400;text-transform:none;letter-spacing:0;" id="upright-count">{{ total_uprights }} upright{{ total_uprights|pluralize }} detected</span>
+    </div>
+    <div class="cost-card-body" style="display:flex;flex-direction:column;gap:.6rem;">
+      {% for acc in accessories %}
+      <div style="display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;font-size:.88rem;flex:0 0 auto;"
+          title="Apply to all {{ total_uprights }} uprights">
+          <input type="checkbox" id="acc-{{ acc.id }}"
+            {% if acc.checked and not acc.override_qty %}checked{% endif %}
+            onchange="accAllToggle({{ acc.id }}, this.checked)">
+          <span>{{ acc.name }} for all uprights ({{ total_uprights }})</span>
+          <span style="font-size:.75rem;color:var(--mut);">£{{ acc.unit_price }} each</span>
+        </label>
+        <div style="display:flex;align-items:center;gap:.4rem;flex:0 0 auto;">
+          <span style="font-size:.78rem;color:var(--mut);">or custom qty:</span>
+          <input type="number" id="acc-override-{{ acc.id }}"
+            value="{{ acc.override_qty|default:'' }}"
+            min="0" step="1" placeholder="—"
+            class="form-input" style="width:70px;padding:3px 7px;font-size:.82rem;"
+            oninput="accCustomQty({{ acc.id }}, this.value)">
+        </div>
+        <span style="flex:1;"></span>
+        <span id="acc-total-{{ acc.id }}" style="font-size:.85rem;font-weight:600;font-family:var(--fm);color:{% if acc.checked or acc.override_qty %}var(--acc){% else %}var(--mut){% endif %};">
+          {% if acc.checked or acc.override_qty %}£{{ acc.total_cost }}{% else %}—{% endif %}
+        </span>
+      </div>
+      {% empty %}
+      <p style="color:var(--mut);font-size:.85rem;">No accessories configured.</p>
+      {% endfor %}
+      <div style="margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--bdr);display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+        <label style="font-size:.88rem;color:var(--txt2);">Wall fixings required:</label>
+        <input type="number" id="wall-fixings-input" value="{{ cost.wall_fixings }}" min="0" step="1"
+          class="form-input" style="width:80px;"
+          onblur="saveWallFixings(this.value)">
+        <span style="font-size:.78rem;color:var(--mut);">Adds M6 penny washer + brown wall plug + 3" screw per fixing</span>
+      </div>
+      <div style="font-size:.74rem;color:var(--mut);padding-top:.4rem;margin-top:.1rem;">Costs are calculated per upright and included in the buying total.</div>
+    </div>
+  </div>
+
+  <!-- ADD LINES -->
+  <div class="cost-card">
+    <div class="cost-card-head">Add Line</div>
+    <div class="cost-card-body">
+      <div class="add-tabs">
+        <button class="add-tab active" onclick="showTab('frame',this)">🏗 Frame</button>
+        <button class="add-tab" onclick="showTab('tfcv',this)">📐 TFCV Shelf</button>
+        <button class="add-tab" onclick="showTab('twb',this)">📐 TWB Shelf</button>
+        <button class="add-tab" onclick="showTab('beams',this)">〰 Beams Only</button>
+        <button class="add-tab" onclick="showTab('inhang',this)">🪝 Inboard Hang</button>
+        <button class="add-tab" onclick="showTab('outhang',this)">🔩 Outboard Hang</button>
+        <div style="width:100%;height:0;flex-basis:100%;"></div>
+        <button class="add-tab" onclick="showTab('wipe',this)">🗒 Wipe Board</button>
+        <button class="add-tab" onclick="showTab('misc',this)">➕ Misc</button>
+        <button class="add-tab" onclick="showTab('extras',this)">🔧 Extras &amp; Decks</button>
+        <div style="width:100%;height:0;flex-basis:100%;"></div>
+        <button class="add-tab" onclick="showTab('stock',this)">📦 Stock Item</button>
+        <button class="add-tab" onclick="showTab('ns',this)">✏ Non-Stock</button>
+      </div>
+
+      <!-- ═══ FRAME (multi-row) ═══ -->
+      <div class="add-panel active" id="panel-frame">
+        <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem;">
+          <label class="mel-toggle"><input type="checkbox" id="f-grey" onchange="previewFramePrice()"> Light grey (TP)</label>
+        </div>
+        <div id="frame-rows"></div>
+        <div style="display:flex;align-items:center;gap:1rem;margin-top:.5rem;">
+          <button class="btn btn-ghost btn-sm" onclick="addMultiRow('frame')">+ Add row</button>
+          <span style="font-size:.8rem;color:var(--mut);" id="frame-preview"></span>
+        </div>
+        <div style="margin-top:.75rem;">
+          <button class="btn btn-primary" onclick="submitMulti('frame')" style="background:#7c3aed;">Add to costing</button>
+        </div>
+      </div>
+
+      <!-- ═══ TFCV SHELF (multi-row) ═══ -->
+      <div class="add-panel" id="panel-tfcv">
+        <div id="tfcv-rows"></div>
+        <div style="display:flex;align-items:center;gap:1rem;margin-top:.5rem;">
+          <button class="btn btn-ghost btn-sm" onclick="addMultiRow('tfcv')">+ Add row</button>
+          <span style="font-size:.8rem;color:var(--mut);" id="tfcv-preview"></span>
+        </div>
+        <div style="margin-top:.75rem;">
+          <button class="btn btn-primary" onclick="submitMulti('tfcv')" style="background:#059669;">Add to costing</button>
+        </div>
+      </div>
+
+      <!-- ═══ TWB SHELF (multi-row) ═══ -->
+      <div class="add-panel" id="panel-twb">
+        <div id="twb-rows"></div>
+        <div style="display:flex;align-items:center;gap:1rem;margin-top:.5rem;">
+          <button class="btn btn-ghost btn-sm" onclick="addMultiRow('twb')">+ Add row</button>
+          <span style="font-size:.8rem;color:var(--mut);" id="twb-preview"></span>
+        </div>
+        <div style="margin-top:.75rem;">
+          <button class="btn btn-primary" onclick="submitMulti('twb')" style="background:#059669;">Add to costing</button>
+        </div>
+      </div>
+
+      <!-- ═══ BEAMS ONLY (multi-row) ═══ -->
+      <div class="add-panel" id="panel-beams">
+        <div id="beams-rows"></div>
+        <div style="display:flex;align-items:center;gap:1rem;margin-top:.5rem;">
+          <button class="btn btn-ghost btn-sm" onclick="addMultiRow('beams')">+ Add row</button>
+        </div>
+        <div style="margin-top:.75rem;">
+          <button class="btn btn-primary" onclick="submitMulti('beams')" style="background:#0891b2;">Add to costing</button>
+        </div>
+      </div>
+
+      <!-- STOCK -->
+      <div class="add-panel" id="panel-stock">
+        <div class="add-row">
+          <div class="prod-search-wrap">
+            <label class="form-label">Product Code / Description</label>
+            <input class="form-input" type="text" id="st-search" placeholder="Search…" autocomplete="off" oninput="searchCostProds(this.value)">
+            <div class="prod-dd" id="st-dd"></div>
+          </div>
+          <div><label class="form-label">Qty</label>
+            <input class="form-input" type="number" id="st-qty" value="1" min="1" step="1" style="width:70px;">
+          </div>
+          <div style="padding-bottom:1px;">
+            <label class="form-label">&nbsp;</label>
+            <button class="btn btn-primary" onclick="addStock()">Add</button>
+          </div>
+        </div>
+        <div style="font-size:.8rem;color:var(--mut);margin-top:.4rem;" id="st-info"></div>
+      </div>
+
+      <!-- NS -->
+      <div class="add-panel" id="panel-ns">
+        <div class="add-row">
+          <div style="flex:1;"><label class="form-label">Description</label>
+            <input class="form-input" type="text" id="ns-desc" placeholder="e.g. Bespoke bracket">
+          </div>
+          <div><label class="form-label">Qty</label>
+            <input class="form-input" type="number" id="ns-qty" value="1" min="1" step="1" style="width:70px;">
+          </div>
+          <div><label class="form-label">Unit Cost</label>
+            <input class="form-input" type="number" id="ns-cost" value="0" step="0.01" style="width:90px;">
+          </div>
+          <div style="padding-bottom:1px;">
+            <label class="form-label">&nbsp;</label>
+            <button class="btn btn-primary" onclick="addNS()">Add</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- INBOARD HANGING (multi-row) -->
+      <div class="add-panel" id="panel-inhang">
+        <div id="inhang-rows"></div>
+        <div style="margin-top:.5rem;">
+          <button class="btn btn-ghost btn-sm" onclick="addMultiRow('inhang')">+ Add row</button>
+        </div>
+        <div style="margin-top:.75rem;">
+          <button class="btn btn-primary" onclick="submitMulti('inhang')">Add to costing</button>
+        </div>
+      </div>
+
+      <!-- OUTBOARD HANGING (multi-row) -->
+      <div class="add-panel" id="panel-outhang">
+        <div id="outhang-rows"></div>
+        <div style="margin-top:.5rem;">
+          <button class="btn btn-ghost btn-sm" onclick="addMultiRow('outhang')">+ Add row</button>
+        </div>
+        <div style="margin-top:.75rem;">
+          <button class="btn btn-primary" onclick="submitMulti('outhang')">Add to costing</button>
+        </div>
+      </div>
+
+      <!-- WIPE BOARD -->
+      <div class="add-panel" id="panel-wipe">
+        <div class="add-row">
+          <div><label class="form-label">Bay Depth</label>
+            <select class="form-input" id="wp-depth">
+              {% for d in wipe_depths %}<option value="{{ d }}">{{ d }}"</option>{% endfor %}
+            </select>
+          </div>
+          <div><label class="form-label">Qty</label>
+            <input class="form-input" type="number" id="wp-qty" value="1" min="1" step="1" style="width:70px;">
+          </div>
+          <div>
+            <label class="form-label">&nbsp;</label>
+            <button class="btn btn-primary" onclick="addWipe()">Add</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MISC -->
+      <div class="add-panel" id="panel-misc">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+          <div style="border:1px solid var(--bdr);border-radius:var(--rad);padding:.75rem;">
+            <div style="font-size:.78rem;font-weight:600;color:var(--mut);margin-bottom:.5rem;">Mesh Panel (120x48") — £25</div>
+            <div style="display:flex;gap:.5rem;align-items:center;">
+              <input class="form-input" type="number" id="mesh-qty" value="1" min="1" style="width:70px;">
+              <button class="btn btn-primary btn-sm" onclick="addMisc('mesh_panel','mesh-qty')">Add</button>
+            </div>
+          </div>
+          <div style="border:1px solid var(--bdr);border-radius:var(--rad);padding:.75rem;">
+            <div style="font-size:.78rem;font-weight:600;color:var(--mut);margin-bottom:.5rem;">Load Sign</div>
+            <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+              <select class="form-input" id="ls-type" style="flex:1;">
+                {% for t in load_sign_types %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+              </select>
+              <input class="form-input" type="number" id="ls-qty" value="1" min="1" style="width:60px;">
+              <button class="btn btn-primary btn-sm" onclick="addLoadSign()">Add</button>
+            </div>
+          </div>
+          <div style="border:1px solid var(--bdr);border-radius:var(--rad);padding:.75rem;">
+            <div style="font-size:.78rem;font-weight:600;color:var(--mut);margin-bottom:.5rem;">Top Tie — £3 each</div>
+            <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+              <input class="form-input" type="text" id="tt-length" placeholder="e.g. 1200mm" style="width:100px;">
+              <input class="form-input" type="number" id="tt-qty" value="1" min="1" style="width:65px;">
+              <button class="btn btn-primary btn-sm" onclick="addTopTie()">Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EXTRAS & DECKS -->
+      <div class="add-panel" id="panel-extras">
+        <div style="display:flex;flex-direction:column;gap:.6rem;">
+          {% for item in extras_items %}
+          <div style="display:flex;align-items:center;gap:.75rem;">
+            <span style="font-size:.88rem;min-width:130px;">{{ item.label }} cost:</span>
+            <span style="font-size:.82rem;">£</span>
+            <input class="form-input" type="number" id="ext-{{ item.key }}" value="" step="0.01" min="0" placeholder="0.00" style="width:100px;">
+            <button class="btn btn-primary btn-sm" onclick="addSimpleExtra('{{ item.key }}','{{ item.label }}')">Add</button>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT: summary -->
+<div>
+  <div class="cost-card" style="margin-bottom:1rem;">
+    <div class="cost-card-head">Summary</div>
+    <div class="cost-card-body">
+      <div class="sum-row"><span class="sum-label">Buying Price</span><span class="sum-value" id="buying-total">£{{ buying_total }}</span></div>
+      <div class="markup-row">
+        <span class="sum-label" style="font-size:.9rem;color:var(--txt2);flex:1;">Markup</span>
+        <input type="number" class="pct-input" id="markup-pct" value="{{ cost.markup|floatformat:0 }}" min="0" step="1" onchange="recalc()" onblur="saveHeader(true)"> <span style="font-size:.85rem;color:var(--mut);">%</span>
+        <span class="sum-value" style="margin-left:.75rem;" id="markup-amount">£{{ markup_amount }}</span>
+      </div>
+      <div class="sum-row"><span class="sum-label">Labour</span>
+        <span>£<input type="number" class="pct-input" id="labour-val" value="{{ cost.labour|floatformat:2 }}" min="0" step="0.01" onchange="recalc()" onblur="saveHeader(true)"></span>
+      </div>
+      <div class="sum-row"><span class="sum-label">Delivery</span>
+        <span>£<input type="number" class="pct-input" id="delivery-val" value="{{ cost.delivery|floatformat:2 }}" min="0" step="0.01" onchange="recalc()" onblur="saveHeader(true)"></span>
+      </div>
+      <div class="sum-row" style="margin-top:.5rem;border-top:2px solid var(--bdr);padding-top:.75rem;">
+        <span style="font-weight:700;font-size:.95rem;">Sell Price</span>
+        <span class="sum-value sum-total" id="sell-price">£{{ sell_price }}</span>
+      </div>
+      <div class="sum-row"><span class="sum-label">Margin</span><span class="sum-value" id="margin-pct" style="color:var(--grn);">{{ margin }}%</span></div>
+    </div>
+  </div>
+
+  <div class="cost-card" style="margin-bottom:1rem;">
+    <div class="cost-card-head">Material Prices (per sq ft)</div>
+    <div class="cost-card-body">
+      <div class="mat-setting">
+        <label>Chipboard</label>
+        <span>£</span><input type="number" class="mat-input" id="mat-chipboard" value="{{ chipboard_price }}" step="0.01" min="0">
+      </div>
+      <div class="mat-setting">
+        <label>Melamine</label>
+        <span>£</span><input type="number" class="mat-input" id="mat-melamine" value="{{ melamine_price }}" step="0.01" min="0">
+      </div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:.75rem;width:100%;" onclick="saveMaterialPrices()">Update Material Prices</button>
+    </div>
+  </div>
+
+  {% if picking_ref %}
+  <div class="cost-card" style="margin-bottom:1rem;">
+    <div class="cost-card-head" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>Stock Reference</span>
+      <span style="font-size:.72rem;color:var(--mut);font-weight:400;text-transform:none;letter-spacing:0;">from frames, shelves &amp; accessories</span>
+    </div>
+    <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+      <thead><tr>
+        <th style="text-align:left;padding:.4rem .6rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);border-bottom:1px solid var(--bdr);">Code</th>
+        <th style="text-align:left;padding:.4rem .6rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);border-bottom:1px solid var(--bdr);">Description</th>
+        <th style="text-align:right;padding:.4rem .6rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);border-bottom:1px solid var(--bdr);">Qty</th>
+        <th style="text-align:right;padding:.4rem .6rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);border-bottom:1px solid var(--bdr);">In Stock</th>
+      </tr></thead>
+      <tbody>
+      {% for item in picking_ref %}
+      <tr style="border-bottom:.5px solid var(--bdr);">
+        <td style="padding:.35rem .6rem;font-family:var(--fm);font-weight:700;color:var(--acc);font-size:.78rem;">{{ item.code }}</td>
+        <td style="padding:.35rem .6rem;color:var(--txt2);font-size:.78rem;">{{ item.description }}</td>
+        <td style="padding:.35rem .6rem;text-align:right;font-weight:700;">{{ item.qty }}</td>
+        <td style="padding:.35rem .6rem;text-align:right;font-weight:600;{% if item.in_stock is not None and item.in_stock < item.qty %}color:var(--red);{% else %}color:var(--grn);{% endif %}">
+          {% if item.in_stock is not None %}{{ item.in_stock|floatformat:0 }}{% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="cost-card">
+    <div class="cost-card-head">Notes</div>
+    <div class="cost-card-body">
+      <textarea class="form-input" id="cost-notes" rows="4" style="resize:vertical;" onblur="saveHeader(true)">{{ cost.notes }}</textarea>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+<!-- Generate Picking List Modal -->
+<div id="gpl-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;" onclick="closeGPL()"></div>
+<div id="gpl-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:680px;max-width:95vw;max-height:85vh;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow-md);z-index:9999;display:none;flex-direction:column;">
+  <div style="padding:1rem 1.2rem;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div>
+      <div style="font-weight:700;font-size:1rem;">Generate Picking List from Costing</div>
+      <div style="font-size:.78rem;color:var(--mut);margin-top:2px;">Review and edit quantities before adding to the picking list</div>
+    </div>
+    <button onclick="closeGPL()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--mut);">✕</button>
+  </div>
+  <div id="gpl-body" style="overflow-y:auto;padding:1rem 1.2rem;flex:1;">
+    <div style="text-align:center;color:var(--mut);padding:2rem;">Loading…</div>
+  </div>
+  <div style="padding:1rem 1.2rem;border-top:1px solid var(--bdr);display:flex;gap:.75rem;align-items:center;flex-shrink:0;flex-wrap:wrap;">
+    <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;">
+      <input type="checkbox" id="gpl-replace"> Replace existing picking list items
+    </label>
+    <div style="flex:1;"></div>
+    <button class="btn btn-ghost" onclick="closeGPL()">Cancel</button>
+    <button class="btn btn-primary" onclick="savePickingList()" style="background:#0f766e;">Add to Picking List</button>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+const PROJ_PK = {{ project.pk }};
+const CHIPBOARD = {{ chipboard_price }};
+const MELAMINE  = {{ melamine_price }};
+
+// ── Pricing tables ────────────────────────────────────────────────────────────
+const POSTS  = {48:5.55,60:6.81,72:8.18,84:9.45,96:10.91,108:12.25,120:13.61,144:16.32};
+const TPCS   = {12:1.44,15:1.61,18:1.90,21:2.28,24:2.28,27:2.81,30:2.81,36:3.25};
+const H_N    = {48:2,60:2,72:3,84:3,96:4,108:4,120:5,144:5};
+const TFCV_C = {24:3.50,30:3.50,36:4.25,'39.5':4.99,'43.5':5.58,48:5.58};
+const TWB_P  = {36:5.74,48:7.57,60:10.38,72:12.20};
+const SM_PRICE = 3.50;
+
+// ── Pricing helpers ───────────────────────────────────────────────────────────
+function framePrice(h,d){ return 2*POSTS[h] + H_N[h]*TPCS[d]; }
+function shelfPrice(type,w,d,mel){
+  const sqft=(parseFloat(w)*parseFloat(d))/144;
+  const mat=mel ? parseFloat(document.getElementById('mat-melamine').value||MELAMINE)
+                : parseFloat(document.getElementById('mat-chipboard').value||CHIPBOARD);
+  if(type==='tfcv'){ const cp=TFCV_C[w]||0; return sqft*mat+cp; }
+  else { const bp=TWB_P[w]||0; return sqft*mat+bp; }
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function showTab(name, btn){
+  document.querySelectorAll('.add-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.add-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(`panel-${name}`).classList.add('active');
+  sessionStorage.setItem('cost-tab-{{ project.pk }}', name);
+}
+document.addEventListener('DOMContentLoaded', function(){
+  const saved = sessionStorage.getItem('cost-tab-{{ project.pk }}');
+  if(saved){
+    const btn = document.querySelector(`.add-tab[onclick="showTab('${saved}',this)"]`);
+    if(btn) showTab(saved, btn);
+  }
+  initMultiRows('frame', 5);
+  initMultiRows('tfcv',  5);
+  initMultiRows('twb',   5);
+  initMultiRows('beams', 5);
+  initMultiRows('inhang', 5);
+  initMultiRows('outhang', 5);
+});
+
+// ── Multi-row system ──────────────────────────────────────────────────────────
+const FH = ['48','60','72','84','96','108','120','144'];
+const FD = ['12','15','18','21','24','27','30','36'];
+const TFCVW = ['24','30','36','39.5','43.5','48'];
+const TWBW  = ['36','48','60','72'];
+const SD    = ['12','15','18','21','24','27','30','36'];
+const TWBWA = ['36','48','60','72'];
+
+function selOpts(vals, suffix='\"'){ return vals.map(v=>`<option value="${v}">${v}${suffix}</option>`).join(''); }
+
+function makeRow(type, idx){
+  if(type==='frame'){
+    return `<tr data-idx="${idx}">
+      <td class="row-num">${idx+1}</td>
+      <td><select class="form-input row-sel" name="height">${selOpts(FH)}</select></td>
+      <td><select class="form-input row-sel" name="depth">${selOpts(FD)}</select></td>
+      <td><input class="form-input" type="number" name="quantity" value="" min="0" step="1" style="width:65px;" placeholder="qty"></td>
+      <td><button type="button" onclick="removeRow(this)" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;">✕</button></td>
+    </tr>`;
+  } else if(type==='tfcv'){
+    return `<tr data-idx="${idx}">
+      <td class="row-num">${idx+1}</td>
+      <td><select class="form-input row-sel" name="width">${selOpts(TFCVW)}</select></td>
+      <td><select class="form-input row-sel" name="depth">${selOpts(SD)}</select></td>
+      <td><input class="form-input" type="number" name="quantity" value="" min="0" step="1" style="width:65px;" placeholder="qty"></td>
+      <td style="text-align:center;vertical-align:middle;"><label style="display:flex;align-items:center;justify-content:center;"><input type="checkbox" name="melamine"></label></td>
+      <td><button type="button" onclick="removeRow(this)" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;">✕</button></td>
+    </tr>`;
+  } else if(type==='twb'){
+    return `<tr data-idx="${idx}">
+      <td class="row-num">${idx+1}</td>
+      <td><select class="form-input row-sel" name="width">${selOpts(TWBW)}</select></td>
+      <td><select class="form-input row-sel" name="depth">${selOpts(SD)}</select></td>
+      <td><input class="form-input" type="number" name="quantity" value="" min="0" step="1" style="width:65px;" placeholder="qty"></td>
+      <td style="text-align:center;vertical-align:middle;"><label style="display:flex;align-items:center;justify-content:center;"><input type="checkbox" name="melamine"></label></td>
+      <td><button type="button" onclick="removeRow(this)" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;">✕</button></td>
+    </tr>`;
+  } else if(type==='inhang'){
+    const IHW=['24','30','36','39.5','43.5','48'];
+    const IHD=['12','15','18','21','24','27','30','36'];
+    return `<tr data-idx="${idx}">
+      <td class="row-num">${idx+1}</td>
+      <td><select class="form-input row-sel" name="width">${IHW.map(v=>`<option value="${v}">${v}"</option>`).join('')}</select></td>
+      <td><select class="form-input row-sel" name="depth">${IHD.map(v=>`<option value="${v}">${v}"</option>`).join('')}</select></td>
+      <td><input class="form-input" type="number" name="quantity" value="" min="0" step="1" style="width:65px;" placeholder="sets"></td>
+      <td><button type="button" onclick="removeRow(this)" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;">✕</button></td>
+    </tr>`;
+  } else if(type==='outhang'){
+    return `<tr data-idx="${idx}">
+      <td class="row-num">${idx+1}</td>
+      <td><select class="form-input row-sel" name="length"><option value="915mm">915mm</option><option value="1000mm">1000mm</option><option value="1220mm">1220mm</option></select></td>
+      <td><input class="form-input" type="number" name="quantity" value="" min="0" step="1" style="width:65px;" placeholder="rails"></td>
+      <td><button type="button" onclick="removeRow(this)" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;">✕</button></td>
+    </tr>`;
+  } else if(type==='beams'){
+    const BWIDTHS_TFCV=['24','30','36','39.5','43.5','48'];
+    const BWIDTHS_TWB=['36','48','60','72'];
+    return `<tr data-idx="${idx}">
+      <td class="row-num">${idx+1}</td>
+      <td><select class="form-input row-sel" name="beam_type" onchange="updateBeamWidths(this)">
+        <option value="tfcv">TFCV</option>
+        <option value="twb">TWB</option>
+      </select></td>
+      <td><select class="form-input row-sel" name="width">${BWIDTHS_TFCV.map(v=>`<option value="${v}">${v}"</option>`).join('')}</select></td>
+      <td><input class="form-input" type="number" name="quantity" value="" min="0" step="1" style="width:65px;" placeholder="pairs"></td>
+      <td><button type="button" onclick="removeRow(this)" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;">✕</button></td>
+    </tr>`;
+  }
+}
+
+function makeTable(type, nRows){
+  const headers = {
+    frame: '<th style="width:22px;"></th><th>Height</th><th>Depth</th><th>Qty</th><th></th>',
+    tfcv:  '<th style="width:22px;"></th><th>Width</th><th>Depth</th><th>Qty</th><th>Melamine</th><th></th>',
+    twb:   '<th style="width:22px;"></th><th>Width</th><th>Depth</th><th>Qty</th><th>Melamine</th><th></th>',
+    beams:   '<th style="width:22px;"></th><th>Type</th><th>Width</th><th>Pairs</th><th></th>',
+    inhang:  '<th style="width:22px;"></th><th>Width</th><th>Depth</th><th>Qty (sets)</th><th></th>',
+    outhang: '<th style="width:22px;"></th><th>Length</th><th>Qty (rails)</th><th></th>',
+  };
+  let rows = '';
+  for(let i=0;i<nRows;i++) rows += makeRow(type, i);
+  return `<table class="mr-grid"><thead><tr>${headers[type]}</tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function initMultiRows(type, n){
+  const el = document.getElementById(`${type}-rows`);
+  if(el) el.innerHTML = makeTable(type, n);
+}
+
+function addMultiRow(type){
+  const tbody = document.querySelector(`#${type}-rows table tbody`);
+  if(!tbody) return;
+  const idx = tbody.querySelectorAll('tr').length;
+  tbody.insertAdjacentHTML('beforeend', makeRow(type, idx));
+}
+
+function removeRow(btn){
+  btn.closest('tr').remove();
+}
+
+function getMultiRows(type){
+  const rows = document.querySelectorAll(`#${type}-rows table tbody tr`);
+  const result = [];
+  rows.forEach(tr=>{
+    const row = {};
+    tr.querySelectorAll('[name]').forEach(el=>{
+      if(el.type==='checkbox') row[el.name]=el.checked;
+      else row[el.name]=el.value;
+    });
+    result.push(row);
+  });
+  return result;
+}
+
+async function submitMulti(type){
+  const rows = getMultiRows(type);
+  const hasData = rows.some(r=>parseFloat(r.quantity||r.pairs)>0);
+  if(!hasData) return;
+  let payload = {quantity:1};
+  if(type==='frame'){
+    payload.line_type='frame';
+    payload.rows=rows;
+    payload.grey_posts=document.getElementById('f-grey').checked;
+  } else if(type==='tfcv'){
+    payload.line_type='shelf_tfcv';
+    payload.rows=rows;
+  } else if(type==='twb'){
+    payload.line_type='shelf_twb';
+    payload.rows=rows;
+  } else if(type==='beams'){
+    payload.line_type='beams';
+    payload.rows=rows.map(r=>({beam_type:r.beam_type||'tfcv',width:r.width,quantity:r.quantity||r.pairs}));
+  } else if(type==='inhang'){
+    payload.line_type='in_hang_multi';
+    payload.rows=rows.map(r=>({width:r.width,depth:r.depth,quantity:r.quantity}));
+  } else if(type==='outhang'){
+    payload.line_type='out_hang_multi';
+    payload.rows=rows.map(r=>({length:r.length,quantity:r.quantity}));
+  }
+  await fetch(`/project/${PROJ_PK}/cost/add-line/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify(payload)});
+  location.reload();
+}
+
+function updateBeamWidths(sel){
+  const row = sel.closest('tr');
+  const wSel = row.querySelector('[name="width"]');
+  const btype = sel.value;
+  const BWIDTHS_TFCV=['24','30','36','39.5','43.5','48'];
+  const BWIDTHS_TWB=['36','48','60','72'];
+  const opts = (btype==='tfcv' ? BWIDTHS_TFCV : BWIDTHS_TWB);
+  wSel.innerHTML = opts.map(v=>`<option value="${v}">${v}"</option>`).join('');
+}
+
+function previewFramePrice(){
+  const grey=document.getElementById('f-grey')?.checked;
+  const prefix=grey?'TP':'BTP';
+  document.getElementById('frame-preview').textContent=`Default: 2×${prefix}{H} + N×TPC{D} per frame`;
+}
+
+// ── Single-line adds (stock, ns, hanging etc.) ────────────────────────────────
+async function postLine(data){
+  await fetch(`/project/${PROJ_PK}/cost/add-line/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify(data)});
+  location.reload();
+}
+
+async function addStock(){
+  if(!selProd){ document.getElementById('st-search').focus(); return; }
+  const qty=parseFloat(document.getElementById('st-qty').value)||1;
+  await postLine({line_type:'stock',product_id:selProd.id,quantity:qty});
+  selProd=null; document.getElementById('st-search').value=''; document.getElementById('st-info').textContent='';
+}
+async function addNS(){
+  const desc=document.getElementById('ns-desc').value.trim();
+  if(!desc) return;
+  const qty=parseFloat(document.getElementById('ns-qty').value)||1;
+  const cost=parseFloat(document.getElementById('ns-cost').value)||0;
+  await postLine({line_type:'ns',description:desc,quantity:qty,unit_cost:cost});
+  document.getElementById('ns-desc').value=''; document.getElementById('ns-cost').value='0';
+}
+
+// Inboard hanging
+const IH_RAILS={12:4.0,15:4.2,18:4.35,21:4.65,24:4.85,27:5.0,30:5.3,36:6.5};
+function inHangPrice(w,d){ const feet=d==36?2:1; return 2*IH_RAILS[d]+feet*1.5; }
+function previewInHang(){
+  const d=parseInt(document.getElementById('ih-depth').value);
+  const w=document.getElementById('ih-width').value;
+  document.getElementById('ih-preview').textContent=`Unit cost: £${inHangPrice(w,d).toFixed(2)} per set`;
+}
+async function addInHang(){
+  const w=document.getElementById('ih-width').value;
+  const d=document.getElementById('ih-depth').value;
+  const qty=parseFloat(document.getElementById('ih-qty').value)||1;
+  await postLine({line_type:'in_hang',width:w,depth:d,quantity:qty});
+}
+async function addOutHang(){
+  const length=document.getElementById('oh-length').value;
+  const qty=parseFloat(document.getElementById('oh-qty').value)||1;
+  await postLine({line_type:'out_hang',length,quantity:qty});
+}
+async function addWipe(){
+  const depth=document.getElementById('wp-depth').value;
+  const qty=parseFloat(document.getElementById('wp-qty').value)||1;
+  await postLine({line_type:'wipe_board',depth,quantity:qty});
+}
+async function addMisc(type,qtyId){
+  const qty=parseFloat(document.getElementById(qtyId).value)||1;
+  await postLine({line_type:type,quantity:qty});
+}
+async function addLoadSign(){
+  const type=document.getElementById('ls-type').value;
+  const qty=parseFloat(document.getElementById('ls-qty').value)||1;
+  await postLine({line_type:'load_sign',sign_type:type,quantity:qty});
+}
+async function addTopTie(){
+  const length=document.getElementById('tt-length').value.trim();
+  const qty=parseFloat(document.getElementById('tt-qty').value)||1;
+  await postLine({line_type:'top_tie',length,quantity:qty});
+}
+
+// Extras & Decks
+async function addSimpleExtra(key, label){
+  const cost=parseFloat(document.getElementById(`ext-${key}`).value)||0;
+  if(!cost) return;
+  await postLine({line_type:'extras',description:label,quantity:1,unit_cost:cost});
+  document.getElementById(`ext-${key}`).value='';
+}
+
+// ── Wall fixings ─────────────────────────────────────────────────────────────
+async function saveWallFixings(val){
+  await fetch(`/project/${PROJ_PK}/cost/wall-fixings/`, {
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+    body: JSON.stringify({wall_fixings: parseInt(val)||0})
+  });
+  location.reload();
+}
+
+// ── Accessories ──────────────────────────────────────────────────────────────
+async function accAllToggle(accId, checked){
+  // "All uprights" checkbox — clear any custom qty
+  if(checked){
+    const overEl = document.getElementById(`acc-override-${accId}`);
+    if(overEl) overEl.value = '';
+    // Clear override in DB
+    await fetch(`/project/${PROJ_PK}/cost/accessory-override/`, {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+      body: JSON.stringify({accessory_id: accId, override_qty: null})
+    });
+  }
+  const r = await fetch(`/project/${PROJ_PK}/cost/accessory-toggle/`, {
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+    body: JSON.stringify({accessory_id: accId, checked, override_qty: null})
+  });
+  const d = await r.json();
+  const totalEl = document.getElementById(`acc-total-${accId}`);
+  if(checked){
+    totalEl.textContent = '£' + d.total_cost.toFixed(2);
+    totalEl.style.color = 'var(--acc)';
+  } else {
+    totalEl.textContent = '—';
+    totalEl.style.color = 'var(--mut)';
+  }
+  recalcFromDOM();
+}
+
+async function accCustomQty(accId, val){
+  // Custom qty box — uncheck the "all uprights" checkbox
+  const cb = document.getElementById(`acc-${accId}`);
+  if(cb) cb.checked = false;
+  // Remove from accessories (uncheck) then set override
+  await fetch(`/project/${PROJ_PK}/cost/accessory-toggle/`, {
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+    body: JSON.stringify({accessory_id: accId, checked: val !== '' && parseInt(val) > 0, override_qty: null})
+  });
+  const r = await fetch(`/project/${PROJ_PK}/cost/accessory-override/`, {
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+    body: JSON.stringify({accessory_id: accId, override_qty: val === '' ? null : parseInt(val)})
+  });
+  const d = await r.json();
+  const totalEl = document.getElementById(`acc-total-${accId}`);
+  if(val !== '' && parseInt(val) > 0){
+    totalEl.textContent = '£' + d.total_cost.toFixed(2);
+    totalEl.style.color = 'var(--acc)';
+  } else {
+    totalEl.textContent = '—';
+    totalEl.style.color = 'var(--mut)';
+  }
+  recalcFromDOM();
+}
+
+// ── Line update / delete ──────────────────────────────────────────────────────
+async function updateLine(pk, field, val){
+  const r=await fetch(`/cost-line/${pk}/update/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({[field]:val})});
+  const d=await r.json();
+  if(d.ok){ document.getElementById(`total-${pk}`).textContent='£'+parseFloat(d.line_total).toFixed(2); recalcFromDOM(); }
+}
+async function toggleMelamine(pk,mel){
+  const r=await fetch(`/cost-line/${pk}/update/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({melamine:mel})});
+  const d=await r.json();
+  if(d.ok){
+    document.getElementById(`total-${pk}`).textContent='£'+parseFloat(d.line_total).toFixed(2);
+    const ucSpan=document.getElementById(`uc-${pk}`);
+    if(ucSpan) ucSpan.textContent='£'+parseFloat(d.unit_cost).toFixed(2);
+    const ucInput=document.querySelector(`#cl-${pk} td:nth-child(5) input`);
+    if(ucInput) ucInput.value=parseFloat(d.unit_cost).toFixed(2);
+    // Update description text
+    const descEl=document.querySelector(`#cl-${pk} td:nth-child(2)`);
+    if(descEl) descEl.textContent=descEl.textContent.replace(/\((Melamine|Chipboard)\)/, mel?'(Melamine)':'(Chipboard)');
+    recalcFromDOM();
+  }
+}
+async function deleteLine(pk){
+  await fetch(`/cost-line/${pk}/delete/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+  document.getElementById(`cl-${pk}`)?.remove();
+  recalcFromDOM();
+}
+
+// ── Summary recalc ────────────────────────────────────────────────────────────
+function recalcFromDOM(){
+  let buying=0;
+  document.querySelectorAll('[id^="total-"]').forEach(el=>{ buying+=parseFloat(el.textContent.replace('£',''))||0; });
+  // Add checked accessories
+  document.querySelectorAll('[id^="acc-"]').forEach(cb=>{
+    if(cb.type==='checkbox' && cb.checked){
+      const accId=cb.id.replace('acc-','');
+      const tot=document.getElementById(`acc-total-${accId}`);
+      if(tot) buying+=parseFloat(tot.textContent.replace('£',''))||0;
+    }
+  });
+  recalcWith(buying);
+}
+function recalc(){
+  let buying=0;
+  document.querySelectorAll('[id^="total-"]').forEach(el=>{ buying+=parseFloat(el.textContent.replace('£',''))||0; });
+  recalcWith(buying);
+}
+function recalcWith(buying){
+  const markup=parseFloat(document.getElementById('markup-pct').value)||0;
+  const labour=parseFloat(document.getElementById('labour-val').value)||0;
+  const delivery=parseFloat(document.getElementById('delivery-val').value)||0;
+  const mup=buying*markup/100;
+  const sell=buying+mup+labour+delivery;
+  const margin=sell>0?mup/sell*100:0;
+  document.getElementById('buying-total').textContent='£'+buying.toFixed(2);
+  document.getElementById('markup-amount').textContent='£'+mup.toFixed(2);
+  document.getElementById('sell-price').textContent='£'+sell.toFixed(2);
+  document.getElementById('margin-pct').textContent=margin.toFixed(1)+'%';
+}
+
+// ── Save / material prices ────────────────────────────────────────────────────
+async function saveAndPrint(){
+  await saveHeader(true);
+  window.open('{% url "project_cost_print" project.pk %}','_blank');
+}
+async function saveHeader(silent=false){
+  await fetch(`/project/${PROJ_PK}/cost/save/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({
+    markup:document.getElementById('markup-pct').value,
+    labour:document.getElementById('labour-val').value,
+    delivery:document.getElementById('delivery-val').value,
+    notes:document.getElementById('cost-notes').value,
+  })});
+  if(!silent){
+    const btn=document.querySelector('.cost-hdr .btn-primary');
+    const orig=btn.textContent; btn.textContent='✓ Saved';
+    setTimeout(()=>btn.textContent=orig,1500);
+  }
+}
+async function saveMaterialPrices(){
+  const data={chipboard:document.getElementById('mat-chipboard').value,melamine:document.getElementById('mat-melamine').value};
+  await fetch('/settings/material-prices/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify(data)});
+  location.reload();
+}
+
+// ── Product search (stock tab) ────────────────────────────────────────────────
+let selProd=null, prodResults=[], ddIdx=-1;
+async function searchCostProds(q){
+  const dd=document.getElementById('st-dd');
+  ddIdx=-1;
+  if(q.length<1){dd.style.display='none';selProd=null;return;}
+  const r=await fetch(`/api/products/?q=${encodeURIComponent(q)}`);
+  prodResults=await r.json();
+  positionDD();
+  renderDD();
+}
+function positionDD(){
+  const inp=document.getElementById('st-search');
+  const dd=document.getElementById('st-dd');
+  const rect=inp.getBoundingClientRect();
+  dd.style.left=rect.left+'px';
+  dd.style.top=(rect.bottom+2)+'px';
+  dd.style.width=rect.width+'px';
+}
+function renderDD(){
+  const dd=document.getElementById('st-dd');
+  if(!prodResults.length){dd.style.display='none';return;}
+  dd.innerHTML=prodResults.map((p,i)=>`<div class="prod-dd-item ${i===ddIdx?'selected':''}" data-idx="${i}"><div class="prod-code">${p.code}</div><div style="font-size:.82rem;">${p.description}</div></div>`).join('');
+  dd.querySelectorAll('.prod-dd-item').forEach(el=>el.addEventListener('mousedown',function(e){e.preventDefault();selectCostProd(prodResults[parseInt(this.dataset.idx)]);}));
+  positionDD();
+  dd.style.display='block';
+}
+function selectCostProd(p){
+  selProd=p;
+  document.getElementById('st-search').value=p.code;
+  document.getElementById('st-dd').style.display='none';
+  document.getElementById('st-info').textContent=p.description;
+  document.getElementById('st-qty').focus();
+}
+document.addEventListener('mousedown',e=>{if(!e.target.closest('.prod-search-wrap'))document.getElementById('st-dd').style.display='none';});
+document.getElementById('st-search')?.addEventListener('keydown',function(e){
+  const dd=document.getElementById('st-dd');
+  if(dd.style.display==='block'&&prodResults.length){
+    if(e.key==='ArrowDown'){e.preventDefault();ddIdx=Math.min(ddIdx+1,prodResults.length-1);renderDD();}
+    else if(e.key==='ArrowUp'){e.preventDefault();ddIdx=Math.max(ddIdx-1,0);renderDD();}
+    else if(e.key==='Enter'){e.preventDefault();if(ddIdx>=0)selectCostProd(prodResults[ddIdx]);}
+    else if(e.key==='Escape'){dd.style.display='none';}
+  } else if(e.key==='Enter'){e.preventDefault();addStock();}
+});
+
+// ── Generate Picking List from Costing ───────────────────────────────────────
+let gplItems = [];
+
+async function generatePickingList(){
+  const modal = document.getElementById('gpl-modal');
+  const overlay = document.getElementById('gpl-overlay');
+  modal.style.display = 'flex';
+  overlay.style.display = 'block';
+  document.getElementById('gpl-body').innerHTML = '<div style="text-align:center;color:var(--mut);padding:2rem;">Loading costing items…</div>';
+
+  const r = await fetch(`/project/${PROJ_PK}/picking-from-costing/`, {
+    method:'POST', headers:{'X-CSRFToken':CSRF}
+  });
+  const d = await r.json();
+  if(!d.ok){ document.getElementById('gpl-body').innerHTML = `<div style="color:var(--red);padding:1rem;">${d.error}</div>`; return; }
+
+  gplItems = [...d.stock_items, ...d.ns_lines];
+  renderGPL(gplItems);
+}
+
+function renderGPL(items){
+  if(!items.length){
+    document.getElementById('gpl-body').innerHTML = '<div style="color:var(--mut);padding:1rem;">No stock items found in costing.</div>';
+    return;
+  }
+  let html = `<table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead><tr style="border-bottom:2px solid var(--bdr);">
+      <th style="padding:.4rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);">Include</th>
+      <th style="padding:.4rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);">Code</th>
+      <th style="padding:.4rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);">Description</th>
+      <th style="padding:.4rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);">In Stock</th>
+      <th style="padding:.4rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);">Qty</th>
+    </tr></thead><tbody>`;
+
+  items.forEach((item, idx) => {
+    const isStock = item.type === 'stock';
+    const notFound = isStock && !item.found;
+    const lowStock = isStock && item.in_stock !== null && item.in_stock < item.quantity;
+    const stockCol = item.in_stock !== null
+      ? `<span style="color:${lowStock?'var(--red)':'var(--grn)'};">${item.in_stock}</span>`
+      : '<span style="color:var(--mut);">—</span>';
+
+    html += `<tr style="border-bottom:.5px solid var(--bdr);${notFound?'opacity:.5;':''}">
+      <td style="padding:.4rem .5rem;"><input type="checkbox" class="gpl-include" data-idx="${idx}" ${notFound?'':'checked'} onchange="gplToggle(${idx},this.checked)"></td>
+      <td style="padding:.4rem .5rem;font-family:var(--fm);font-weight:700;color:var(--acc);font-size:.8rem;">${isStock?item.code:'NS'}${notFound?' <span style="color:var(--red);font-size:.7rem;">⚠ not in stock DB</span>':''}</td>
+      <td style="padding:.4rem .5rem;color:var(--txt2);">${item.description}</td>
+      <td style="padding:.4rem .5rem;text-align:right;">${isStock?stockCol:'—'}</td>
+      <td style="padding:.4rem .5rem;text-align:right;"><input type="number" class="form-input gpl-qty" data-idx="${idx}" value="${item.quantity}" min="0" step="1" style="width:65px;text-align:right;padding:3px 6px;" oninput="gplQty(${idx},this.value)"></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('gpl-body').innerHTML = html;
+}
+
+function gplToggle(idx, checked){
+  gplItems[idx].skip = !checked;
+}
+function gplQty(idx, val){
+  gplItems[idx].quantity = parseFloat(val)||0;
+}
+
+function closeGPL(){
+  document.getElementById('gpl-modal').style.display = 'none';
+  document.getElementById('gpl-overlay').style.display = 'none';
+}
+
+async function savePickingList(){
+  const replace = document.getElementById('gpl-replace').checked;
+  const items = gplItems.map(item => ({
+    type: item.type,
+    code: item.code||'',
+    description: item.description||'',
+    quantity: item.quantity,
+    product_id: item.product_id||null,
+    skip: item.skip||false,
+  }));
+  const r = await fetch(`/project/${PROJ_PK}/picking-from-costing/save/`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+    body: JSON.stringify({items, replace})
+  });
+  const d = await r.json();
+  if(d.ok){
+    closeGPL();
+    const msg = `✓ ${d.added} item${d.added!==1?'s':''} added to picking list.`;
+    // Flash confirmation
+    const banner = document.createElement('div');
+    banner.textContent = msg;
+    banner.style.cssText='position:fixed;bottom:1.5rem;right:1.5rem;background:#0f766e;color:#fff;padding:.75rem 1.2rem;border-radius:var(--rad);font-size:.88rem;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.2);';
+    document.body.appendChild(banner);
+    setTimeout(()=>banner.remove(), 3000);
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+previewFramePrice();
+previewInHang();
+</script>
+
+{% endblock %}

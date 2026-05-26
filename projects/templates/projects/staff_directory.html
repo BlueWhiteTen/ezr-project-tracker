@@ -1,0 +1,37 @@
+{% extends 'projects/base.html' %}
+{% load project_extras %}
+{% block title %}Staff — Project Tracker{% endblock %}
+{% block extra_style %}
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem;}
+.staff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.1rem;}
+.staff-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.4rem;box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;text-align:center;gap:.6rem;transition:border-color .15s;}
+.staff-card:hover{border-color:var(--acc);}
+.staff-av{width:56px;height:56px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;box-shadow:0 0 0 3px #fff,0 0 0 5px rgba(0,0,0,.1);}
+[data-theme="dark"] .staff-av{box-shadow:0 0 0 3px var(--surf),0 0 0 5px rgba(255,255,255,.15);}
+.staff-name{font-size:1rem;font-weight:600;color:var(--txt);}
+.staff-role{font-size:.82rem;color:var(--mut);}
+.staff-contact{font-size:.78rem;color:var(--mut2);display:flex;flex-direction:column;gap:2px;}
+.staff-btn{margin-top:.5rem;}
+{% endblock %}
+{% block content %}
+<div class="page-hdr">
+  <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">Staff Directory</h1>
+  <span style="font-size:.875rem;color:var(--mut);">{{ users|length }} team members</span>
+</div>
+<div class="staff-grid">
+  {% for u in users %}
+  <div class="staff-card">
+    <div class="staff-av" style="background:{{ u.pk|avatar_colour }};">
+      {{ u.get_full_name|default:u.username|slice:":2"|upper }}
+    </div>
+    <div class="staff-name">{{ u.get_full_name|default:u.username }}</div>
+    {% if u.profile.role %}<div class="staff-role">{{ u.profile.role }}</div>{% endif %}
+    <div class="staff-contact">
+      {% if u.profile.phone %}<span>📞 {{ u.profile.phone }}</span>{% endif %}
+      <span>✉ {{ u.email }}</span>
+    </div>
+    <a href="{% url 'staff_profile' u.pk %}" class="btn btn-ghost btn-sm staff-btn">View Profile</a>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

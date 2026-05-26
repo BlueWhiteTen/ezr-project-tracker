@@ -1,0 +1,76 @@
+{% extends 'projects/base.html' %}
+{% block title %}Monthly Summary — Project Tracker{% endblock %}
+{% block extra_style %}
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.6rem;flex-wrap:wrap;gap:1rem;}
+.page-title{font-size:1.5rem;font-weight:600;letter-spacing:-.02em;}
+.year-sel{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);color:var(--txt);padding:6px 12px;font-family:var(--f);font-size:.875rem;outline:none;cursor:pointer;}
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem;}
+.summary-stat{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.2rem 1.4rem;box-shadow:var(--shadow);}
+.summary-stat-l{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-bottom:.35rem;}
+.summary-stat-v{font-size:1.8rem;font-weight:600;font-family:var(--fm);}
+.chart-wrap{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.5rem;box-shadow:var(--shadow);}
+.chart-title{font-size:.85rem;font-weight:600;color:var(--txt);margin-bottom:1.2rem;}
+.bar-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem;}
+.bar-month{width:32px;font-size:.78rem;color:var(--mut);font-weight:500;text-align:right;flex-shrink:0;}
+.bar-group{flex:1;display:flex;flex-direction:column;gap:3px;}
+.bar-track{height:14px;background:var(--surf2);border-radius:4px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:4px;transition:width .4s ease;}
+.bar-del{background:var(--acc);}
+.bar-inst{background:var(--grn);}
+.bar-comp{background:#6366f1;}
+.bar-nums{display:flex;gap:8px;font-size:.72rem;color:var(--mut);}
+.bar-num{display:flex;align-items:center;gap:3px;}
+.bar-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.legend{display:flex;gap:1.2rem;margin-bottom:1.2rem;}
+.leg-item{display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--txt2);}
+.leg-dot{width:10px;height:10px;border-radius:2px;}
+{% endblock %}
+{% block content %}
+<div class="page-hdr">
+  <h1 class="page-title">Monthly Summary — {{ year }}</h1>
+  <form method="get">
+    <select name="year" class="year-sel" onchange="this.form.submit()">
+      {% for y in years %}<option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>{% endfor %}
+    </select>
+  </form>
+</div>
+
+<div class="summary-grid">
+  <div class="summary-stat">
+    <div class="summary-stat-l">Total delivered</div>
+    <div class="summary-stat-v" style="color:var(--acc)">{{ total_del }}</div>
+  </div>
+  <div class="summary-stat">
+    <div class="summary-stat-l">Total installed</div>
+    <div class="summary-stat-v" style="color:var(--grn)">{{ total_inst }}</div>
+  </div>
+  <div class="summary-stat">
+    <div class="summary-stat-l">Total completed</div>
+    <div class="summary-stat-v" style="color:#6366f1">{{ total_comp }}</div>
+  </div>
+</div>
+
+<div class="chart-wrap">
+  <div class="chart-title">Jobs per month</div>
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot" style="background:var(--acc)"></div>Delivered</div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--grn)"></div>Installed</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#6366f1"></div>Completed</div>
+  </div>
+  {% for m in data %}
+  <div class="bar-row">
+    <div class="bar-month">{{ m.month }}</div>
+    <div class="bar-group">
+      <div class="bar-track"><div class="bar-fill bar-del" style="width:{% widthratio m.delivered 20 100 %}%"></div></div>
+      <div class="bar-track"><div class="bar-fill bar-inst" style="width:{% widthratio m.installed 20 100 %}%"></div></div>
+      <div class="bar-track"><div class="bar-fill bar-comp" style="width:{% widthratio m.completed 20 100 %}%"></div></div>
+    </div>
+    <div class="bar-nums">
+      <div class="bar-num"><div class="bar-dot" style="background:var(--acc)"></div>{{ m.delivered }}</div>
+      <div class="bar-num"><div class="bar-dot" style="background:var(--grn)"></div>{{ m.installed }}</div>
+      <div class="bar-num"><div class="bar-dot" style="background:#6366f1"></div>{{ m.completed }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

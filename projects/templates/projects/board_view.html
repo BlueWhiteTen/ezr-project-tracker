@@ -1,0 +1,155 @@
+{% extends 'projects/base.html' %}
+{% block title %}Board — Project Tracker{% endblock %}
+{% block extra_style %}
+.left-sidebar{display:none !important;}
+.main-content{margin-left:0 !important;}
+.board-page{background:#f5f5f3 !important;min-height:100vh;}
+.container{max-width:100% !important;padding:0 !important;}
+.board-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:.75rem;}
+.board-title{font-size:1.8rem;font-weight:700;letter-spacing:-.02em;color:#1a1a1a !important;}
+.board-meta{font-size:.82rem;color:#888;}
+.auto-refresh-indicator{display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:#888;}
+.pulse{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite;flex-shrink:0;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* Layout */
+.board-layout{display:grid;grid-template-columns:2fr 1fr;gap:1.5rem;align-items:start;width:100%;}
+.board-right{display:grid;grid-template-rows:auto auto;gap:1.2rem;}
+
+/* Shared table styles */
+.board-section{}
+.section-title{font-size:1.3rem;font-weight:700;color:#1a1a1a;margin-bottom:.7rem;letter-spacing:.01em;}
+.board-table-wrap{border-radius:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.08);border:1px solid #e0ddd8;}
+table{width:100%;border-collapse:collapse;}
+
+/* Main table (left) */
+.main-table thead{background:#d4700a;}
+.main-table th{text-align:left;padding:1rem 1.4rem;font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#1a1a1a;white-space:nowrap;}
+.main-table td{padding:1.3rem 1.4rem;font-size:1.6rem;border-top:1px solid #e8e4de;vertical-align:middle;line-height:1.25;}
+.main-table .row-normal td{background:#fff;color:#1a1a1a;}
+.main-table .row-normal:nth-child(even) td{background:#f9f8f6;}
+.main-table .row-today td{background:#fff4eb;border-top:1px solid #f5c89a;}
+.main-table .row-past td{background:#f0ede8;color:#aaa;}
+.main-table .cust-name{font-weight:600;font-size:1.6rem;color:#1a1a1a;}
+.main-table .cust-loc{font-size:1rem;color:#888;margin-top:3px;}
+.main-table .row-past .cust-name{color:#bbb;}
+.main-table .row-past .cust-loc{color:#ccc;}
+.main-table .inst-date{font-weight:600;font-size:1.6rem;color:#1a1a1a;}
+.main-table .row-past .inst-date{color:#bbb;}
+.main-table .today-badge{background:#d4700a;color:#fff;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:99px;margin-left:.6rem;vertical-align:middle;}
+.main-table .badge{font-size:.85rem;padding:4px 12px;}
+
+/* Side tables (right) */
+.side-table thead{background:#d4700a;}
+.side-table th{text-align:left;padding:.65rem 1rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#1a1a1a;white-space:nowrap;}
+.side-table td{padding:.85rem 1rem;font-size:1rem;border-top:1px solid #e8e4de;vertical-align:middle;}
+.side-table .row-normal td{background:#fff;color:#1a1a1a;}
+.side-table .row-normal:nth-child(even) td{background:#f9f8f6;}
+.side-table .row-today td{background:#fff4eb;border-top:1px solid #f5c89a;}
+.side-table .row-past td{background:#f0ede8;color:#aaa;}
+.side-table .cust-name{font-weight:600;font-size:1rem;color:#1a1a1a;}
+.side-table .cust-loc{font-size:.78rem;color:#888;margin-top:2px;}
+.side-table .row-past .cust-name{color:#bbb;}
+.side-table .inst-date{font-weight:500;font-size:1rem;color:#1a1a1a;}
+.side-table .row-past .inst-date{color:#bbb;}
+.side-table .today-badge{background:#d4700a;color:#fff;font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:.4rem;vertical-align:middle;}
+.side-table .badge{font-size:.72rem;padding:2px 8px;}
+
+.board-empty{text-align:center;padding:2rem;color:#aaa;font-size:.9rem;background:#fff;}
+{% endblock %}
+
+{% block content %}
+<div class="board-page" style="margin:-1.8rem -1.5rem;padding:1.8rem 2.5rem;">
+
+<div class="board-hdr">
+  <div class="board-title">Board</div>
+  <div style="display:flex;align-items:center;gap:1.2rem;">
+    <div class="auto-refresh-indicator"><div class="pulse"></div>Auto-refreshes every 30 min</div>
+  </div>
+</div>
+
+<div class="board-layout">
+
+  <!-- LEFT: Current month -->
+  <div class="board-section">
+    <div class="section-title">{{ m1_name }}</div>
+    <div class="board-table-wrap">
+      <table class="main-table">
+        <thead><tr>
+          <th style="width:30%">Customer</th>
+          <th style="width:25%">Location</th>
+          <th style="width:25%">Installation Date</th>
+          <th style="width:20%">Status</th>
+        </tr></thead>
+        <tbody>
+        {% for item in m1_projects %}{% with p=item.project d=item.inst_date %}
+        <tr class="{% if item.is_today %}row-today{% elif item.is_past %}row-past{% else %}row-normal{% endif %}">
+          <td><div class="cust-name">{{ p.customer }}{% if item.is_today %}<span class="today-badge">TODAY</span>{% endif %}</div>{% if p.description %}<div class="cust-loc">{{ p.description }}</div>{% endif %}</td>
+          <td><div class="cust-name" style="font-weight:500;">{{ p.location|default:"—" }}</div></td>
+          <td><div class="inst-date">{{ d|date:"d M Y" }}</div></td>
+          <td><span class="badge badge-{{ p.status }}">{{ p.get_status_display }}</span></td>
+        </tr>
+        {% endwith %}{% endfor %}
+        {% if not m1_projects %}<tr><td colspan="4" class="board-empty">No installations this month</td></tr>{% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RIGHT: Next two months -->
+  <div class="board-right">
+
+    <!-- Next month -->
+    <div class="board-section">
+      <div class="section-title">{{ m2_name }}</div>
+      <div class="board-table-wrap">
+        <table class="side-table">
+          <thead><tr>
+            <th>Customer</th><th>Location</th><th>Date</th><th>Status</th>
+          </tr></thead>
+          <tbody>
+          {% for item in m2_projects %}{% with p=item.project d=item.inst_date %}
+          <tr class="{% if item.is_today %}row-today{% elif item.is_past %}row-past{% else %}row-normal{% endif %}">
+            <td><div class="cust-name">{{ p.customer }}</div>{% if p.description %}<div class="cust-loc">{{ p.description }}</div>{% endif %}</td>
+            <td><div class="cust-name" style="font-weight:400;">{{ p.location|default:"—" }}</div></td>
+            <td><div class="inst-date">{{ d|date:"d M Y" }}</div></td>
+            <td><span class="badge badge-{{ p.status }}">{{ p.get_status_display }}</span></td>
+          </tr>
+          {% endwith %}{% endfor %}
+          {% if not m2_projects %}<tr><td colspan="4" class="board-empty">No installations</td></tr>{% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Month after -->
+    <div class="board-section">
+      <div class="section-title">{{ m3_name }}</div>
+      <div class="board-table-wrap">
+        <table class="side-table">
+          <thead><tr>
+            <th>Customer</th><th>Location</th><th>Date</th><th>Status</th>
+          </tr></thead>
+          <tbody>
+          {% for item in m3_projects %}{% with p=item.project d=item.inst_date %}
+          <tr class="{% if item.is_today %}row-today{% elif item.is_past %}row-past{% else %}row-normal{% endif %}">
+            <td><div class="cust-name">{{ p.customer }}</div>{% if p.description %}<div class="cust-loc">{{ p.description }}</div>{% endif %}</td>
+            <td><div class="cust-name" style="font-weight:400;">{{ p.location|default:"—" }}</div></td>
+            <td><div class="inst-date">{{ d|date:"d M Y" }}</div></td>
+            <td><span class="badge badge-{{ p.status }}">{{ p.get_status_display }}</span></td>
+          </tr>
+          {% endwith %}{% endfor %}
+          {% if not m3_projects %}<tr><td colspan="4" class="board-empty">No installations</td></tr>{% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>setTimeout(()=>location.reload(), 1800000);</script>
+{% endblock %}

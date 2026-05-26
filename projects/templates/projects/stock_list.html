@@ -1,0 +1,263 @@
+{% extends 'projects/base.html' %}
+{% block title %}Stock — Project Tracker{% endblock %}
+{% block extra_style %}
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:1rem;}
+.search-row{display:flex;gap:.6rem;margin-bottom:1.2rem;align-items:center;}
+.stock-table-wrap{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);}
+table{width:100%;border-collapse:collapse;}
+thead{background:var(--surf2);}
+th{text-align:left;padding:.7rem 1rem;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);border-bottom:1px solid var(--bdr);white-space:nowrap;}
+td{padding:.65rem 1rem;font-size:.875rem;border-bottom:.5px solid var(--bdr);color:var(--txt2);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--surf2);}
+.code{font-family:var(--fm);font-size:.82rem;font-weight:600;color:var(--acc);}
+.qty-low{color:var(--red);font-weight:600;}
+.qty-ok{color:var(--grn);font-weight:600;}
+.qty-zero{color:var(--mut2);}
+.edit-qty{background:transparent;border:none;cursor:pointer;color:var(--mut);padding:2px 6px;border-radius:4px;font-size:.8rem;}
+.sort-link{color:var(--mut);text-decoration:none;white-space:nowrap;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;}
+.sort-link:hover{color:var(--txt);}
+.sort-link.sort-active{color:var(--acc);}
+.edit-qty:hover{background:var(--acc-bg);color:var(--acc);}
+.low-badge{background:var(--red-bg);color:var(--red);border:1px solid rgba(220,38,38,.2);font-size:.7rem;padding:2px 7px;border-radius:99px;font-weight:600;}
+/* Inactive rows */
+.prod-inactive td { opacity:.45; text-decoration:line-through; }
+.prod-inactive td:last-child { opacity:1; text-decoration:none; }
+/* Edit modal */
+.eq-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s;}
+.eq-overlay.open{opacity:1;pointer-events:all;}
+.eq-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-58%);width:380px;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);z-index:201;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
+.eq-modal.open{opacity:1;pointer-events:all;transform:translate(-50%,-50%);}
+.eq-head{padding:.9rem 1.2rem;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;background:var(--surf2);border-radius:var(--rad-lg) var(--rad-lg) 0 0;}
+.eq-body{padding:1.2rem;}
+.eq-foot{padding:.85rem 1.2rem;border-top:1px solid var(--bdr);display:flex;gap:.5rem;justify-content:flex-end;}
+{% endblock %}
+{% block content %}
+<div class="page-hdr">
+  <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+    <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">Stock</h1>
+    {% if low_stock_count %}
+    <a href="?{% if query %}q={{ query }}&{% endif %}low={% if low_only %}0{% else %}1{% endif %}"
+       style="font-size:.82rem;font-weight:600;padding:3px 10px;border-radius:99px;text-decoration:none;
+              {% if low_only %}background:var(--red);color:#fff;{% else %}background:var(--red-bg);color:var(--red);border:1px solid rgba(220,38,38,.3);{% endif %}">
+      ⚠ {{ low_stock_count }} low stock{% if low_only %} — showing only{% endif %}
+    </a>
+    {% endif %}
+  </div>
+  <div style="display:flex;align-items:center;gap:.75rem;">
+    <span style="font-size:.82rem;color:var(--mut);">{{ products|length }} products</span>
+    <label class="btn btn-ghost btn-sm" style="cursor:pointer;" for="import-file">⬆ Import from Excel</label>
+    <input type="file" id="import-file" accept=".xlsx" style="display:none;" onchange="importStock(this)">
+  </div>
+</div>
+<div id="import-msg" style="display:none;padding:.65rem 1rem;border-radius:var(--rad);font-size:.85rem;margin-bottom:1rem;"></div>
+<form method="get" class="search-row">
+  <input class="form-input" name="q" value="{{ query }}" placeholder="Search code or description…" style="max-width:380px;" autofocus>
+  <button class="btn btn-ghost btn-sm" type="submit">Search</button>
+  {% if query %}<a href="{% url 'stock_list' %}" class="btn btn-ghost btn-sm">Clear</a>{% endif %}
+</form>
+<div class="stock-table-wrap" style="overflow-x:auto;">
+  <table>
+    <thead><tr>
+      {% for col in columns %}
+      <th {% if col.right %}style="text-align:right;"{% endif %}>
+        {% if sort == col.key %}
+          <a href="?q={{ query }}&low={% if low_only %}1{% endif %}&sort={{ col.key }}&dir={% if dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-link sort-active">
+            {{ col.label }} {% if dir == 'asc' %}↑{% else %}↓{% endif %}
+          </a>
+        {% else %}
+          <a href="?q={{ query }}&low={% if low_only %}1{% endif %}&sort={{ col.key }}&dir={{ col.default_dir }}" class="sort-link">{{ col.label }}</a>
+        {% endif %}
+      </th>
+      {% endfor %}
+      <th></th>
+    </tr></thead>
+    <tbody>
+    {% for p in products %}
+    <tr id="prod-row-{{ p.pk }}" {% if not p.is_active %}class="prod-inactive"{% endif %}>
+      <td><span class="code" style="cursor:pointer;" onclick="editProduct({{ p.pk }},'{{ p.code|escapejs }}','{{ p.description|escapejs }}',{{ p.quantity }},{{ p.reorder_level }})">{{ p.code }}</span></td>
+      <td>{{ p.description }}{% if not p.is_active %} <span style="font-size:.7rem;color:var(--mut);font-style:italic;">(inactive)</span>{% endif %}</td>
+      <td style="text-align:right;">
+        <span class="{% if p.reorder_level > 0 and p.quantity <= p.reorder_level %}qty-low{% elif p.quantity <= 0 %}qty-zero{% else %}qty-ok{% endif %}">{{ p.quantity|floatformat:0 }}</span>
+        {% if p.reorder_level > 0 and p.quantity <= p.reorder_level %}<span class="low-badge" style="margin-left:.4rem;">LOW</span>
+        {% elif p.free_stock < 0 %}<span class="low-badge" style="margin-left:.4rem;background:var(--amb-bg);color:var(--amb);border-color:rgba(217,119,6,.3);">NEG</span>{% endif %}
+      </td>
+      <td style="text-align:right;color:var(--mut);">{{ p.qty_allocated|floatformat:0 }}</td>
+      <td style="text-align:right;color:var(--mut);">{{ p.qty_on_order|floatformat:0 }}</td>
+      <td style="text-align:right;font-weight:600;color:{% if p.free_stock < 0 %}var(--red){% elif p.free_stock > 0 %}var(--grn){% else %}var(--mut){% endif %};">{{ p.free_stock|floatformat:0 }}</td>
+      <td style="text-align:right;">
+        <input type="number" class="inline-edit" value="{{ p.reorder_level|floatformat:0 }}"
+          onblur="saveReorder({{ p.pk }}, this.value, this)"
+          onkeydown="if(event.key==='Enter')this.blur();"
+          style="width:70px;text-align:right;background:transparent;border:1px solid transparent;border-radius:4px;padding:2px 4px;font-size:.875rem;{% if p.reorder_level > 0 and p.quantity <= p.reorder_level %}color:var(--red);font-weight:600;{% else %}color:var(--txt2);{% endif %}"
+          onfocus="this.style.borderColor='var(--acc)';this.style.background='var(--surf)';"
+        >
+      </td>
+      <td style="text-align:right;color:var(--mut);">{{ p.reorder_qty|floatformat:0 }}</td>
+      <td style="text-align:right;white-space:nowrap;">
+        <button class="edit-qty" onclick="editProduct({{ p.pk }},'{{ p.code|escapejs }}','{{ p.description|escapejs }}',{{ p.quantity }},{{ p.reorder_level }})">Edit</button>
+        <button class="edit-qty" id="act-btn-{{ p.pk }}" onclick="toggleActive({{ p.pk }}, this)"
+          style="margin-left:.3rem;{% if p.is_active %}background:var(--surf2);color:var(--mut2);{% else %}background:#fef3c7;color:#92400e;border-color:#fcd34d;{% endif %}">
+          {% if p.is_active %}Deactivate{% else %}Activate{% endif %}
+        </button>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--mut);">No products found — import your Excel file to get started</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Edit modal -->
+<div class="eq-overlay" id="eq-overlay" onclick="closeEdit()"></div>
+<div class="eq-modal" id="eq-modal">
+  <div class="eq-head">
+    <div>
+      <div style="font-weight:600;font-size:.95rem;" id="eq-code"></div>
+      <div style="font-size:.78rem;color:var(--mut);" id="eq-desc"></div>
+    </div>
+    <button onclick="closeEdit()" style="background:none;border:1px solid var(--bdr);border-radius:var(--rad);color:var(--mut);cursor:pointer;padding:3px 9px;">✕</button>
+  </div>
+  <div class="eq-body">
+    <input type="hidden" id="eq-pk">
+    <div class="form-group"><label class="form-label">Product Code</label><input class="form-input" type="text" id="eq-code-inp"></div>
+    <div class="form-group"><label class="form-label">Description</label><input class="form-input" type="text" id="eq-desc-inp"></div>
+    <div class="form-group"><label class="form-label">Quantity in Stock</label><input class="form-input" type="number" id="eq-qty" step="1"></div>
+    <div class="form-group" style="margin-bottom:0;"><label class="form-label">Reorder Level</label><input class="form-input" type="number" id="eq-reorder" step="1"></div>
+  </div>
+  <div class="eq-foot" style="justify-content:space-between;">
+    <button onclick="deleteProduct()" class="btn btn-danger btn-sm">Delete Product</button>
+    <div style="display:flex;gap:.5rem;">
+      <button onclick="closeEdit()" class="btn btn-ghost btn-sm">Cancel</button>
+      <button onclick="saveEdit()" class="btn btn-primary btn-sm">Save</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+function editProduct(pk, code, desc, qty, reorder){
+  document.getElementById('eq-pk').value = pk;
+  document.getElementById('eq-code').textContent = code;
+  document.getElementById('eq-desc').textContent = desc;
+  document.getElementById('eq-code-inp').value = code;
+  document.getElementById('eq-desc-inp').value = desc;
+  document.getElementById('eq-qty').value = qty;
+  document.getElementById('eq-reorder').value = reorder;
+  document.getElementById('eq-overlay').classList.add('open');
+  document.getElementById('eq-modal').classList.add('open');
+  document.getElementById('eq-code-inp').focus();
+  document.getElementById('eq-code-inp').select();
+}
+async function toggleActive(pk, btn){
+  const r = await fetch(`/stock/${pk}/toggle-active/`, {method:'POST', headers:{'X-CSRFToken':'{{ csrf_token }}'}});
+  const d = await r.json();
+  const row = document.getElementById(`prod-row-${pk}`);
+  if(d.is_active){
+    row.classList.remove('prod-inactive');
+    btn.textContent = 'Deactivate';
+    btn.style.background = 'var(--surf2)';
+    btn.style.color = 'var(--mut2)';
+    btn.style.borderColor = '';
+  } else {
+    row.classList.add('prod-inactive');
+    btn.textContent = 'Activate';
+    btn.style.background = '#fef3c7';
+    btn.style.color = '#92400e';
+    btn.style.borderColor = '#fcd34d';
+  }
+}
+function closeEdit(){
+  document.getElementById('eq-overlay').classList.remove('open');
+  document.getElementById('eq-modal').classList.remove('open');
+}
+async function saveEdit(){
+  const pk      = document.getElementById('eq-pk').value;
+  const code    = document.getElementById('eq-code-inp').value.trim();
+  const desc    = document.getElementById('eq-desc-inp').value.trim();
+  const qty     = document.getElementById('eq-qty').value;
+  const reorder = document.getElementById('eq-reorder').value;
+  await fetch(`/stock/${pk}/adjust/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({code,description:desc,quantity:qty,reorder_level:reorder})});
+  closeEdit();
+  location.reload();
+}
+
+async function deleteProduct(){
+  const pk = document.getElementById('eq-pk').value;
+  const code = document.getElementById('eq-code').textContent;
+  if(!confirm(`Delete product ${code}? This cannot be undone.`)) return;
+  await fetch(`/stock/${pk}/adjust/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({delete:true})});
+  closeEdit();
+  location.reload();
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeEdit();});
+
+async function saveReorder(pk, value, el){
+  el.style.borderColor='transparent';
+  el.style.background='transparent';
+  await fetch(`/stock/${pk}/adjust/`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+    body:JSON.stringify({reorder_level: value})
+  });
+  // Update LOW badge instantly without page reload
+  const row = document.getElementById(`prod-row-${pk}`);
+  if(!row) return;
+  const qtySpan = row.querySelector('td:nth-child(3) span.qty-low, td:nth-child(3) span.qty-ok, td:nth-child(3) span.qty-zero');
+  const badge = row.querySelector('.low-badge');
+  const reorder = parseFloat(value) || 0;
+  const qty = qtySpan ? parseFloat(qtySpan.textContent) : 0;
+  const isLow = reorder > 0 && qty <= reorder;
+  // Update qty span colour
+  if(qtySpan){
+    qtySpan.className = isLow ? 'qty-low' : qty <= 0 ? 'qty-zero' : 'qty-ok';
+  }
+  // Update reorder input colour
+  el.style.color = isLow ? 'var(--red)' : 'var(--txt2)';
+  el.style.fontWeight = isLow ? '600' : '';
+  // Update badge
+  if(isLow){
+    if(!badge){
+      const b = document.createElement('span');
+      b.className = 'low-badge';
+      b.style.marginLeft = '.4rem';
+      b.textContent = 'LOW';
+      qtySpan?.parentNode?.appendChild(b);
+    }
+  } else {
+    badge?.remove();
+  }
+}
+
+async function importStock(inp){
+  const file = inp.files[0];
+  if(!file) return;
+  const msg = document.getElementById('import-msg');
+  msg.style.display='block';
+  msg.style.background='var(--surf2)';
+  msg.style.color='var(--txt2)';
+  msg.style.border='1px solid var(--bdr)';
+  msg.textContent='Importing… please wait';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const r = await fetch('/stock/import/',{method:'POST',headers:{'X-CSRFToken':'{{ csrf_token }}'},body:fd});
+    const d = await r.json();
+    if(d.ok){
+      msg.style.background='var(--grn-bg)';msg.style.color='var(--grn)';msg.style.border='1px solid rgba(22,163,74,.2)';
+      msg.textContent=`✓ Successfully imported ${d.count} products`;
+      setTimeout(()=>location.reload(),1500);
+    } else {
+      msg.style.background='var(--red-bg)';msg.style.color='var(--red)';msg.style.border='1px solid rgba(220,38,38,.2)';
+      msg.textContent='Error: '+d.error;
+    }
+  } catch(e){
+    msg.style.background='var(--red-bg)';msg.style.color='var(--red)';
+    msg.textContent='Import failed: '+e.message;
+  }
+  inp.value='';
+}
+</script>
+{% endblock %}

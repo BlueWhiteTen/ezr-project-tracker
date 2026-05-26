@@ -1,0 +1,62 @@
+{% extends 'projects/base.html' %}
+{% block title %}Activity Log — Project Tracker{% endblock %}
+{% block extra_style %}
+.pg-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem;}
+.pg-title{font-size:1.5rem;font-weight:600;color:var(--txt);letter-spacing:-.02em;}
+.log-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);}
+.log-row{display:flex;align-items:flex-start;gap:.9rem;padding:.9rem 1.2rem;border-bottom:1px solid var(--bdr);transition:background .1s;}
+.log-row:last-child{border-bottom:none;}
+.log-row:hover{background:var(--surf2);}
+.log-av{width:36px;height:36px;border-radius:50%;background:var(--acc-bg);display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:600;color:var(--acc);flex-shrink:0;border:1px solid var(--acc-bdr);}
+.log-body{flex:1;font-size:.875rem;color:var(--txt2);}
+.log-body strong{color:var(--txt);}
+.log-field{color:var(--acc);font-weight:500;}
+.log-project a{color:var(--txt);font-weight:600;}
+.log-project a:hover{color:var(--acc);}
+.log-pills{display:flex;align-items:center;gap:.5rem;margin-top:.35rem;}
+.pill-old{background:var(--red-bg);color:var(--red);padding:2px 8px;border-radius:4px;font-size:.78rem;border:1px solid rgba(220,38,38,.15);}
+.pill-new{background:var(--grn-bg);color:var(--grn);padding:2px 8px;border-radius:4px;font-size:.78rem;border:1px solid rgba(22,163,74,.15);}
+.pill-created{background:var(--acc-bg);color:var(--acc);padding:2px 8px;border-radius:4px;font-size:.78rem;border:1px solid var(--acc-bdr);}
+.log-time{font-size:.78rem;color:var(--mut);white-space:nowrap;}
+.empty{text-align:center;padding:3rem;color:var(--mut);}
+{% endblock %}
+{% block content %}
+<div class="pg-hdr">
+  <h1 class="pg-title">Activity Log</h1>
+  <span style="font-size:.875rem;color:var(--mut);">Last 200 changes</span>
+</div>
+<div class="log-card">
+  {% if logs %}
+  {% for log in logs %}
+  <div class="log-row">
+    <div class="log-av">{{ log.user.get_full_name|default:log.user.username|slice:":2"|upper }}</div>
+    <div class="log-body">
+      <div>
+        <strong>{% if log.user %}{{ log.user.get_full_name|default:log.user.username }}{% else %}Unknown{% endif %}</strong>
+        {% if log.field == "Project created" %}
+          <span style="color:var(--mut)"> created project </span>
+        {% else %}
+          <span style="color:var(--mut)"> changed </span>
+          <span class="log-field">{{ log.field }}</span>
+          <span style="color:var(--mut)"> on </span>
+        {% endif %}
+        <span class="log-project"><a href="{% url 'project_edit' log.project.pk %}">{{ log.project.project_name }}</a></span>
+      </div>
+      <div class="log-pills">
+        {% if log.field == "Project created" %}
+          <span class="pill-created">✓ New project created</span>
+        {% else %}
+          {% if log.old_value %}<span class="pill-old">{{ log.old_value }}</span>{% endif %}
+          <span style="color:var(--mut);">→</span>
+          <span class="pill-new">{{ log.new_value }}</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="log-time">{{ log.timestamp|date:"d M Y, H:i" }}</div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="empty">No changes recorded yet.</div>
+  {% endif %}
+</div>
+{% endblock %}

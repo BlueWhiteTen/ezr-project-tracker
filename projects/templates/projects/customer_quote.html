@@ -1,0 +1,171 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Quote — {{ project.customer }}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:Arial,Helvetica,sans-serif; font-size:10.5pt; color:#1a1a1a; background:#f5f5f5; }
+  .page { max-width:780px; margin:0 auto; background:#fff; padding:2cm 2.2cm; }
+
+  /* Header */
+  .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.8rem; padding-bottom:1.2rem; border-bottom:2pt solid #1a1a1a; }
+  .logo-area { display:flex; align-items:center; gap:.9rem; }
+  .logo-area img { height:48px; width:auto; }
+  .co-name { font-size:17pt; font-weight:700; letter-spacing:-.02em; color:#1a1a1a; }
+  .co-sub  { font-size:8pt; color:#888; margin-top:2pt; }
+  .doc-block { text-align:right; }
+  .doc-title { font-size:24pt; font-weight:700; color:#1a1a1a; letter-spacing:.02em; }
+  .doc-meta  { font-size:8.5pt; color:#666; margin-top:4pt; line-height:1.7; }
+
+  /* Two-col info */
+  .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin-bottom:1.5rem; }
+  .info-box { background:#f9fafb; border:1pt solid #e5e7eb; border-left:3pt solid #e85d04; border-radius:0 5pt 5pt 0; padding:.8rem 1rem; }
+  .info-box-title { font-size:7pt; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#888; margin-bottom:.4rem; }
+  .info-name { font-size:12pt; font-weight:700; line-height:1.3; }
+  .info-sub  { font-size:9pt; color:#555; margin-top:3pt; line-height:1.5; }
+
+  /* Section */
+  .sec-title { font-size:7.5pt; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#1a1a1a; margin-bottom:.5rem; padding-bottom:.3rem; border-bottom:1.5pt solid #1a1a1a; }
+
+  /* Items table */
+  .items-table { width:100%; border-collapse:collapse; margin-bottom:1.5rem; font-size:9.5pt; }
+  .items-table th { text-align:left; padding:.45rem .7rem; font-size:7pt; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#1a1a1a; border-bottom:2pt solid #1a1a1a; }
+  .items-table th.r { text-align:right; }
+  .items-table td { padding:.4rem .7rem; border-bottom:.5pt solid #f0f0f0; vertical-align:middle; }
+  .items-table td.r { text-align:right; color:#555; }
+  .items-table tr:nth-child(even) td { background:#fafafa; }
+  .type-chip { font-size:6.5pt; font-weight:700; padding:1pt 5pt; border-radius:3pt; text-transform:uppercase; white-space:nowrap; }
+  .lt-frame    { background:#ede9fe; color:#6d28d9; }
+  .lt-shelf    { background:#d1fae5; color:#065f46; }
+  .lt-stock    { background:#fff7ed; color:#9a3412; }
+  .lt-ns       { background:#f3f4f6; color:#374151; }
+  .lt-inhang   { background:#fef3c7; color:#92400e; }
+  .lt-outhang  { background:#fde8c8; color:#9a3412; }
+  .lt-wipe     { background:#e0f2fe; color:#0369a1; }
+  .lt-mesh     { background:#f0fdf4; color:#166534; }
+  .lt-loadsign { background:#fdf4ff; color:#7e22ce; }
+  .lt-toptie   { background:#f1f5f9; color:#475569; }
+  .lt-beams    { background:#e0f2fe; color:#075985; }
+  .lt-extras   { background:#fdf4ff; color:#6b21a8; }
+
+  /* Pricing summary */
+  .price-section { display:flex; justify-content:flex-end; margin-bottom:1.5rem; }
+  .price-box { width:300pt; border:1pt solid #e5e7eb; border-radius:5pt; overflow:hidden; }
+  .price-row { display:flex; justify-content:space-between; padding:.5rem 1rem; font-size:10pt; border-bottom:.5pt solid #f0f0f0; }
+  .price-row:last-child { border-bottom:none; }
+  .price-total { background:#1a1a1a; color:#fff; font-size:12pt; font-weight:700; }
+  .price-vat { background:#f9fafb; }
+  .price-vat span { font-size:9pt; color:#888; }
+
+  /* Footer */
+  .validity { background:#f9fafb; border:1pt solid #e5e7eb; border-left:3pt solid #e85d04; border-radius:0 4pt 4pt 0; padding:.6rem 1rem; font-size:8.5pt; color:#444; margin-bottom:1.5rem; }
+  .footer { padding-top:.8rem; border-top:1pt solid #e5e7eb; font-size:8pt; color:#aaa; display:flex; justify-content:space-between; }
+
+  /* Screen only */
+  .no-print { background:#f9fafb; border-bottom:1pt solid #e5e7eb; padding:.75rem 2.2cm; display:flex; gap:.75rem; align-items:center; }
+  .no-print button { padding:8px 18px; background:#1a1a1a; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:.9rem; font-weight:600; }
+  .no-print a { font-size:.85rem; color:#888; text-decoration:none; }
+  .no-print a:hover { color:#1a1a1a; }
+  @media print {
+    body { background:#fff; }
+    .no-print { display:none !important; }
+    .page { padding:1.2cm 1.5cm; }
+    @page { margin:0; size:A4 portrait; }
+  }
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <button onclick="window.print()">🖨 Print / Save PDF</button>
+  <a href="{% url 'project_cost' project.pk %}">← Back to costing</a>
+</div>
+
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo-area">
+      <img src="{% static 'logo.png' %}" alt="EZR Shelving">
+      <div>
+        <div class="co-name">EZR Shelving</div>
+        <div class="co-sub">Storage &amp; Shelving Solutions</div>
+      </div>
+    </div>
+    <div class="doc-block">
+      <div class="doc-title">QUOTATION</div>
+      <div class="doc-meta">
+        Date: {{ today|date:"d F Y" }}<br>
+        {% if project.sales_order %}Ref: {{ project.sales_order }}<br>{% endif %}
+        Valid for 30 days
+      </div>
+    </div>
+  </div>
+
+  <!-- Customer + Project info -->
+  <div class="info-grid">
+    <div class="info-box">
+      <div class="info-box-title">Prepared For</div>
+      <div class="info-name">{{ project.customer }}</div>
+      <div class="info-sub">
+        {{ project.location }}
+        {% if project.addr_line1 %}<br>{{ project.addr_line1 }}{% if project.addr_line2 %}, {{ project.addr_line2 }}{% endif %}{% endif %}
+        {% if project.addr_city %}<br>{{ project.addr_city }}{% if project.addr_postcode %} {{ project.addr_postcode }}{% endif %}{% endif %}
+        {% if project.addr_fao %}<br>FAO: {{ project.addr_fao }}{% endif %}
+      </div>
+    </div>
+    <div class="info-box">
+      <div class="info-box-title">Project Details</div>
+      <div class="info-sub" style="line-height:1.8;">
+        {% if project.delivery_date %}<strong>Delivery:</strong> {{ project.delivery_date|date:"d M Y" }}<br>{% endif %}
+        {% if project.installation_date %}<strong>Installation:</strong> {{ project.installation_date|date:"d M Y" }}<br>{% endif %}
+        {% if project.description %}<br>{{ project.description }}{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Line items -->
+  {% if display_lines %}
+  <div style="margin-bottom:1.5rem;">
+    <div class="sec-title">Scope of Supply</div>
+    <table class="items-table">
+      <thead><tr>
+        <th style="width:15%;">Type</th>
+        <th>Item</th>
+        <th class="r" style="width:10%;">Qty</th>
+      </tr></thead>
+      <tbody>
+      {% for line in display_lines %}
+      <tr>
+        <td><span class="type-chip lt-{{ line.line_type }}">{{ line.type_label }}</span></td>
+        <td>{{ line.description }}</td>
+        <td class="r">{{ line.quantity }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Pricing -->
+  <div class="price-section">
+    <div class="price-box">
+      {% if labour %}<div class="price-row"><span style="color:#555;">Labour &amp; Installation</span><span>Included</span></div>{% endif %}
+      {% if delivery %}<div class="price-row"><span style="color:#555;">Delivery</span><span>Included</span></div>{% endif %}
+      <div class="price-row price-total"><span>Total (exc. VAT)</span><span>£{{ sell_price|floatformat:2 }}</span></div>
+      <div class="price-row price-vat"><span>VAT @ 20%</span><span>£{% widthratio sell_price 5 1 %}</span></div>
+    </div>
+  </div>
+
+  <div class="validity">✓ This quotation is valid for 30 days from {{ today|date:"d F Y" }}. All prices exclude VAT unless otherwise stated.</div>
+
+  <div class="footer">
+    <span>EZR Shelving Ltd · www.ezrshelving.com</span>
+    <span>Thank you for your business</span>
+  </div>
+
+</div>
+</body>
+</html>

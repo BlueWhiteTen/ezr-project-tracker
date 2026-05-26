@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Picking List — {{ project.project_name }}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#000; background:#fff; padding:1.5cm; }
+  .header { border-bottom:2.5pt solid #000; padding-bottom:10pt; margin-bottom:12pt; }
+  .customer-name { font-size:18pt; font-weight:700; color:#000; }
+  .location { font-size:11pt; color:#333; margin-top:2pt; }
+  .meta { display:flex; gap:2cm; margin-top:8pt; flex-wrap:wrap; }
+  .meta-item label { font-size:7pt; text-transform:uppercase; letter-spacing:.07em; color:#666; display:block; }
+  .meta-item span { font-size:10.5pt; font-weight:700; color:#000; }
+  .branding { float:right; text-align:right; }
+  .branding .co { font-size:9pt; font-weight:700; color:#000; }
+  .branding .dt { font-size:8pt; color:#555; margin-top:2pt; }
+  table { width:100%; border-collapse:collapse; margin-top:3pt; }
+  thead tr { border-bottom:1.5pt solid #000; }
+  th { text-align:left; padding:3pt 4pt 3pt 0; font-size:7pt; text-transform:uppercase; letter-spacing:.07em; color:#000; font-weight:700; }
+  th:first-child { width:8%; }
+  th:nth-child(2) { width:18%; }
+  th:last-child { width:6%; text-align:center; }
+  td { padding:1.5pt 4pt 1.5pt 0; font-size:8.5pt; color:#000; border-bottom:.3pt solid #ddd; vertical-align:middle; line-height:1.2; }
+  td:last-child { text-align:center; }
+  .tick-box { width:14pt; height:10pt; border:.75pt solid #888; display:inline-block; }
+  .code { font-family:monospace; font-weight:700; font-size:8pt; color:#000; }
+  .msg-row td { background:#ececec !important; font-weight:700; font-size:8.5pt; padding:2.5pt 4pt; }
+  .ns-code { font-size:7.5pt; color:#555; font-style:italic; }
+  .customer-notes { margin-top:14pt; border-top:1.5pt solid #d4700a; padding-top:8pt; }
+  .customer-notes .lbl { font-size:7.5pt; text-transform:uppercase; letter-spacing:.07em; color:#d4700a; font-weight:700; margin-bottom:4pt; }
+  .customer-notes .txt { font-size:9pt; white-space:pre-wrap; color:#000; }
+  @media print {
+    body { padding:0; }
+    @page { margin:1.2cm; size:A4 portrait; }
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="branding">
+    <div class="co">EZR SHELVING</div>
+    <div class="dt">Printed: {% now "d M Y" %}</div>
+  </div>
+  <div class="customer-name">{{ project.customer }}</div>
+  <div class="location">{{ project.location }}</div>
+  <div class="meta">
+    <div class="meta-item"><label>Sales Order</label><span>{% if project.sales_order %}{{ project.sales_order }}{% else %}TBC{% endif %}</span></div>
+    <div class="meta-item"><label>Delivery Date</label><span>{% if project.delivery_date %}{{ project.delivery_date|date:"d M Y" }}{% else %}TBC{% endif %}</span></div>
+    <div class="meta-item"><label>Assigned To</label><span>{% if project.assigned_to %}{{ project.assigned_to.get_full_name|default:project.assigned_to.username }}{% else %}—{% endif %}</span></div>
+    <div class="meta-item"><label>Status</label><span>{{ pl.get_status_display }}</span></div>
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Qty</th>
+      <th>Code</th>
+      <th>Description</th>
+      <th>✓</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for item in items %}
+    {% if item.item_type == 'message' %}
+    <tr class="msg-row">
+      <td colspan="4">📝 {{ item.message }}</td>
+    </tr>
+    {% elif item.item_type == 'ns' %}
+    <tr>
+      <td>{{ item.quantity|floatformat:0 }}</td>
+      <td><span class="ns-code">NS</span></td>
+      <td>{{ item.ns_description }}</td>
+      <td><span class="tick-box"></span></td>
+    </tr>
+    {% else %}
+    <tr>
+      <td>{{ item.quantity|floatformat:0 }}</td>
+      <td><span class="code">{{ item.product.code }}</span></td>
+      <td>{{ item.product.description }}</td>
+      <td><span class="tick-box"></span></td>
+    </tr>
+    {% endif %}
+  {% endfor %}
+  </tbody>
+</table>
+
+{% if customer_notes %}
+<div class="customer-notes">
+  <div class="lbl">⚠ Customer Notes</div>
+  <div class="txt">{{ customer_notes }}</div>
+</div>
+{% endif %}
+
+<script>window.onload = function(){ window.print(); }</script>
+</body>
+</html>

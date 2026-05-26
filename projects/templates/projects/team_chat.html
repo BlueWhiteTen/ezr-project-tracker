@@ -1,0 +1,225 @@
+{% extends 'projects/base.html' %}
+{% load project_extras %}
+{% block title %}Team Chat — Project Tracker{% endblock %}
+{% block extra_style %}
+.chat-page{display:flex;flex-direction:column;height:calc(100vh - 140px);background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);}
+.chat-head{padding:1rem 1.3rem;border-bottom:1px solid var(--bdr);background:var(--surf2);display:flex;align-items:center;gap:.75rem;flex-shrink:0;}
+.chat-head-icon{width:36px;height:36px;border-radius:50%;background:#d4700a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1rem;}
+.chat-head-title{font-size:.95rem;font-weight:600;}
+.chat-head-sub{font-size:.78rem;color:var(--mut);}
+.chat-messages{flex:1;overflow-y:auto;padding:1.2rem 1.3rem;display:flex;flex-direction:column;gap:.85rem;}
+.chat-msg{display:flex;align-items:flex-start;gap:.75rem;}
+.chat-msg-me{flex-direction:row-reverse;}
+.chat-msg-av{width:32px;height:32px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;flex-shrink:0;margin-top:2px;box-shadow:0 0 0 2.5px #fff,0 0 0 4px rgba(0,0,0,.15);}
+[data-theme="dark"] .chat-msg-av{box-shadow:0 0 0 2.5px #1e1b18,0 0 0 4px rgba(255,255,255,.15);}
+.chat-msg-body{flex:1;}
+.chat-msg-header{display:flex;align-items:baseline;gap:.5rem;margin-bottom:.25rem;}
+.chat-msg-name{font-size:.82rem;font-weight:600;color:var(--txt);}
+.chat-msg-name-me{color:var(--acc);}
+.chat-msg-time{font-size:.7rem;color:var(--mut);}
+.chat-msg-text{font-size:.9rem;color:var(--txt2);line-height:1.5;background:var(--surf2);border:1px solid var(--bdr);border-radius:4px 12px 12px 12px;padding:.55rem .85rem;display:inline-block;max-width:75%;}
+.chat-msg-text-me{background:var(--acc-bg);border-color:var(--acc-bdr);border-radius:12px 4px 12px 12px;}
+.chat-input-area{padding:.85rem 1.1rem;border-top:1px solid var(--bdr);background:var(--surf2);flex-shrink:0;}
+.chat-input-wrap{position:relative;}
+.mention-dd{position:absolute;bottom:100%;left:0;right:0;background:var(--surf);border:1px solid var(--acc);border-radius:var(--rad) var(--rad) 0 0;box-shadow:var(--shadow-md);z-index:50;max-height:180px;overflow-y:auto;display:none;}
+.mention-item{padding:8px 12px;cursor:pointer;font-size:.85rem;display:flex;align-items:center;gap:.6rem;color:var(--txt2);}
+.mention-item:hover{background:var(--acc-bg);color:var(--acc);}
+.mention-av{width:22px;height:22px;border-radius:50%;background:#d4700a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:700;flex-shrink:0;}
+.chat-input-row{display:flex;gap:.6rem;margin-top:.5rem;}
+.chat-input{flex:1;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);color:var(--txt);padding:9px 12px;font-size:.875rem;outline:none;font-family:var(--f);}
+.chat-input:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-bg);}
+.chat-send{background:#d4700a;color:#fff;border:none;border-radius:var(--rad);padding:9px 18px;font-size:.875rem;font-weight:600;cursor:pointer;font-family:var(--f);}
+.chat-hint{font-size:.72rem;color:var(--mut);margin-bottom:.4rem;}
+.chat-hint span{background:var(--surf2);border:1px solid var(--bdr);border-radius:4px;padding:1px 5px;font-family:var(--fm);font-size:.7rem;}
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;">
+  <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">Team Chat</h1>
+  <span style="font-size:.82rem;color:var(--mut);">{{ messages_qs|length }} messages loaded</span>
+</div>
+
+<div class="chat-page">
+  <div class="chat-head">
+    <div class="chat-head-icon">💬</div>
+    <div>
+      <div class="chat-head-title">General — EZR Shelving</div>
+      <div class="chat-head-sub">Everyone can see this channel</div>
+    </div>
+  </div>
+
+  <div class="chat-messages" id="chat-messages">
+    {% for msg in messages_qs %}
+    <div class="chat-msg {% if msg.user == request.user %}chat-msg-me{% endif %}" id="msg-{{ msg.pk }}">
+      <div class="chat-msg-av" style="background:{{ msg.user.pk|avatar_colour }};">
+        {% with name=msg.user.get_full_name|default:msg.user.username %}{% with parts=name.split %}{{ parts.0|slice:":1"|upper }}{% if parts|length > 1 %}{{ parts|last|slice:":1"|upper }}{% endif %}{% endwith %}{% endwith %}
+      </div>
+      <div class="chat-msg-body" style="{% if msg.user == request.user %}text-align:right;{% endif %}">
+        <div class="chat-msg-header" style="{% if msg.user == request.user %}flex-direction:row-reverse;{% endif %}">
+          <span class="chat-msg-name {% if msg.user == request.user %}chat-msg-name-me{% endif %}">{{ msg.user.get_full_name|default:msg.user.username }}</span>
+          <span class="chat-msg-time">{{ msg.timestamp|date:"d M Y, H:i" }}</span>
+        </div>
+        <div class="chat-msg-text {% if msg.user == request.user %}chat-msg-text-me{% endif %}">{{ msg.text }}</div>
+      </div>
+    </div>
+    {% empty %}
+    <div style="text-align:center;color:var(--mut);margin-top:3rem;">
+      <div style="font-size:2rem;margin-bottom:.5rem;">💬</div>
+      <div>No messages yet — say hello!</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="chat-input-area">
+    <div class="chat-hint">Type <span>@</span> to mention someone &nbsp;·&nbsp; Type <span>#</span> to link a project</div>
+    <div class="chat-input-wrap">
+      <div class="mention-dd" id="mention-dd"></div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="chat-input" placeholder="Message the team…" autocomplete="off">
+        <button class="chat-send" onclick="sendTeamMsg()">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+const ME_ID = {{ request.user.pk }};
+const AV_COLOURS = ['#d4700a','#2563eb','#16a34a','#9333ea','#dc2626','#0891b2','#ca8a04','#be185d'];
+const ME_COLOUR = AV_COLOURS[ME_ID % 8];
+const ALL_USERS = [{% for u in all_users %}{"id":{{ u.pk }},"name":"{{ u.get_full_name|default:u.username }}","initials":"{% with n=u.get_full_name|default:u.username %}{% with p=n.split %}{{ p.0|slice:'1'|upper }}{% if p|length > 1 %}{{ p|last|slice:':1'|upper }}{% endif %}{% endwith %}{% endwith %}"}{% if not forloop.last %},{% endif %}{% endfor %}];
+
+// Scroll to bottom on load
+window.addEventListener('load', ()=>{
+  const box = document.getElementById('chat-messages');
+  if(box) box.scrollTop = box.scrollHeight;
+});
+
+async function sendTeamMsg(){
+  const inp = document.getElementById('chat-input');
+  const text = inp.value.trim();
+  if(!text) return;
+  inp.value = '';
+  mentionStart = -1;
+  document.getElementById('mention-dd').style.display = 'none';
+
+  const r = await fetch('/chat/', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+    body:JSON.stringify({text})
+  });
+  const d = await r.json();
+  if(d.error) return;
+
+  const box = document.getElementById('chat-messages');
+  const noMsg = box.querySelector('div[style*="text-align:center"]');
+  if(noMsg) noMsg.remove();
+
+  const div = document.createElement('div');
+  div.className = 'chat-msg chat-msg-me';
+  div.innerHTML = `
+    <div class="chat-msg-av" style="background:${ME_COLOUR};">${d.initials}</div>
+    <div class="chat-msg-body" style="text-align:right;">
+      <div class="chat-msg-header" style="flex-direction:row-reverse;">
+        <span class="chat-msg-name chat-msg-name-me">${d.user}</span>
+        <span class="chat-msg-time">${d.timestamp}</span>
+      </div>
+      <div class="chat-msg-text chat-msg-text-me">${d.text}</div>
+    </div>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+document.getElementById('chat-input').addEventListener('keydown', e=>{
+  const dd = document.getElementById('mention-dd');
+  const items = dd.querySelectorAll('.mention-item');
+  if(e.key==='Enter' && dd.style.display==='none'){ e.preventDefault(); sendTeamMsg(); }
+  else if(e.key==='Escape'){ dd.style.display='none'; }
+  else if(e.key==='ArrowUp' && dd.style.display==='block'){
+    e.preventDefault();
+    ddIdx = Math.max(0, ddIdx-1);
+    items.forEach((it,i)=>it.style.background=i===ddIdx?'var(--acc-bg)':'');
+  }
+  else if(e.key==='ArrowDown' && dd.style.display==='block'){
+    e.preventDefault();
+    ddIdx = Math.min(items.length-1, ddIdx+1);
+    items.forEach((it,i)=>it.style.background=i===ddIdx?'var(--acc-bg)':'');
+  }
+  else if(e.key==='Enter' && dd.style.display==='block' && ddIdx>=0){
+    e.preventDefault();
+    items[ddIdx].dispatchEvent(new MouseEvent('click'));
+  }
+});
+
+let mentionStart = -1;
+let mentionType = null; // '@' or '#'
+let ddIdx = -1;
+
+document.getElementById('chat-input').addEventListener('input', async function(){
+  const val = this.value;
+  const pos = this.selectionStart;
+  const before = val.slice(0, pos);
+  const dd = document.getElementById('mention-dd');
+  ddIdx = -1;
+
+  // Check for @ or #
+  const atIdx = before.lastIndexOf('@');
+  const hashIdx = before.lastIndexOf('#');
+  let triggerIdx = -1;
+  let trigger = null;
+
+  if(atIdx > hashIdx && !before.slice(atIdx+1).includes(' ')){ triggerIdx=atIdx; trigger='@'; }
+  else if(hashIdx > atIdx && !before.slice(hashIdx+1).includes(' ')){ triggerIdx=hashIdx; trigger='#'; }
+
+  if(triggerIdx >= 0 && trigger){
+    mentionStart = triggerIdx;
+    mentionType = trigger;
+    const q = before.slice(triggerIdx+1).toLowerCase();
+
+    if(trigger === '@'){
+      const matches = ALL_USERS.filter(u=>u.name.toLowerCase().includes(q));
+      if(matches.length){
+        dd.innerHTML = matches.map(u=>`
+          <div class="mention-item" onclick="insertTag('@','${u.name.replace(/'/g,"\\'")}',${u.id})">
+            <div class="mention-av">${u.initials}</div>${u.name}
+          </div>`).join('');
+        dd.style.display='block';
+      } else { dd.style.display='none'; }
+    } else if(trigger === '#'){
+      if(q.length < 1){ dd.style.display='none'; return; }
+      const r = await fetch(`/api/projects-search/?q=${encodeURIComponent(q)}`);
+      const projs = await r.json();
+      if(projs.length){
+        dd.innerHTML = projs.map(p=>`
+          <div class="mention-item" onclick="insertTag('#','${p.project_name.replace(/'/g,"\\'")}',${p.id})">
+            <div class="mention-av" style="background:var(--acc);border-radius:4px;">#</div>${p.project_name} <span style="color:var(--mut);font-size:.75rem;margin-left:.3rem;">${p.customer}</span>
+          </div>`).join('');
+        dd.style.display='block';
+      } else { dd.style.display='none'; }
+    }
+  } else {
+    mentionStart=-1; mentionType=null;
+    dd.style.display='none';
+  }
+});
+
+function insertTag(type, name, id){
+  const inp = document.getElementById('chat-input');
+  const val = inp.value;
+  const before = val.slice(0, mentionStart);
+  const after  = val.slice(inp.selectionStart);
+  if(type==='@') inp.value = before + `@[${name}](${id}) ` + after;
+  else           inp.value = before + `#[${name}](${id}) ` + after;
+  document.getElementById('mention-dd').style.display='none';
+  mentionStart=-1; mentionType=null;
+  inp.focus();
+}
+
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.chat-input-wrap'))
+    document.getElementById('mention-dd').style.display='none';
+});
+</script>
+{% endblock %}

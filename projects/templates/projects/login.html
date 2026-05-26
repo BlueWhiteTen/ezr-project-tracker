@@ -1,0 +1,38 @@
+{% extends 'projects/base.html' %}
+{% block title %}Sign In — Project Tracker{% endblock %}
+{% block extra_style %}
+.auth-page{min-height:calc(100vh - 56px);display:flex;align-items:center;justify-content:center;margin-top:-1.8rem;}
+.auth-card{width:100%;max-width:420px;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:2.5rem 2rem;box-shadow:var(--shadow-md);}
+.auth-logo{font-family:var(--fm);font-size:1rem;color:var(--acc);margin-bottom:1.8rem;display:block;}
+.auth-title{font-size:1.4rem;font-weight:600;color:var(--txt);margin-bottom:.3rem;letter-spacing:-.02em;}
+.auth-sub{font-size:.875rem;color:var(--mut);margin-bottom:1.8rem;}
+.auth-error{font-size:.85rem;color:var(--red);background:var(--red-bg);border:1px solid rgba(220,38,38,.2);padding:.65rem .9rem;border-radius:var(--rad);margin-bottom:1.2rem;}
+.auth-switch{text-align:center;font-size:.85rem;color:var(--mut);margin-top:1.3rem;}
+.auth-switch a{color:var(--acc);font-weight:500;}
+.auth-hint{font-size:.78rem;color:var(--mut2);margin-top:.3rem;}
+{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    {% load static %}
+    <img src="{% static 'logo.png' %}" alt="EZR Shelving" style="height:48px;margin-bottom:1.5rem;display:block;">
+    <h1 class="auth-title">Welcome back</h1>
+    <p class="auth-sub">Sign in to your account to continue</p>
+    {% if error %}<div class="auth-error">{{ error }}</div>{% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label">Full name or email</label>
+        <input type="text" name="identifier" class="form-input" placeholder="John Smith or john@company.com" autofocus autocomplete="username">
+        <div class="auth-hint">You can use either your full name or email address</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" name="password" class="form-input" placeholder="Enter your password" autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:.65rem;">Sign In</button>
+    </form>
+    <div class="auth-switch">Don't have an account? <a href="{% url 'register' %}">Register here</a></div>
+  </div>
+</div>
+{% endblock %}

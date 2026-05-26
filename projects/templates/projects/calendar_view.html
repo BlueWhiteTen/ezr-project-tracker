@@ -1,0 +1,278 @@
+{% extends 'projects/base.html' %}
+{% block title %}Calendar — Project Tracker{% endblock %}
+{% block extra_style %}
+.cal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem;flex-wrap:wrap;gap:1rem;}
+.cal-title{font-size:1.5rem;font-weight:600;letter-spacing:-.02em;}
+.cal-nav{display:flex;align-items:center;gap:.75rem;}
+.cal-nav-btn{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);color:var(--txt2);padding:6px 14px;font-size:.9rem;cursor:pointer;font-family:var(--f);font-weight:500;transition:all .15s;text-decoration:none;}
+.cal-nav-btn:hover{border-color:var(--acc);color:var(--acc);}
+.cal-month{font-size:1rem;font-weight:600;color:var(--txt);min-width:140px;text-align:center;}
+.cal-legend{display:flex;gap:1rem;}
+.leg{display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--txt2);}
+.leg-dot{width:9px;height:9px;border-radius:50%;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--bdr);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);}
+.cal-dow{background:var(--surf2);padding:.65rem;text-align:center;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);}
+.cal-day{background:var(--surf);min-height:110px;padding:.65rem .7rem;transition:background .12s;position:relative;vertical-align:top;}
+.cal-day.has-events{cursor:pointer;}
+.cal-day.has-events:hover{background:var(--surf2);}
+.cal-day.other-month{background:var(--surf2);}
+.cal-day.other-month .cal-day-num{color:var(--mut2);}
+.cal-day-num{font-size:.85rem;font-weight:600;color:var(--txt2);width:26px;height:26px;display:flex;align-items:center;justify-content:center;margin-bottom:.4rem;border-radius:50%;}
+.cal-day.today .cal-day-num{background:var(--acc);color:#fff;}
+.cal-events{display:flex;flex-direction:column;gap:2px;}
+.cal-event{font-size:.7rem;padding:2px 6px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;line-height:1.4;}
+.cal-event-del{background:var(--acc-bg);color:var(--acc);border:1px solid var(--acc-bdr);}
+.cal-event-leave{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;}
+[data-theme="dark"] .cal-event-leave{background:rgba(22,163,74,.1);color:#4ade80;border-color:rgba(74,222,128,.25);}
+.cal-event-inst{background:var(--grn-bg);color:var(--grn);border:1px solid rgba(22,163,74,.2);}
+.cal-event-more{font-size:.68rem;color:var(--mut);padding:1px 4px;cursor:pointer;}
+/* Day popup */
+.dp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s;}
+.dp-overlay.open{opacity:1;pointer-events:all;}
+.dp-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-58%);width:500px;max-width:95vw;max-height:80vh;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);z-index:201;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;display:flex;flex-direction:column;}
+.dp-modal.open{opacity:1;pointer-events:all;transform:translate(-50%,-50%);}
+.dp-head{padding:1rem 1.3rem;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;background:var(--surf2);border-radius:var(--rad-lg) var(--rad-lg) 0 0;flex-shrink:0;}
+.dp-title{font-size:1rem;font-weight:600;color:var(--txt);}
+.dp-body{padding:1.2rem 1.3rem;overflow-y:auto;flex:1;}
+.dp-item{display:flex;align-items:flex-start;gap:.75rem;padding:.7rem .9rem;border-radius:var(--rad);border:1px solid var(--bdr);margin-bottom:.6rem;cursor:pointer;transition:all .15s;}
+.dp-item:hover{border-color:var(--acc);background:var(--acc-bg);}
+.dp-type{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:4px;flex-shrink:0;margin-top:2px;}
+.dp-type-del{background:var(--acc-bg);color:var(--acc);border:1px solid var(--acc-bdr);}
+.dp-type-inst{background:var(--grn-bg);color:var(--grn);border:1px solid rgba(22,163,74,.2);}
+.dp-name{font-weight:500;font-size:.9rem;color:var(--txt);}
+.dp-sub{font-size:.78rem;color:var(--mut);margin-top:2px;}
+.dp-add{display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.7rem;border:1.5px dashed var(--bdr);border-radius:var(--rad);color:var(--mut);font-size:.85rem;cursor:pointer;margin-top:.5rem;transition:all .15s;}
+.dp-add:hover{border-color:var(--acc);color:var(--acc);background:var(--acc-bg);}
+.dp-empty{text-align:center;color:var(--mut);font-size:.875rem;padding:1rem 0;}
+.dt-btn{flex:1;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:5px;font-size:.8rem;cursor:pointer;color:var(--mut);font-family:var(--f);text-align:center;transition:all .15s;}
+.dt-btn.on{background:var(--acc);color:#fff;border-color:var(--acc);}
+.qc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;opacity:0;pointer-events:none;transition:opacity .2s;}
+.qc-overlay.open{opacity:1;pointer-events:all;}
+.qc-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-60%);width:420px;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);z-index:301;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
+.qc-modal.open{opacity:1;pointer-events:all;transform:translate(-50%,-50%);}
+.qc-head{padding:1.1rem 1.3rem;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;background:var(--surf2);border-radius:var(--rad-lg) var(--rad-lg) 0 0;}
+.qc-title{font-size:1rem;font-weight:600;color:var(--txt);}
+.qc-body{padding:1.3rem;}
+.qc-foot{padding:.85rem 1.3rem;border-top:1px solid var(--bdr);display:flex;gap:.6rem;justify-content:flex-end;}
+.sp-close{background:transparent;border:1px solid var(--bdr);border-radius:var(--rad);color:var(--mut);font-size:1rem;cursor:pointer;padding:4px 10px;line-height:1;transition:all .15s;}
+.sp-close:hover{background:var(--red-bg);color:var(--red);border-color:rgba(220,38,38,.3);}
+.sp-inp{width:100%;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--rad);color:var(--txt);padding:7px 10px;font-size:.875rem;outline:none;font-family:var(--f);}
+.sp-inp:focus{border-color:var(--acc);}
+.sp-fld{margin-bottom:.75rem;}
+.sp-lbl{font-size:.78rem;font-weight:500;color:var(--txt2);margin-bottom:.3rem;display:block;}
+.sp-btn-cancel{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:7px 18px;font-size:.875rem;cursor:pointer;font-family:var(--f);color:var(--txt2);}
+.sp-btn-save{background:var(--acc);color:#fff;border:none;border-radius:var(--rad);padding:7px 20px;font-size:.875rem;font-weight:500;cursor:pointer;font-family:var(--f);}
+{% endblock %}
+
+{% block content %}
+<div class="cal-hdr">
+  <h1 class="cal-title">Calendar</h1>
+  <div class="cal-nav">
+    <a href="?year={{ prev_year }}&month={{ prev_month }}" class="cal-nav-btn">‹</a>
+    <span class="cal-month">{{ month_name }}</span>
+    <a href="?year={{ next_year }}&month={{ next_month }}" class="cal-nav-btn">›</a>
+    <a href="?year={{ today.year }}&month={{ today.month }}" class="cal-nav-btn" style="font-size:.82rem;padding:6px 10px;">Today</a>
+  </div>
+  <div class="cal-legend">
+    <div class="leg"><div class="leg-dot" style="background:var(--acc)"></div>Delivery</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--grn)"></div>Installation</div>
+    <div class="leg"><div class="leg-dot" style="background:#16a34a;opacity:.6"></div>Leave</div>
+  </div>
+</div>
+
+<div class="cal-grid">
+  <div class="cal-dow">Mon</div>
+  <div class="cal-dow">Tue</div>
+  <div class="cal-dow">Wed</div>
+  <div class="cal-dow">Thu</div>
+  <div class="cal-dow">Fri</div>
+  <div class="cal-dow">Sat</div>
+  <div class="cal-dow">Sun</div>
+
+  {% for day in calendar_days %}
+  <div class="cal-day {% if day.is_today %}today{% endif %} {% if not day.in_range %}other-month{% endif %} {% if day.events %}has-events{% endif %}"
+    onclick="openDay('{{ day.date|date:'Y-m-d' }}', '{{ day.date|date:'l, d F Y' }}')">
+    <div class="cal-day-num">{{ day.date|date:"j" }}</div>
+    <div class="cal-events">
+      {% for e in day.events|slice:":3" %}
+        <div class="cal-event {% if e.type == 'delivery' %}cal-event-del{% else %}cal-event-inst{% endif %}">
+          {{ e.name }}
+        </div>
+      {% endfor %}
+      {% if day.events|length > 3 %}
+        <div class="cal-event-more">+{{ day.events|length|add:"-3" }} more</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Day popup -->
+<div class="dp-overlay" id="dp-overlay" onclick="closeDay()"></div>
+<div class="dp-modal" id="dp-modal">
+  <div class="dp-head">
+    <div class="dp-title" id="dp-title"></div>
+    <button class="sp-close" onclick="closeDay()">✕</button>
+  </div>
+  <div class="dp-body" id="dp-body"></div>
+</div>
+
+<!-- Quick-create popup (reused from dashboard) -->
+<div class="qc-overlay" id="qc-overlay" onclick="closeQC()"></div>
+<div class="qc-modal" id="qc-modal">
+  <div class="qc-head">
+    <div class="qc-title">New Project</div>
+    <button class="sp-close" onclick="closeQC()">✕</button>
+  </div>
+  <div class="qc-body">
+    <div style="background:var(--acc-bg);border:1px solid var(--acc-bdr);border-radius:var(--rad);padding:.55rem .9rem;font-size:.82rem;color:var(--acc);margin-bottom:.85rem;" id="qc-date-hint"></div>
+    <div class="sp-fld"><label class="sp-lbl">Customer *</label>
+      <div style="position:relative">
+        <input class="sp-inp" id="qc-customer" type="text" placeholder="Customer name" autocomplete="off">
+        <div id="qc-ac-list" style="position:absolute;top:100%;left:0;right:0;background:var(--surf);border:1px solid var(--acc);border-top:none;border-radius:0 0 var(--rad) var(--rad);z-index:300;display:none;box-shadow:var(--shadow-md);max-height:150px;overflow-y:auto;"></div>
+      </div>
+    </div>
+    <div class="sp-fld"><label class="sp-lbl">Location</label>
+      <input class="sp-inp" id="qc-location" type="text" placeholder="Site address or postcode">
+    </div>
+    <div class="sp-fld"><label class="sp-lbl">Date type</label>
+      <div style="display:flex;gap:.5rem;">
+        <button type="button" class="dt-btn on" id="qc-type-del" onclick="setQCType('delivery')">Delivery</button>
+        <button type="button" class="dt-btn" id="qc-type-inst" onclick="setQCType('install')">Installation</button>
+      </div>
+    </div>
+    <div id="qc-error" style="color:var(--red);font-size:.82rem;display:none;margin-top:.5rem;"></div>
+  </div>
+  <div class="qc-foot">
+    <button class="sp-btn-cancel" onclick="closeQC()">Cancel</button>
+    <button class="sp-btn-save" id="qc-submit" onclick="submitQC()">Create</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const calData = {{ calendar_data_json|safe }};
+let currentDate = null;
+let qcDateType = 'delivery';
+
+function openDay(dateStr, dateLabel){
+  currentDate = dateStr;
+  const events = calData[dateStr] || [];
+  document.getElementById('dp-title').textContent = dateLabel;
+  const body = document.getElementById('dp-body');
+  let html = '';
+  if(events.length){
+    html += events.map(e=>`
+      <div class="dp-item ${e.type==='leave'?'':''}" ${e.pk?`onclick="window.location='/project/${e.pk}/edit/'"`:''} style="${e.type==='leave'?'cursor:default;':''}">
+        <span class="dp-type ${e.type==='delivery'?'dp-type-del':e.type==='leave'?'dp-type-inst':'dp-type-inst'}" style="${e.type==='leave'?'background:var(--grn-bg);color:var(--grn);border-color:rgba(22,163,74,.2);':''}">${e.type==='delivery'?'Delivery':e.type==='leave'?'🏖 Leave':'Install'}</span>
+        <div>
+          <div class="dp-name">${e.name}</div>
+          <div class="dp-sub">${e.customer}${e.location?' · '+e.location:''}</div>
+          <div class="dp-sub">${e.status_label}</div>
+        </div>
+      </div>`).join('');
+  } else {
+    html += '<div class="dp-empty">No projects on this date</div>';
+  }
+  html += `<div class="dp-add" onclick="openQCForDate('${dateStr}', '${dateLabel}')">＋ Add project on this date</div>`;
+  body.innerHTML = html;
+  document.getElementById('dp-overlay').classList.add('open');
+  document.getElementById('dp-modal').classList.add('open');
+}
+
+function closeDay(){
+  document.getElementById('dp-overlay').classList.remove('open');
+  document.getElementById('dp-modal').classList.remove('open');
+}
+
+function openQCForDate(dateStr, dateLabel){
+  closeDay();
+  document.getElementById('qc-date-hint').textContent = '📅 ' + dateLabel;
+  document.getElementById('qc-customer').value = '';
+  document.getElementById('qc-location').value = '';
+  document.getElementById('qc-error').style.display = 'none';
+  document.getElementById('qc-overlay').classList.add('open');
+  document.getElementById('qc-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('qc-customer').focus(), 100);
+  qcAcWire();
+}
+
+function closeQC(){
+  document.getElementById('qc-overlay').classList.remove('open');
+  document.getElementById('qc-modal').classList.remove('open');
+}
+
+function setQCType(t){
+  qcDateType = t;
+  document.getElementById('qc-type-del').classList.toggle('on', t==='delivery');
+  document.getElementById('qc-type-inst').classList.toggle('on', t==='install');
+}
+
+async function submitQC(){
+  const cust = document.getElementById('qc-customer').value.trim();
+  const loc  = document.getElementById('qc-location').value.trim();
+  const err  = document.getElementById('qc-error');
+  if(!cust){err.textContent='Customer is required';err.style.display='block';return;}
+  err.style.display='none';
+  const btn = document.getElementById('qc-submit');
+  btn.textContent='Creating…';btn.disabled=true;
+  const payload = {customer:cust, location:loc};
+  if(currentDate){
+    if(qcDateType==='delivery') payload.delivery_date = currentDate;
+    else payload.installation_date = currentDate;
+  }
+  const r = await fetch('/project/quick-create/',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
+    body:JSON.stringify(payload)
+  });
+  const d = await r.json();
+  if(d.error){err.textContent=d.error;err.style.display='block';btn.textContent='Create';btn.disabled=false;return;}
+  window.location.reload();
+}
+
+function qcAcWire(){
+  const inp=document.getElementById('qc-customer');
+  const list=document.getElementById('qc-ac-list');
+  let acIdx=-1;
+  inp.removeEventListener('input', inp._handler);
+  inp._handler = async function(){
+    acIdx=-1;
+    const q=this.value.trim();
+    if(q.length<1){list.style.display='none';return;}
+    const r=await fetch('/api/customers/?q='+encodeURIComponent(q));
+    const names=await r.json();
+    if(!names.length){list.style.display='none';return;}
+    list.innerHTML=names.map(n=>`<div class="qc-ac-item" data-name="${n.replace(/"/g,'&quot;')}" style="padding:8px 12px;cursor:pointer;font-size:.85rem;color:var(--txt2);">${n}</div>`).join('');
+    list.querySelectorAll('.qc-ac-item').forEach(item=>{
+      item.addEventListener('mousedown',()=>{inp.value=item.dataset.name;list.style.display='none';});
+    });
+    list.style.display='block';
+  };
+  inp.addEventListener('input', inp._handler);
+  inp.addEventListener('keydown',function(e){
+    const items=list.querySelectorAll('.qc-ac-item');
+    if(list.style.display==='block'&&items.length){
+      if(e.key==='ArrowDown'){e.preventDefault();acIdx=Math.min(acIdx+1,items.length-1);items.forEach((it,i)=>it.style.background=i===acIdx?'var(--acc-bg)':'');}
+      else if(e.key==='ArrowUp'){e.preventDefault();acIdx=Math.max(acIdx-1,0);items.forEach((it,i)=>it.style.background=i===acIdx?'var(--acc-bg)':'');}
+      else if(e.key==='Enter'&&acIdx>=0){e.preventDefault();inp.value=items[acIdx].dataset.name;list.style.display='none';acIdx=-1;document.getElementById('qc-location').focus();return;}
+    }
+    if(e.key==='Enter'&&list.style.display!=='block'){e.preventDefault();submitQC();}
+    if(e.key==='Escape'){closeQC();}
+  });
+  inp.addEventListener('blur',()=>setTimeout(()=>list.style.display='none',150));
+  const loc=document.getElementById('qc-location');
+  if(loc){
+    loc.addEventListener('keydown',function(e){
+      if(e.key==='Enter'){e.preventDefault();submitQC();}
+      if(e.key==='Escape'){closeQC();}
+    });
+  }
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeDay();closeQC();}
+});
+</script>
+{% endblock %}

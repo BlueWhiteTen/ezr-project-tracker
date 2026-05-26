@@ -1,0 +1,475 @@
+{% extends 'projects/base.html' %}
+{% block title %}{{ action }} Project — Project Tracker{% endblock %}
+{% block extra_style %}
+.form-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;padding-top:.5rem;}
+.form-title{font-size:1.5rem;font-weight:600;color:var(--txt);letter-spacing:-.02em;}
+.form-meta{font-size:.8rem;color:var(--mut);margin-bottom:1.3rem;display:flex;flex-wrap:wrap;gap:.4rem 1.5rem;}
+.form-meta strong{color:var(--txt2);}
+.form-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.6rem;margin-bottom:1.2rem;box-shadow:var(--shadow);}
+.form-2col{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start;}
+.form-col{display:flex;flex-direction:column;gap:0;}
+@media(max-width:900px){.form-2col{grid-template-columns:1fr;}}
+.section-title{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid var(--bdr);}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;}
+.date-block{background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--rad);padding:.9rem 1rem;}
+.inner-fade{transition:opacity .2s;}
+.inner-fade.off{opacity:.4;pointer-events:none;}
+.same-chk-row{background:var(--acc-bg);border:1px solid var(--acc-bdr);border-radius:var(--rad);padding:.55rem .9rem;margin:.4rem 0 .75rem;display:flex;align-items:center;gap:.6rem;}
+.same-chk-row label{font-size:.875rem;color:var(--acc);cursor:pointer;font-weight:500;}
+.date-type-toggle{display:flex;gap:.5rem;margin-bottom:.75rem;}
+.dt-btn{flex:1;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:5px;font-size:.8rem;cursor:pointer;color:var(--mut);font-family:var(--f);text-align:center;transition:all .15s;}
+.dt-btn.on{background:var(--acc);color:#fff;border-color:var(--acc);}
+.month-parts{display:flex;gap:.5rem;margin-top:.55rem;}
+.mp-btn{flex:1;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:4px;font-size:.8rem;cursor:pointer;color:var(--mut);font-family:var(--f);text-align:center;transition:all .15s;}
+.mp-btn.on{background:var(--amb-bg);color:var(--amb);border-color:#fde68a;}
+[data-theme="dark"] .mp-btn.on{border-color:rgba(245,158,11,.4);}
+.dfw{display:none;}
+.dfw.vis{display:block;}
+.err-banner{background:var(--red-bg);border:1px solid rgba(220,38,38,.2);border-radius:var(--rad);padding:.6rem .9rem;font-size:.82rem;color:var(--red);margin-bottom:.7rem;display:none;}
+.err-banner.show{display:block;}
+.same-display{background:var(--acc-bg);border:1px solid var(--acc-bdr);border-radius:var(--rad);padding:.65rem .9rem;margin:.4rem 0 .75rem;display:none;}
+.same-display.show{display:block;}
+.same-display-val{font-size:.9rem;color:var(--acc);font-weight:500;}
+.same-display-hint{font-size:.72rem;color:var(--mut);margin-top:2px;}
+.form-actions{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.2rem;}
+.ac-wrap{position:relative;}
+.ac-list{position:absolute;top:100%;left:0;right:0;background:var(--surf);border:1px solid var(--acc);border-top:none;border-radius:0 0 var(--rad) var(--rad);z-index:100;max-height:160px;overflow-y:auto;display:none;box-shadow:var(--shadow-md);}
+.ac-item{padding:.55rem .9rem;font-size:.875rem;cursor:pointer;color:var(--txt2);}
+.ac-item:hover,.ac-item.sel{background:var(--acc-bg);color:var(--acc);}
+.ac-item mark{background:transparent;color:var(--acc);font-weight:600;}
+.log-section{margin-top:1.5rem;}
+.log-section-title{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:2px solid var(--bdr);}
+.log-entry{display:flex;align-items:flex-start;gap:.7rem;padding:.65rem 0;border-bottom:1px solid var(--bdr);}
+.log-entry:last-child{border-bottom:none;}
+.log-av{width:26px;height:26px;border-radius:50%;background:var(--acc-bg);display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:600;color:var(--acc);flex-shrink:0;border:1px solid var(--acc-bdr);}
+.log-body{flex:1;font-size:.82rem;color:var(--txt2);}
+.log-body strong{color:var(--txt);}
+.log-time{font-size:.72rem;color:var(--mut);white-space:nowrap;}
+.pill-o{background:var(--red-bg);color:var(--red);padding:1px 7px;border-radius:4px;font-size:.75rem;border:1px solid rgba(220,38,38,.15);}
+.pill-n{background:var(--grn-bg);color:var(--grn);padding:1px 7px;border-radius:4px;font-size:.75rem;border:1px solid rgba(22,163,74,.15);}
+@media(max-width:640px){.grid-2,.grid-3{grid-template-columns:1fr;}}
+{% endblock %}
+
+{% block content %}
+<div class="form-header">
+  <h1 class="form-title">{{ action }} Project{% if project %}: {{ project.project_name }}{% endif %}</h1>
+  <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+    {% if project %}
+    <a href="{% url 'project_cost' project.pk %}" class="btn btn-primary" style="background:#7c3aed;box-shadow:none;">💰 Costing</a>
+    <a href="{% url 'picking_list_view' project.pk %}" class="btn btn-primary" style="background:#2563eb;box-shadow:none;">📦 Picking List</a>
+    <button type="submit" form="project-form" class="btn btn-primary" style="box-shadow:none;">💾 Save Changes</button>
+    {% endif %}
+    {% if project %}
+    <button class="btn btn-ghost" onclick="duplicateProject()" title="Duplicate this project">⧉ Duplicate</button>
+    {% endif %}
+    <a href="{% url 'dashboard' %}" class="btn btn-ghost">← Back</a>
+  </div>
+</div>
+
+{% if project %}
+<div class="form-meta">
+  {% if project.created_by %}<span>Created by <strong>{{ project.created_by.get_full_name|default:project.created_by.username }}</strong> &nbsp;·&nbsp; {{ project.created_at|date:"d M Y, H:i" }}</span>{% endif %}
+  {% if project.last_edited_by %}<span>Last edited by <strong>{{ project.last_edited_by.get_full_name|default:project.last_edited_by.username }}</strong> &nbsp;·&nbsp; {{ project.updated_at|date:"d M Y, H:i" }}</span>{% endif %}
+</div>
+{% endif %}
+
+<form method="post" id="project-form">
+  {% csrf_token %}
+  {% if form.errors %}
+  <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:var(--rad);padding:.75rem 1rem;margin-bottom:1rem;font-size:.85rem;color:#991b1b;">
+    ⚠ Please fix the following errors: {{ form.errors }}
+  </div>
+  {% endif %}
+
+  <div class="form-2col">
+    <!-- LEFT COLUMN -->
+    <div class="form-col">
+
+      <div class="form-card">
+        <div class="section-title">Customer & Location</div>
+        <div class="form-group">
+          <label class="form-label">Customer</label>
+          <div class="ac-wrap">{{ form.customer }}<div class="ac-list" id="ac-list"></div></div>
+        </div>
+        <div class="form-group"><label class="form-label">Location</label>{{ form.location }}</div>
+        {% if project %}
+        <div style="margin-bottom:.75rem;">
+          <button type="button" class="btn btn-ghost btn-sm" id="addr-btn" onclick="openAddress()" style="position:relative;">
+            📍 Delivery Address
+            {% if project.addr_line1 or project.addr_postcode %}<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:var(--grn);color:#fff;border-radius:50%;font-size:.6rem;margin-left:3px;vertical-align:middle;">✓</span>{% endif %}
+          </button>
+          {% if project.addr_line1 %}<div style="font-size:.78rem;color:var(--mut);margin-top:.3rem;">{{ project.addr_line1 }}{% if project.addr_city %}, {{ project.addr_city }}{% endif %}{% if project.addr_postcode %} {{ project.addr_postcode }}{% endif %}</div>{% endif %}
+        </div>
+        {% endif %}
+        <div class="form-group"><label class="form-label">Drawing Number</label>{{ form.drawing_number }}</div>
+        <div class="form-group" style="margin-bottom:0;"><label class="form-label">Description <span style="font-weight:400;color:var(--mut2)">(shown on dashboard)</span></label>{{ form.description }}</div>
+      </div>
+
+      <div class="form-card">
+        <div class="section-title">Status & Sales</div>
+        <div class="grid-2">
+          <div class="form-group"><label class="form-label">Status</label>{{ form.status }}</div>
+          <div class="form-group"><label class="form-label">Sales Order</label>{{ form.sales_order }}</div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="section-title">Assigned To</div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Team member responsible for this project</label>
+          {{ form.assigned_to }}
+        </div>
+      </div>
+
+      {% if project %}
+      <div class="form-card" style="border-color:rgba(37,99,235,.3);background:rgba(37,99,235,.03);">
+        <div class="section-title" style="color:#2563eb;">Documents</div>
+        <div id="doc-list" style="margin-bottom:.75rem;min-height:20px;"></div>
+        <div style="border:2px dashed rgba(37,99,235,.3);border-radius:var(--rad);padding:.75rem;background:rgba(37,99,235,.03);">
+          <div class="form-group" style="margin-bottom:.5rem;">
+            <label class="form-label">File</label>
+            <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:.5rem .75rem;font-size:.85rem;color:var(--txt2);" for="doc-file">
+              <span style="background:#2563eb;color:#fff;border-radius:4px;padding:3px 10px;font-size:.75rem;font-weight:600;flex-shrink:0;">Choose file</span>
+              <span id="doc-file-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">No file chosen</span>
+            </label>
+            <input type="file" id="doc-file" style="display:none;" onchange="docFileChanged(this)">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Type</label>
+              <select id="doc-type" class="form-input">
+                <option value="drawing">Drawing</option>
+                <option value="quote">Quote</option>
+                <option value="contract">Contract</option>
+                <option value="rams">RAMS</option>
+                <option value="photo">Photo</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Name (optional)</label>
+              <input type="text" id="doc-name" class="form-input" placeholder="e.g. Floor plan v2">
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary" onclick="uploadDoc({{ project.pk }})" style="width:100%;justify-content:center;background:#2563eb;">Upload Document</button>
+          <div id="doc-error" style="color:var(--red);font-size:.78rem;margin-top:.4rem;display:none;"></div>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="form-col">
+
+      <div class="form-card">
+        <div class="section-title">Delivery</div>
+        <div class="date-block">
+          <div class="chk-row" style="margin-bottom:.7rem;">
+            {{ form.delivery_required }}<label for="{{ form.delivery_required.id_for_label }}">Delivery required</label>
+          </div>
+          <div class="inner-fade {% if not form.instance.delivery_required %}off{% endif %}" id="del-inner">
+            <div class="grid-2">
+              <div class="form-group"><label class="form-label">Delivery Date</label>{{ form.delivery_date }}</div>
+              <div class="form-group" style="display:flex;align-items:center;padding-top:1.5rem;">
+                <div class="chk-row">{{ form.delivery_booked }}<label for="{{ form.delivery_booked.id_for_label }}">Delivery booked</label></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="section-title">Installation</div>
+        <div class="date-block">
+          <div class="chk-row" style="margin-bottom:.4rem;">
+            {{ form.installation_required }}<label for="{{ form.installation_required.id_for_label }}">Installation required</label>
+          </div>
+          <div class="inner-fade {% if not form.instance.installation_required %}off{% endif %}" id="inst-inner">
+            <div class="same-chk-row">
+              {{ form.installation_same_as_delivery }}<label for="{{ form.installation_same_as_delivery.id_for_label }}">Same as delivery date</label>
+            </div>
+            <div id="same-display" class="same-display {% if form.instance.installation_same_as_delivery %}show{% endif %}">
+              <div class="form-label">Installation Date</div>
+              <div class="same-display-val" id="same-val">
+                {% if form.instance.delivery_date %}{{ form.instance.delivery_date|date:"d M Y" }}{% else %}— set delivery date first{% endif %}
+              </div>
+              <div class="same-display-hint">Automatically matches delivery date</div>
+            </div>
+            <div id="inst-date-section" style="{% if form.instance.installation_same_as_delivery %}display:none{% endif %}">
+              <div class="date-type-toggle">
+                <button type="button" class="dt-btn {% if form.instance.installation_date_type != 'month' %}on{% endif %}" id="dt-exact" onclick="setDateType('exact')">Exact date</button>
+                <button type="button" class="dt-btn {% if form.instance.installation_date_type == 'month' %}on{% endif %}" id="dt-month" onclick="setDateType('month')">Month</button>
+              </div>
+              <div id="exact-wrap" class="dfw {% if form.instance.installation_date_type != 'month' %}vis{% endif %}">
+                <div class="err-banner" id="date-err">⚠ Installation date cannot be before the delivery date</div>
+                <div class="form-group" style="margin-bottom:.5rem;">
+                  <label class="form-label">Installation Date</label>{{ form.installation_date }}
+                  {% if form.installation_date.errors %}<div style="color:var(--red);font-size:.78rem;margin-top:.25rem;">{{ form.installation_date.errors.0 }}</div>{% endif %}
+                </div>
+              </div>
+              <div id="month-wrap" class="dfw {% if form.instance.installation_date_type == 'month' %}vis{% endif %}">
+                <div class="form-group" style="margin-bottom:.5rem;"><label class="form-label">Month</label>{{ form.installation_month }}</div>
+                <div class="form-label" style="margin-bottom:.4rem;">Part of month <span style="color:var(--mut2);font-size:.72rem;">(optional)</span></div>
+                <div class="month-parts">
+                  <button type="button" class="mp-btn {% if form.instance.installation_month_part == 'early' %}on{% endif %}" onclick="setPart(this,'early')">Early</button>
+                  <button type="button" class="mp-btn {% if form.instance.installation_month_part == 'mid' %}on{% endif %}" onclick="setPart(this,'mid')">Mid</button>
+                  <button type="button" class="mp-btn {% if form.instance.installation_month_part == 'end' %}on{% endif %}" onclick="setPart(this,'end')">End</button>
+                  <button type="button" class="mp-btn {% if not form.instance.installation_month_part %}on{% endif %}" onclick="setPart(this,'')">Any</button>
+                </div>
+                <input type="hidden" name="installation_month_part" id="inst-month-part-val" value="{{ form.instance.installation_month_part }}">
+                <input type="hidden" name="installation_date_type" id="inst-date-type-val" value="{{ form.instance.installation_date_type|default:'exact' }}">
+              </div>
+            </div>
+            <div class="chk-row" style="margin-top:.8rem;">
+              {{ form.installation_booked }}<label for="{{ form.installation_booked.id_for_label }}">Installation booked</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="section-title">RAMS</div>
+        <div class="chk-row" style="margin-bottom:.8rem;">{{ form.rams_required }}<label for="{{ form.rams_required.id_for_label }}">RAMS required</label></div>
+        <div class="chk-row">{{ form.rams_sent }}<label for="{{ form.rams_sent.id_for_label }}">RAMS sent</label></div>
+      </div>
+
+      {% if project %}
+      <div class="form-card" style="border-color:rgba(22,163,74,.35);background:var(--grn-bg);">
+        <div class="section-title" style="color:var(--grn);">POST-INSTALLATION</div>
+        <p style="font-size:.82rem;color:var(--mut);margin-bottom:1rem;">Upload as-built photos, issues found, and a signed satisfaction note after the installation is complete.</p>
+        <a href="{% url 'install_report' project.pk %}" class="btn" style="width:100%;justify-content:center;background:var(--grn);color:#fff;font-weight:600;">📋 Open Installation Report</a>
+      </div>
+
+      {% endif %}
+
+    </div>
+  </div>
+
+  {% if project %}
+  <div class="form-card" style="margin-top:0;">
+    <div class="section-title" style="margin-bottom:.85rem;">Comments <span style="font-size:.72rem;font-weight:400;color:var(--mut2);text-transform:none;letter-spacing:0;">Type @ to tag someone</span></div>
+    <div id="comments-list" style="margin-bottom:1rem;">
+      {% if comments %}
+        {% for c in comments %}
+        <div class="comment-entry" style="display:flex;align-items:flex-start;gap:.75rem;margin-bottom:.75rem;">
+          <div style="width:30px;height:30px;border-radius:50%;background:#d4700a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;flex-shrink:0;">
+            {% with n=c.user.get_full_name|default:c.user.username %}{% with p=n.split %}{{ p.0|slice:":1"|upper }}{% if p|length > 1 %}{{ p|last|slice:":1"|upper }}{% endif %}{% endwith %}{% endwith %}
+          </div>
+          <div style="flex:1;background:var(--surf2);border:1px solid var(--bdr);border-radius:4px 12px 12px 12px;padding:.55rem .85rem;">
+            <div style="font-size:.82rem;font-weight:600;color:var(--txt);margin-bottom:.2rem;">{{ c.user.get_full_name|default:c.user.username }} <span style="font-weight:400;color:var(--mut);font-size:.75rem;">{{ c.timestamp|date:"d M Y, H:i" }}</span></div>
+            <div style="font-size:.875rem;color:var(--txt2);">{{ c.text }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div id="no-comments" style="font-size:.85rem;color:var(--mut);margin-bottom:.5rem;">No comments yet</div>
+      {% endif %}
+    </div>
+    <div style="display:flex;gap:.6rem;align-items:flex-start;position:relative;">
+      <div style="position:absolute;bottom:100%;left:0;right:0;" id="mention-dropdown" style="display:none;"></div>
+      <input class="form-input" type="text" id="comment-input" placeholder="Add a comment… (@ to tag someone)" style="flex:1;">
+      <button type="button" class="btn btn-primary" onclick="postComment({{ project.pk }})">Post</button>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="form-actions">
+    <a href="{% url 'dashboard' %}" class="btn btn-ghost">Cancel</a>
+    <button type="submit" class="btn btn-primary">{% if project %}Save Changes{% else %}Create Project{% endif %}</button>
+  </div>
+</form>
+
+{% if logs %}
+<div class="log-section">
+  <div class="log-section-title">Project History</div>
+  {% for log in logs %}
+  <div class="log-entry">
+    <div class="log-av">{{ log.user.get_full_name|default:log.user.username|slice:":2"|upper }}</div>
+    <div class="log-body">
+      <strong>{% if log.user %}{{ log.user.get_full_name|default:log.user.username }}{% else %}Unknown{% endif %}</strong>
+      {% if log.field == "Project created" %}
+        <span style="color:var(--mut);"> created this project</span>
+      {% else %}
+        <span style="color:var(--mut);"> changed </span>
+        <span style="color:var(--acc);">{{ log.field }}</span>
+        <div style="display:flex;align-items:center;gap:.4rem;margin-top:.3rem;">
+          <span class="pill-o">{{ log.old_value }}</span>
+          <span style="color:var(--mut);">→</span>
+          <span class="pill-n">{{ log.new_value }}</span>
+        </div>
+      {% endif %}
+    </div>
+    <div class="log-time">{{ log.timestamp|date:"d M Y, H:i" }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const delChk=document.getElementById('{{ form.delivery_required.id_for_label }}');
+const delInner=document.getElementById('del-inner');
+const delDateInput=document.getElementById('{{ form.delivery_date.id_for_label }}');
+delChk.addEventListener('change',()=>delInner.classList.toggle('off',!delChk.checked));
+
+const instChk=document.getElementById('{{ form.installation_required.id_for_label }}');
+const instInner=document.getElementById('inst-inner');
+instChk.addEventListener('change',()=>instInner.classList.toggle('off',!instChk.checked));
+
+const sameChk=document.getElementById('{{ form.installation_same_as_delivery.id_for_label }}');
+const sameDisplay=document.getElementById('same-display');
+const sameVal=document.getElementById('same-val');
+const instDateSec=document.getElementById('inst-date-section');
+
+function togSame(){
+  const on=sameChk.checked;
+  sameDisplay.classList.toggle('show',on);
+  instDateSec.style.display=on?'none':'block';
+  if(on){const dv=delDateInput?delDateInput.value:'';sameVal.textContent=dv?fmtDate(dv):'— set delivery date first';}
+  document.getElementById('date-err').classList.remove('show');
+}
+sameChk.addEventListener('change',togSame);
+
+function fmtDate(d){if(!d)return'—';const mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];const[y,m,day]=d.split('-');return`${parseInt(day)} ${mn[parseInt(m)-1]} ${y}`;}
+
+if(delDateInput){
+  delDateInput.addEventListener('change',function(){
+    if(sameChk.checked) sameVal.textContent=this.value?fmtDate(this.value):'—';
+    validateDates();
+  });
+}
+
+function setDateType(t){
+  document.getElementById('dt-exact').classList.toggle('on',t==='exact');
+  document.getElementById('dt-month').classList.toggle('on',t==='month');
+  document.getElementById('exact-wrap').classList.toggle('vis',t==='exact');
+  document.getElementById('month-wrap').classList.toggle('vis',t==='month');
+  document.getElementById('inst-date-type-val').value=t;
+}
+function setPart(btn,part){
+  document.querySelectorAll('.mp-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('inst-month-part-val').value=part;
+}
+
+const instDateInput=document.getElementById('{{ form.installation_date.id_for_label }}');
+function validateDates(){
+  const dv=delDateInput?delDateInput.value:'';
+  const iv=instDateInput?instDateInput.value:'';
+  const err=document.getElementById('date-err');
+  if(dv&&iv&&iv<dv){err.classList.add('show');instDateInput&&instDateInput.classList.add('err');return false;}
+  err.classList.remove('show');instDateInput&&instDateInput.classList.remove('err');return true;
+}
+if(instDateInput) instDateInput.addEventListener('change',validateDates);
+document.getElementById('project-form').addEventListener('submit',function(e){
+  if(!sameChk.checked&&document.getElementById('dt-exact').classList.contains('on'))
+    if(!validateDates()) e.preventDefault();
+});
+
+const custInput=document.getElementById('{{ form.customer.id_for_label }}');
+const acList=document.getElementById('ac-list');
+let acIdx=-1;
+custInput.addEventListener('input',async function(){
+  const q=this.value.trim();
+  if(q.length<1){acList.style.display='none';return;}
+  const res=await fetch(`/api/customers/?q=${encodeURIComponent(q)}`);
+  const names=await res.json();
+  if(!names.length){acList.style.display='none';return;}
+  acIdx=-1;
+  acList.innerHTML=names.map((n,i)=>{
+    const idx=n.toLowerCase().indexOf(q.toLowerCase());
+    const hi=n.slice(0,idx)+'<mark>'+n.slice(idx,idx+q.length)+'</mark>'+n.slice(idx+q.length);
+    return`<div class="ac-item" onmousedown="acSel('${n.replace(/'/g,"\\'")}')">${hi}</div>`;
+  }).join('');
+  acList.style.display='block';
+});
+custInput.addEventListener('keydown',function(e){
+  const items=acList.querySelectorAll('.ac-item');
+  if(e.key==='ArrowDown'){acIdx=Math.min(acIdx+1,items.length-1);}
+  else if(e.key==='ArrowUp'){acIdx=Math.max(acIdx-1,0);}
+  else if(e.key==='Enter'&&acIdx>=0){acSel(items[acIdx].textContent);e.preventDefault();return;}
+  else if(e.key==='Escape'){acList.style.display='none';return;}
+  items.forEach((item,i)=>item.classList.toggle('sel',i===acIdx));
+});
+custInput.addEventListener('blur',()=>setTimeout(()=>acList.style.display='none',150));
+function acSel(name){custInput.value=name;acList.style.display='none';}
+
+{% if project %}
+function openAddress(){
+  document.getElementById('addr-overlay').style.display='block';
+  document.getElementById('addr-modal').style.display='block';
+}
+function closeAddress(){
+  document.getElementById('addr-overlay').style.display='none';
+  document.getElementById('addr-modal').style.display='none';
+}
+async function saveAddress(){
+  const r=await fetch('/project/{{ project.pk }}/address/',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
+    body:JSON.stringify({
+      addr_line1:    document.getElementById('a-line1').value.trim(),
+      addr_line2:    document.getElementById('a-line2').value.trim(),
+      addr_city:     document.getElementById('a-city').value.trim(),
+      addr_postcode: document.getElementById('a-postcode').value.trim(),
+      addr_fao:      document.getElementById('a-fao').value.trim(),
+      addr_phone:    document.getElementById('a-phone').value.trim(),
+    })
+  });
+  const d=await r.json();
+  if(d.ok){
+    closeAddress();
+    const btn=document.getElementById('addr-btn');
+    if(d.has_address){
+      if(!btn.querySelector('span')){
+        const s=document.createElement('span');
+        s.style.cssText='display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:#16a34a;color:#fff;border-radius:50%;font-size:.6rem;margin-left:3px;vertical-align:middle;';
+        s.textContent='✓';btn.appendChild(s);
+      }
+    }
+  }
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAddress();});
+{% endif %}
+
+async function duplicateProject(){
+  if(!confirm('⚠ Duplicate this project?\n\nA copy will be created with status "Received" and SO prefixed COPY-.\n\nIMPORTANT: Review all details carefully — dates, SO number and address will need updating.')) return;
+  const r = await fetch('{% url "project_duplicate" project.pk %}', {
+    method:'POST', headers:{'X-CSRFToken':'{{ csrf_token }}'}
+  });
+  const d = await r.json();
+  if(d.ok){
+    if(confirm('✓ Project duplicated.\n\nOpen the new project now?'))
+      window.location.href = '/project/' + d.new_pk + '/edit/';
+  } else {
+    alert('Duplication failed.');
+  }
+}
+</script>
+
+{% if project %}
+<div id="addr-overlay" onclick="closeAddress()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;"></div>
+<div id="addr-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:460px;max-width:95vw;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);z-index:9001;box-shadow:0 8px 32px rgba(0,0,0,.3);">
+  <div style="padding:1rem 1.3rem;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;background:var(--surf2);border-radius:var(--rad-lg) var(--rad-lg) 0 0;">
+    <span style="font-weight:600;font-size:1rem;">📍 Delivery Address</span>
+    <button onclick="closeAddress()" style="background:none;border:1px solid var(--bdr);border-radius:var(--rad);color:var(--mut);cursor:pointer;padding:3px 10px;">✕</button>
+  </div>
+  <div style="padding:1.3rem;display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+    <div style="grid-column:1/-1;"><label class="form-label">Address Line 1</label><input class="form-input" id="a-line1" value="{{ project.addr_line1 }}" placeholder="Street address"></div>
+    <div style="grid-column:1/-1;"><label class="form-label">Address Line 2</label><input class="form-input" id="a-line2" value="{{ project.addr_line2 }}" placeholder="Unit, floor, etc."></div>
+    <div><label class="form-label">City / Town</label><input class="form-input" id="a-city" value="{{ project.addr_city }}" placeholder="City"></div>
+    <div><label class="form-label">Post Code</label><input class="form-input" id="a-postcode" value="{{ project.addr_postcode }}" placeholder="SW1A 1AA"></div>
+    <div><label class="form-label">FAO (For Attention Of)</label><input class="form-input" id="a-fao" value="{{ project.addr_fao }}" placeholder="Contact name"></div>
+    <div><label class="form-label">Phone</label><input class="form-input" id="a-phone" value="{{ project.addr_phone }}" placeholder="Phone number"></div>
+  </div>
+  <div style="padding:.85rem 1.3rem;border-top:1px solid var(--bdr);display:flex;gap:.5rem;justify-content:flex-end;">
+    <button onclick="closeAddress()" class="btn btn-ghost btn-sm">Cancel</button>
+    <button onclick="saveAddress()" class="btn btn-primary btn-sm">Save Address</button>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

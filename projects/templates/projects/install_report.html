@@ -1,0 +1,131 @@
+{% extends 'projects/base.html' %}
+{% block title %}Installation Report — {{ project.project_name }}{% endblock %}
+{% block extra_style %}
+.report-layout{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start;}
+.form-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.5rem;box-shadow:var(--shadow);margin-bottom:1.2rem;}
+.section-title{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:.85rem;padding-bottom:.4rem;border-bottom:1px solid var(--bdr);}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.75rem;margin-top:.75rem;}
+.photo-item{position:relative;border-radius:var(--rad);overflow:hidden;border:1px solid var(--bdr);aspect-ratio:1;background:var(--surf2);}
+.photo-item img{width:100%;height:100%;object-fit:cover;display:block;}
+.photo-del{position:absolute;top:4px;right:4px;background:rgba(220,38,38,.85);color:#fff;border:none;border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:.7rem;display:flex;align-items:center;justify-content:center;}
+.photo-del:hover{background:var(--red);}
+.sat-item{display:flex;align-items:center;gap:.75rem;padding:.65rem .9rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--rad);margin-bottom:.6rem;}
+.sat-item a{color:var(--acc);font-weight:500;font-size:.875rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.upload-zone{border:2px dashed var(--bdr);border-radius:var(--rad);padding:1.5rem;text-align:center;color:var(--mut);cursor:pointer;transition:all .15s;margin-top:.6rem;}
+.upload-zone:hover{border-color:var(--acc);color:var(--acc);background:var(--acc-bg);}
+.upload-zone input{display:none;}
+@media(max-width:768px){.report-layout{grid-template-columns:1fr;}}
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.4rem;flex-wrap:wrap;">
+  <a href="{% url 'project_edit' project.pk %}" class="btn btn-ghost btn-sm">← {{ project.project_name }}</a>
+  <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">Installation Report</h1>
+</div>
+
+<div style="font-size:.85rem;color:var(--mut);margin-bottom:1.2rem;">
+  {{ project.customer }}{% if project.location %} · {{ project.location }}{% endif %}
+  {% if project.installation_date %} · Installed {{ project.installation_date|date:"d M Y" }}{% endif %}
+</div>
+
+<form method="post" enctype="multipart/form-data" id="report-form">
+  {% csrf_token %}
+  <div class="report-layout">
+    <div>
+      <div class="form-card">
+        <div class="section-title">Notes & Issues</div>
+        <div class="form-group">
+          <label class="form-label">General Notes</label>
+          <textarea class="form-input" name="notes" rows="5" placeholder="Installation notes, observations…">{{ report.notes }}</textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Issues Found</label>
+          <textarea class="form-input" name="issues" rows="4" placeholder="Any issues, snags, or follow-up required…">{{ report.issues }}</textarea>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="section-title">Satisfaction Note</div>
+        <p style="font-size:.82rem;color:var(--mut);margin-bottom:.75rem;">Upload a signed satisfaction note, PDF or image</p>
+        {% if satisfaction_notes %}
+          {% for sat in satisfaction_notes %}
+          <div class="sat-item">
+            <span style="font-size:1.2rem;">📄</span>
+            <a href="{{ sat.file.url }}" target="_blank">{{ sat.file.name|slice:"21:" }}</a>
+            {% if sat.caption %}<span style="font-size:.75rem;color:var(--mut);">{{ sat.caption }}</span>{% endif %}
+            <button type="button" class="btn btn-danger btn-sm" onclick="deleteSat({{ sat.pk }})">✕</button>
+          </div>
+          {% endfor %}
+        {% endif %}
+        <label class="upload-zone" for="sat-input">
+          <input type="file" name="satisfaction_note" id="sat-input" accept=".pdf,.jpg,.jpeg,.png" onchange="showSatName(this)">
+          <div>📎 Click to upload</div>
+          <div id="sat-name" style="font-size:.78rem;margin-top:.3rem;"></div>
+        </label>
+        <div class="form-group" style="margin-top:.6rem;margin-bottom:0;">
+          <label class="form-label">Caption (optional)</label>
+          <input class="form-input" type="text" name="sat_caption" placeholder="e.g. Signed by John Smith">
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="form-card">
+        <div class="section-title">As-Built Photos</div>
+        {% if photos %}
+        <div class="photo-grid" id="photo-grid">
+          {% for photo in photos %}
+          <div class="photo-item" id="photo-{{ photo.pk }}">
+            <img src="{{ photo.image.url }}" alt="{{ photo.caption }}">
+            <button type="button" class="photo-del" onclick="deletePhoto({{ photo.pk }})" title="Delete">✕</button>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div id="photo-grid" class="photo-grid"></div>
+        {% endif %}
+        <label class="upload-zone" style="margin-top:.75rem;" for="photo-input">
+          <input type="file" name="photos" id="photo-input" accept="image/*" multiple onchange="showPhotoNames(this)">
+          <div>📷 Click to upload photos</div>
+          <div id="photo-names" style="font-size:.78rem;margin-top:.3rem;"></div>
+        </label>
+        <div class="form-group" style="margin-top:.6rem;margin-bottom:0;">
+          <label class="form-label">Photo caption (applies to all uploaded)</label>
+          <input class="form-input" type="text" name="photo_caption" placeholder="e.g. Completed installation">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:.5rem;">
+    <a href="{% url 'project_edit' project.pk %}" class="btn btn-ghost">Cancel</a>
+    <button type="submit" class="btn btn-primary">Save Report</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+
+function showSatName(inp){
+  document.getElementById('sat-name').textContent = inp.files[0]?.name || '';
+}
+function showPhotoNames(inp){
+  const names = Array.from(inp.files).map(f=>f.name).join(', ');
+  document.getElementById('photo-names').textContent = names;
+}
+
+async function deletePhoto(pk){
+  if(!confirm('Delete this photo?')) return;
+  const r = await fetch(`/report/photo/${pk}/delete/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+  if((await r.json()).ok) document.getElementById(`photo-${pk}`)?.remove();
+}
+
+async function deleteSat(pk){
+  if(!confirm('Delete this satisfaction note?')) return;
+  const r = await fetch(`/report/sat/${pk}/delete/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+  if((await r.json()).ok) location.reload();
+}
+</script>
+{% endblock %}

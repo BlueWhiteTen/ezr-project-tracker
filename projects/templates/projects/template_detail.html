@@ -1,0 +1,224 @@
+{% extends 'projects/base.html' %}
+{% block title %}{{ tmpl.name }} — Templates{% endblock %}
+{% block extra_style %}
+.tmpl-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow);overflow:visible;}
+.tmpl-body{padding:1.3rem;}
+.items-table{width:100%;border-collapse:collapse;margin-bottom:1.2rem;}
+.items-table th{text-align:left;padding:.5rem .75rem;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);border-bottom:2px solid var(--bdr);}
+.items-table td{padding:.65rem .75rem;font-size:.9rem;border-bottom:.5px solid var(--bdr);}
+.items-table tr:last-child td{border-bottom:none;}
+.code{font-family:var(--fm);font-weight:700;color:var(--acc);font-size:.85rem;}
+.add-area{background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1rem;}
+.product-search-wrap{position:relative;flex:1;}
+.product-dd{position:absolute;top:100%;left:0;right:0;background:var(--surf);border:1px solid var(--acc);border-top:none;border-radius:0 0 var(--rad) var(--rad);z-index:9999;max-height:220px;overflow-y:auto;display:none;box-shadow:0 8px 24px rgba(0,0,0,.15);}
+.pdd-item{padding:.6rem .9rem;cursor:pointer;border-bottom:.5px solid var(--bdr);}
+.pdd-item:hover,.pdd-item.selected{background:var(--acc-bg);}
+.pdd-code{font-family:var(--fm);font-weight:700;color:var(--acc);font-size:.8rem;}
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.3rem;flex-wrap:wrap;padding-top:.5rem;">
+  <a href="{% url 'template_list' %}" class="btn btn-ghost btn-sm">← Templates</a>
+  <h1 style="font-size:1.4rem;font-weight:600;letter-spacing:-.02em;">{{ tmpl.name }}</h1>
+  {% if tmpl.customer %}<span style="font-size:.85rem;color:var(--mut);">{{ tmpl.customer }}</span>{% endif %}
+  <div style="display:flex;gap:.5rem;margin-left:auto;">
+    <button class="btn btn-primary btn-sm" onclick="saveTemplateName()">Save Template</button>
+    <button class="btn btn-danger btn-sm" onclick="deleteTemplate()">Delete Template</button>
+  </div>
+</div>
+
+<div class="tmpl-card">
+  <div class="tmpl-body">
+    <table class="items-table">
+      <thead><tr><th>Type</th><th>Code</th><th>Description</th><th style="text-align:right;">Qty</th><th></th></tr></thead>
+      <tbody id="items-tbody">
+      {% for item in items %}
+      <tr id="trow-{{ item.pk }}">
+        {% if item.item_type == 'message' %}
+        <td><span style="font-size:.7rem;color:var(--mut);font-weight:600;">NOTE</span></td>
+        <td></td>
+        <td colspan="2" style="font-style:italic;color:var(--mut);">📝 {{ item.message }}</td>
+        {% elif item.item_type == 'ns' %}
+        <td><span style="background:var(--acc-bg);color:var(--acc);border:1px solid var(--acc-bdr);border-radius:4px;padding:1px 6px;font-size:.72rem;font-weight:700;">NS</span></td>
+        <td></td>
+        <td>{{ item.ns_description }}</td>
+        <td style="text-align:right;font-weight:600;">{{ item.quantity|floatformat:0 }}</td>
+        {% else %}
+        <td><span style="font-size:.7rem;color:var(--grn);font-weight:600;">STOCK</span></td>
+        <td><span class="code">{{ item.product.code }}</span></td>
+        <td>{{ item.product.description }}</td>
+        <td style="text-align:right;font-weight:600;">{{ item.quantity|floatformat:0 }}</td>
+        {% endif %}
+        <td style="text-align:right;"><button onclick="deleteItem({{ item.pk }})" style="background:none;border:none;color:var(--mut);cursor:pointer;padding:2px 6px;border-radius:4px;font-size:.9rem;">✕</button></td>
+      </tr>
+      {% empty %}
+      <tr id="empty-row"><td colspan="5" style="text-align:center;color:var(--mut);padding:1.5rem;">No items yet</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="add-area">
+      <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-bottom:.75rem;">Add Items</div>
+      <!-- Stock -->
+      <div style="display:flex;gap:.6rem;align-items:center;margin-bottom:.6rem;">
+        <div class="product-search-wrap">
+          <input class="form-input" type="text" id="prod-search" placeholder="Product code or description…" autocomplete="off" oninput="searchProds(this.value)">
+          <div class="product-dd" id="prod-dd"></div>
+        </div>
+        <input class="form-input" type="number" id="prod-qty" value="1" min="1" step="1" style="width:80px;flex-shrink:0;">
+        <button class="btn btn-primary" onclick="addStock()" style="flex-shrink:0;">Add</button>
+      </div>
+      <div id="sel-info" style="font-size:.78rem;color:var(--mut);margin-bottom:.5rem;min-height:16px;"></div>
+      <!-- NS -->
+      <div style="display:flex;gap:.6rem;align-items:center;margin-bottom:.6rem;">
+        <span style="background:var(--acc-bg);color:var(--acc);border:1px solid var(--acc-bdr);border-radius:var(--rad);padding:0 10px;font-family:var(--fm);font-size:.78rem;font-weight:700;height:38px;display:flex;align-items:center;flex-shrink:0;">NS</span>
+        <input class="form-input" type="text" id="ns-desc" placeholder="Non-stock description…" style="flex:1;">
+        <input class="form-input" type="number" id="ns-qty" value="1" min="1" step="1" style="width:80px;flex-shrink:0;">
+        <button class="btn btn-primary" onclick="addNS()" style="flex-shrink:0;background:var(--acc-dark);">Add NS</button>
+      </div>
+      <!-- Note -->
+      <div style="display:flex;gap:.6rem;align-items:center;">
+        <span style="background:var(--surf3);color:var(--mut);border:1px solid var(--bdr);border-radius:var(--rad);padding:0 10px;font-size:.72rem;font-weight:700;height:38px;display:flex;align-items:center;flex-shrink:0;">NOTE</span>
+        <input class="form-input" type="text" id="msg-text" placeholder="Note or instruction…" style="flex:1;">
+        <button class="btn btn-ghost" onclick="addMsg()" style="flex-shrink:0;">Add Note</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+const TMPL_PK = {{ tmpl.pk }};
+let selProduct = null;
+let prodResults = [];
+let ddIdx = -1;
+
+// Product search
+async function searchProds(q){
+  const dd = document.getElementById('prod-dd');
+  ddIdx = -1;
+  if(q.length < 1){ dd.style.display='none'; selProduct=null; return; }
+  const r = await fetch(`/api/products/?q=${encodeURIComponent(q)}`);
+  prodResults = await r.json();
+  if(!prodResults.length){ dd.style.display='none'; return; }
+  renderDD();
+  dd.style.display = 'block';
+}
+
+function renderDD(){
+  const dd = document.getElementById('prod-dd');
+  dd.innerHTML = prodResults.map((p,i)=>`
+    <div class="pdd-item ${i===ddIdx?'selected':''}" data-idx="${i}">
+      <div class="pdd-code">${p.code}</div>
+      <div style="font-size:.85rem;color:var(--txt2);">${p.description}</div>
+    </div>`).join('');
+  dd.querySelectorAll('.pdd-item').forEach(el=>{
+    el.addEventListener('mousedown', function(e){
+      e.preventDefault();
+      const p = prodResults[parseInt(this.dataset.idx)];
+      selectProd(p.id, p.code, p.description, p.quantity);
+    });
+  });
+}
+
+function selectProd(id, code, desc, qty){
+  selProduct = {id, code, desc, qty};
+  document.getElementById('prod-search').value = code;
+  document.getElementById('prod-dd').style.display = 'none';
+  document.getElementById('sel-info').textContent = desc;
+  ddIdx = -1;
+  document.getElementById('prod-qty').focus();
+  document.getElementById('prod-qty').select();
+}
+
+document.getElementById('prod-search').addEventListener('keydown', function(e){
+  const dd = document.getElementById('prod-dd');
+  if(dd.style.display === 'block' && prodResults.length){
+    if(e.key === 'ArrowDown'){ e.preventDefault(); ddIdx=Math.min(ddIdx+1,prodResults.length-1); renderDD(); dd.querySelectorAll('.pdd-item')[ddIdx]?.scrollIntoView({block:'nearest'}); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); ddIdx=Math.max(ddIdx-1,0); renderDD(); dd.querySelectorAll('.pdd-item')[ddIdx]?.scrollIntoView({block:'nearest'}); }
+    else if(e.key === 'Enter'){ e.preventDefault(); const p=prodResults[ddIdx>=0?ddIdx:0]; if(p) selectProd(p.id,p.code,p.description,p.quantity); }
+    else if(e.key === 'Escape'){ dd.style.display='none'; }
+  } else if(e.key === 'Enter'){ e.preventDefault(); addStock(); }
+});
+document.getElementById('prod-qty').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addStock(); }});
+document.getElementById('ns-desc').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addNS(); }});
+document.getElementById('msg-text').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addMsg(); }});
+document.addEventListener('mousedown', e=>{ if(!e.target.closest('.product-search-wrap')) document.getElementById('prod-dd').style.display='none'; });
+
+async function addStock(){
+  if(!selProduct){ document.getElementById('prod-search').focus(); return; }
+  const qty = parseFloat(document.getElementById('prod-qty').value)||1;
+  const r = await fetch(`/templates/${TMPL_PK}/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({action:'add_stock',product_id:selProduct.id,quantity:qty})});
+  const d = await r.json();
+  if(!d.ok) return;
+  addRow('stock', d.item_pk, selProduct.code, selProduct.desc, qty);
+  selProduct=null;
+  document.getElementById('prod-search').value='';
+  document.getElementById('prod-qty').value='1';
+  document.getElementById('sel-info').textContent='';
+  document.getElementById('prod-search').focus();
+}
+
+async function addNS(){
+  const desc = document.getElementById('ns-desc').value.trim();
+  if(!desc) return;
+  const qty = parseFloat(document.getElementById('ns-qty').value)||1;
+  const r = await fetch(`/templates/${TMPL_PK}/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({action:'add_ns',description:desc,quantity:qty})});
+  const d = await r.json();
+  if(!d.ok) return;
+  addRow('ns', d.item_pk, '', desc, qty);
+  document.getElementById('ns-desc').value='';
+  document.getElementById('ns-qty').value='1';
+  document.getElementById('ns-desc').focus();
+}
+
+async function addMsg(){
+  const msg = document.getElementById('msg-text').value.trim();
+  if(!msg) return;
+  const r = await fetch(`/templates/${TMPL_PK}/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({action:'add_msg',message:msg})});
+  const d = await r.json();
+  if(!d.ok) return;
+  addRow('message', d.item_pk, '', msg, 0);
+  document.getElementById('msg-text').value='';
+  document.getElementById('msg-text').focus();
+}
+
+function addRow(type, pk, code, desc, qty){
+  document.getElementById('empty-row')?.remove();
+  const tbody = document.getElementById('items-tbody');
+  const tr = document.createElement('tr');
+  tr.id = `trow-${pk}`;
+  if(type==='message'){
+    tr.innerHTML=`<td><span style="font-size:.7rem;color:var(--mut);font-weight:600;">NOTE</span></td><td></td><td colspan="2" style="font-style:italic;color:var(--mut);">📝 ${desc}</td><td><button onclick="deleteItem(${pk})" style="background:none;border:none;color:var(--mut);cursor:pointer;padding:2px 6px;font-size:.9rem;">✕</button></td>`;
+  } else if(type==='ns'){
+    tr.innerHTML=`<td><span style="background:var(--acc-bg);color:var(--acc);border:1px solid var(--acc-bdr);border-radius:4px;padding:1px 6px;font-size:.72rem;font-weight:700;">NS</span></td><td></td><td>${desc}</td><td style="text-align:right;font-weight:600;">${qty}</td><td><button onclick="deleteItem(${pk})" style="background:none;border:none;color:var(--mut);cursor:pointer;padding:2px 6px;font-size:.9rem;">✕</button></td>`;
+  } else {
+    tr.innerHTML=`<td><span style="font-size:.7rem;color:var(--grn);font-weight:600;">STOCK</span></td><td><span class="code">${code}</span></td><td>${desc}</td><td style="text-align:right;font-weight:600;">${qty}</td><td><button onclick="deleteItem(${pk})" style="background:none;border:none;color:var(--mut);cursor:pointer;padding:2px 6px;font-size:.9rem;">✕</button></td>`;
+  }
+  tbody.appendChild(tr);
+}
+
+async function deleteItem(pk){
+  await fetch(`/templates/${TMPL_PK}/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({action:'delete_item',item_pk:pk})});
+  document.getElementById(`trow-${pk}`)?.remove();
+}
+
+async function saveTemplateName(){
+  const name = document.querySelector('h1').textContent.trim();
+  await fetch(`/templates/${TMPL_PK}/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({action:'update_name',name})});
+  // Show brief confirmation
+  const btn = document.querySelector('.btn-primary');
+  const orig = btn.textContent;
+  btn.textContent = '✓ Saved';
+  setTimeout(()=>btn.textContent=orig, 1500);
+}
+
+async function deleteTemplate(){
+  if(!confirm('Delete this template permanently?')) return;
+  await fetch(`/templates/${TMPL_PK}/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({action:'delete'})});
+  window.location='/templates/';
+}
+</script>
+{% endblock %}

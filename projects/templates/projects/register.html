@@ -1,0 +1,48 @@
+{% extends 'projects/base.html' %}
+{% block title %}Register — Project Tracker{% endblock %}
+{% block extra_style %}
+.auth-page{min-height:calc(100vh - 56px);display:flex;align-items:center;justify-content:center;margin-top:-1.8rem;}
+.auth-card{width:100%;max-width:420px;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:2.5rem 2rem;box-shadow:var(--shadow-md);}
+.auth-logo{font-family:var(--fm);font-size:1rem;color:var(--acc);margin-bottom:1.8rem;display:block;}
+.auth-title{font-size:1.4rem;font-weight:600;color:var(--txt);margin-bottom:.3rem;letter-spacing:-.02em;}
+.auth-sub{font-size:.875rem;color:var(--mut);margin-bottom:1.8rem;}
+.auth-switch{text-align:center;font-size:.85rem;color:var(--mut);margin-top:1.3rem;}
+.auth-switch a{color:var(--acc);font-weight:500;}
+.field-err{font-size:.78rem;color:var(--red);margin-top:.3rem;}
+.auth-hint{font-size:.78rem;color:var(--mut2);margin-top:.3rem;}
+{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    {% load static %}
+    <img src="{% static 'logo.png' %}" alt="EZR Shelving" style="height:48px;margin-bottom:1.5rem;display:block;">
+    <h1 class="auth-title">Create account</h1>
+    <p class="auth-sub">Only <strong>@ezrshelving.com</strong> emails can register. New accounts require manager approval.</p>
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label">Full name</label>
+        {{ form.full_name }}
+        <div class="auth-hint">This name will appear on all projects and logs</div>
+        {% for e in form.full_name.errors %}<div class="field-err">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        {{ form.email }}
+        {% for e in form.email.errors %}<div class="field-err">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        {{ form.password1 }}
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm password</label>
+        {{ form.password2 }}
+        {% for e in form.non_field_errors %}<div class="field-err">{{ e }}</div>{% endfor %}
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:.65rem;">Create Account</button>
+    </form>
+    <div class="auth-switch">Already have an account? <a href="{% url 'login' %}">Sign in</a></div>
+  </div>
+</div>
+{% endblock %}

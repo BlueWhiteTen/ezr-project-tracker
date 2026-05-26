@@ -1,0 +1,62 @@
+{% extends 'projects/base.html' %}
+{% block title %}This Week — Project Tracker{% endblock %}
+{% block extra_style %}
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.6rem;}
+.page-title{font-size:1.5rem;font-weight:600;letter-spacing:-.02em;}
+.day-block{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.1rem 1.3rem;margin-bottom:1rem;box-shadow:var(--shadow);}
+.day-title{font-size:.95rem;font-weight:600;margin-bottom:.75rem;color:var(--txt);display:flex;align-items:center;gap:.6rem;}
+.day-today{background:var(--acc);color:#fff;font-size:.72rem;padding:2px 8px;border-radius:99px;}
+.day-entries{display:flex;flex-direction:column;gap:.5rem;}
+.day-entry{display:flex;align-items:center;gap:.75rem;padding:.55rem .8rem;border-radius:var(--rad);border:1px solid var(--bdr);}
+.day-entry-del{background:var(--acc-bg);border-color:var(--acc-bdr);}
+.day-entry-inst{background:var(--grn-bg);border-color:rgba(22,163,74,.2);}
+.day-type{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;width:60px;flex-shrink:0;}
+.day-type-del{color:var(--acc);}
+.day-type-inst{color:var(--grn);}
+.day-name{font-weight:500;font-size:.875rem;flex:1;}
+.day-customer{color:var(--mut);font-size:.78rem;}
+.empty-week{text-align:center;padding:4rem;color:var(--mut);}
+{% endblock %}
+{% block content %}
+<div class="page-hdr">
+  <h1 class="page-title">Next Two Weeks</h1>
+  <span style="font-size:.875rem;color:var(--mut)">Deliveries & installations coming up</span>
+</div>
+{% if days_data %}
+  {% for day in days_data %}
+  <div class="day-block">
+    <div class="day-title">
+      {{ day.date|date:"l, d F Y" }}
+      {% if day.date == today %}<span class="day-today">Today</span>{% endif %}
+    </div>
+    <div class="day-entries">
+      {% for p in day.deliveries %}
+      <div class="day-entry day-entry-del">
+        <span class="day-type day-type-del">Delivery</span>
+        <div>
+          <div class="day-name"><a href="{% url 'project_edit' p.pk %}">{{ p.project_name }}</a></div>
+          <div class="day-customer">{{ p.customer }}{% if p.location %} · {{ p.location }}{% endif %}</div>
+        </div>
+        <span class="badge badge-{{ p.status }}">{{ p.get_status_display }}</span>
+      </div>
+      {% endfor %}
+      {% for p in day.installs %}
+      <div class="day-entry day-entry-inst">
+        <span class="day-type day-type-inst">Install</span>
+        <div>
+          <div class="day-name"><a href="{% url 'project_edit' p.pk %}">{{ p.project_name }}</a></div>
+          <div class="day-customer">{{ p.customer }}{% if p.location %} · {{ p.location }}{% endif %}</div>
+        </div>
+        <span class="badge badge-{{ p.status }}">{{ p.get_status_display }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+<div class="empty-week">
+  <p style="font-size:1.1rem;font-weight:600;color:var(--txt2);margin-bottom:.4rem;">Nothing due in the next 14 days</p>
+  <p>No deliveries or installations scheduled</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Costing — {{ project.project_name }}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#000; background:#fff; padding:1.5cm; }
+  .header { border-bottom:2.5pt solid #000; padding-bottom:10pt; margin-bottom:12pt; }
+  .customer-name { font-size:18pt; font-weight:700; }
+  .location { font-size:11pt; color:#444; margin-top:2pt; }
+  .branding { float:right; text-align:right; }
+  .branding .co { font-size:9pt; font-weight:700; }
+  .branding .dt { font-size:8pt; color:#666; margin-top:2pt; }
+  h2 { font-size:9pt; text-transform:uppercase; letter-spacing:.07em; color:#555; margin:14pt 0 5pt; border-bottom:1pt solid #ccc; padding-bottom:3pt; }
+  table { width:100%; border-collapse:collapse; }
+  thead tr { border-bottom:1.5pt solid #000; }
+  th { text-align:left; padding:3pt 5pt 3pt 0; font-size:7.5pt; text-transform:uppercase; letter-spacing:.06em; color:#000; font-weight:700; }
+  th.r { text-align:right; }
+  td { padding:2pt 5pt 2pt 0; font-size:9pt; color:#000; border-bottom:.3pt solid #ddd; vertical-align:middle; }
+  td.r { text-align:right; font-family:monospace; }
+  .badge { font-size:7pt; font-weight:700; padding:1pt 5pt; border-radius:3pt; text-transform:uppercase; }
+  .lt-frame    { background:#ede9fe; color:#4c1d95; }
+  .lt-shelf    { background:#d1fae5; color:#064e3b; }
+  .lt-stock    { background:#fff7ed; color:#9a3412; }
+  .lt-ns       { background:#f3f4f6; color:#374151; }
+  .lt-inhang   { background:#fef3c7; color:#92400e; }
+  .lt-outhang  { background:#fde8c8; color:#9a3412; }
+  .lt-wipe     { background:#e0f2fe; color:#0369a1; }
+  .lt-mesh     { background:#f0fdf4; color:#166534; }
+  .lt-loadsign { background:#fdf4ff; color:#7e22ce; }
+  .lt-toptie   { background:#f1f5f9; color:#475569; }
+  .summary-table { width:300pt; margin-left:auto; margin-top:4pt; }
+  .summary-table td { border:none; padding:3pt 0; font-size:9.5pt; }
+  .summary-table .lbl { color:#555; }
+  .summary-table .val { text-align:right; font-weight:700; font-family:monospace; }
+  .summary-table .total td { border-top:2pt solid #000; padding-top:5pt; font-size:11pt; }
+  @media print {
+    body { padding:0; }
+    @page { margin:1.2cm; size:A4 portrait; }
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="branding">
+    <div class="co">EZR SHELVING</div>
+    <div class="dt">Printed: {% now "d M Y" %}</div>
+  </div>
+  <div class="customer-name">{{ project.customer }}</div>
+  <div class="location">{{ project.location }}</div>
+</div>
+
+<h2>Cost Lines</h2>
+<table>
+  <thead><tr>
+    <th style="width:12%;">Type</th>
+    <th>Description</th>
+    <th class="r" style="width:8%;">Qty</th>
+    <th class="r" style="width:11%;">Unit</th>
+    <th class="r" style="width:11%;">Total</th>
+  </tr></thead>
+  <tbody>
+  {% for line in lines %}
+  <tr>
+    <td><span class="badge lt-{{ line.line_type }}">{{ line.get_line_type_display }}</span></td>
+    <td>{{ line.description }}</td>
+    <td class="r">{{ line.quantity|floatformat:0 }}</td>
+    <td class="r">£{{ line.unit_cost|floatformat:2 }}</td>
+    <td class="r">£{{ line.line_total|floatformat:2 }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Summary</h2>
+<table class="summary-table">
+  <tr><td class="lbl">Buying Price</td><td class="val">£{{ buying_total }}</td></tr>
+  <tr><td class="lbl">Markup ({{ cost.markup|floatformat:0 }}%)</td><td class="val">£{{ markup_amount }}</td></tr>
+  <tr><td class="lbl">Labour</td><td class="val">£{{ cost.labour|floatformat:2 }}</td></tr>
+  <tr><td class="lbl">Delivery</td><td class="val">£{{ cost.delivery|floatformat:2 }}</td></tr>
+  <tr class="total"><td class="lbl"><strong>Sell Price</strong></td><td class="val"><strong>£{{ sell_price }}</strong></td></tr>
+  <tr><td class="lbl" style="color:#666;font-size:8.5pt;">Margin</td><td class="val" style="color:#666;font-size:8.5pt;">{{ margin }}%</td></tr>
+</table>
+
+<h2>Notes</h2>
+<div style="font-size:9pt;white-space:pre-wrap;color:#333;min-height:40pt;border-bottom:1pt solid #ccc;">{{ cost.notes }}</div>
+
+<script>window.onload=function(){window.print();}</script>
+</body>
+</html>

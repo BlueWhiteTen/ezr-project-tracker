@@ -1,0 +1,215 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}EZR Project Tracker{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f5f5f3;--surf:#fff;--surf2:#f9f8f6;--surf3:#f0ede8;--bdr:#e8e4de;--bdr2:#d4cfc7;--acc:#d4700a;--acc-dark:#b35c00;--acc-light:#f08030;--acc-bg:#fff4eb;--acc-bdr:#f5c89a;--grn:#16a34a;--grn-bg:#f0fdf4;--amb:#d97706;--amb-bg:#fffbeb;--red:#dc2626;--red-bg:#fef2f2;--txt:#1a1a1a;--txt2:#3d3d3d;--mut:#7a7570;--mut2:#a8a29e;--f:'Outfit',system-ui,sans-serif;--fm:'DM Mono',monospace;--rad:8px;--rad-lg:12px;--shadow:0 1px 3px rgba(0,0,0,.08);--shadow-md:0 4px 6px rgba(0,0,0,.07);}
+[data-theme="dark"]{--bg:#141210;--surf:#1e1b18;--surf2:#272320;--surf3:#312d29;--bdr:#3a3530;--bdr2:#4a4540;--acc:#f08030;--acc-dark:#d4700a;--acc-light:#ffaa60;--acc-bg:rgba(240,128,48,.12);--acc-bdr:rgba(240,128,48,.3);--grn:#22c55e;--grn-bg:rgba(34,197,94,.1);--amb:#f59e0b;--amb-bg:rgba(245,158,11,.1);--red:#ef4444;--red-bg:rgba(239,68,68,.1);--txt:#f0ede8;--txt2:#d4cfc7;--mut:#857e78;--mut2:#605a54;--shadow:0 1px 3px rgba(0,0,0,.4);--shadow-md:0 4px 6px rgba(0,0,0,.5);}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--f);background:var(--bg);color:var(--txt);min-height:100vh;font-size:14px;line-height:1.5;}
+a{color:inherit;text-decoration:none;}
+
+/* TOP NAV - fixed 56px tall */
+.top-nav{position:fixed;top:0;left:0;right:0;height:78px;background:#1a1a1a;border-bottom:3px solid #d4700a;display:flex;align-items:center;justify-content:space-between;padding:0 1.2rem;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,.3);}
+.nav-logo a{display:inline-block;background:#fff;border-radius:7px;padding:5px 10px;line-height:0;}
+.nav-logo img{height:44px;display:block;}
+.nav-links{display:flex;align-items:center;gap:.6rem;}
+.nav-btn{font-family:var(--f);font-size:.9rem;font-weight:600;color:rgba(255,255,255,.8);background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.2);border-radius:var(--rad);padding:.55rem 1.2rem;transition:all .15s;display:inline-block;}
+.nav-btn:hover{background:rgba(255,255,255,.22);color:#fff;}
+.nav-btn.active-nav{background:#d4700a;color:#fff;border-color:#f08030;}
+.nav-right{display:flex;align-items:center;gap:.75rem;}
+.nav-user{font-size:.9rem;color:rgba(255,255,255,.7);}
+.nav-user strong{color:#fff;}
+.nav-icon{position:relative;display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:var(--rad);background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:1rem;font-weight:600;}
+.nav-icon:hover{background:rgba(255,255,255,.22);}
+.nav-badge{position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:.55rem;font-weight:700;min-width:16px;height:16px;border-radius:99px;display:flex;align-items:center;justify-content:center;padding:0 3px;}
+.nav-logout{font-size:.88rem;color:rgba(255,255,255,.7);padding:8px 14px;border-radius:var(--rad);border:1px solid rgba(255,255,255,.2);transition:all .15s;}
+.nav-logout:hover{color:#fff;background:rgba(255,255,255,.12);}
+.nav-so-wrap{position:relative;flex:0 0 190px;}
+.nav-so-input{width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:var(--rad);color:#fff;padding:8px 12px;font-family:var(--f);font-size:.88rem;outline:none;}
+.nav-so-input::placeholder{color:rgba(255,255,255,.45);}
+.nav-so-results{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);box-shadow:var(--shadow-md);z-index:300;display:none;}
+.nav-so-item{padding:8px 10px;font-size:.82rem;cursor:pointer;border-bottom:.5px solid var(--bdr);color:var(--txt2);}
+.nav-so-item:hover{background:var(--acc-bg);}
+
+/* LEFT SIDEBAR - fixed, starts below nav */
+.left-sidebar{position:fixed;top:78px;left:0;width:180px;height:calc(100vh - 78px);background:#1a1a1a;border-right:1px solid #333;z-index:999;display:flex;flex-direction:column;}
+.left-sidebar a{display:block;padding:.75rem 1.2rem;color:#ccc;font-size:.875rem;font-weight:500;text-decoration:none;border-left:3px solid transparent;}
+.left-sidebar a:hover{background:rgba(255,255,255,.08);color:#fff;}
+.left-sidebar a.sb-active{background:rgba(212,112,10,.25);color:#f08030;border-left-color:#f08030;}
+.left-sidebar .sb-section{flex:1;overflow-y:auto;padding:.5rem 0;}
+.left-sidebar .sb-bottom{padding:.75rem;border-top:1px solid #333;}
+.left-sidebar .sb-bottom button{width:100%;background:#d4700a;color:#fff;border:none;border-radius:var(--rad);padding:8px;font-family:var(--f);font-size:.82rem;font-weight:600;cursor:pointer;}
+
+/* MAIN CONTENT - offset by nav + sidebar */
+.main-content{margin-top:78px;margin-left:180px;min-height:calc(100vh - 78px);}
+.main-content-no-sidebar{margin-top:78px;min-height:calc(100vh - 78px);}
+.container{max-width:1440px;margin:0 auto;padding:1.8rem 1.5rem;}
+
+/* REST OF STYLES */
+.msg{padding:.65rem 1rem;border-radius:var(--rad);font-size:.85rem;margin-bottom:1rem;background:var(--grn-bg);color:var(--grn);border:1px solid rgba(22,163,74,.2);}
+.msg.error{background:var(--red-bg);color:var(--red);border-color:rgba(220,38,38,.2);}
+.btn{display:inline-flex;align-items:center;gap:.35rem;padding:.5rem 1.1rem;border-radius:var(--rad);font-family:var(--f);font-size:.875rem;font-weight:500;cursor:pointer;border:none;transition:all .15s;}
+.btn-primary{background:var(--acc);color:#fff;}.btn-primary:hover{background:var(--acc-dark);}
+.btn-ghost{background:var(--surf);color:var(--txt2);border:1px solid var(--bdr);}.btn-ghost:hover{border-color:var(--bdr2);background:var(--surf2);}
+.btn-danger{background:var(--red-bg);color:var(--red);border:1px solid rgba(220,38,38,.2);}.btn-danger:hover{background:var(--red);color:#fff;}
+.btn-sm{padding:.35rem .85rem;font-size:.8rem;}
+.form-input{width:100%;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);color:var(--txt);padding:.55rem .85rem;font-family:var(--f);font-size:.875rem;outline:none;transition:border-color .15s;}
+.form-input:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-bg);}
+.form-input::placeholder{color:var(--mut2);}
+.form-input.err{border-color:var(--red);}
+select.form-input{cursor:pointer;}
+.form-group{margin-bottom:1.1rem;}
+.form-label{display:block;font-size:.78rem;font-weight:500;color:var(--txt2);margin-bottom:.35rem;}
+.form-checkbox{width:15px;height:15px;accent-color:var(--acc);cursor:pointer;}
+.chk-row{display:flex;align-items:center;gap:.6rem;}
+.chk-row label{font-size:.875rem;cursor:pointer;color:var(--txt2);}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:.75rem;font-weight:500;border:1px solid transparent;}
+.badge-enquiry{background:#f5f5f5;color:#555;border-color:#e0e0e0;}
+.badge-quoted{background:#fff4eb;color:#b35c00;border-color:#f5c89a;}
+.badge-order_received{background:#fff8f0;color:#d4700a;border-color:#f5c89a;}
+.badge-processed{background:#fef9e7;color:#b7860b;border-color:#f7e18a;}
+.badge-completed{background:#c8ecd8;color:#065f46;border-color:#50a870;}
+.badge-on_hold{background:#fef2f2;color:#c62828;border-color:#ef9a9a;}
+.badge-cancelled{background:#f5f5f5;color:#616161;border-color:#bdbdbd;}
+[data-theme="dark"] .badge-enquiry{background:rgba(255,255,255,.06);color:#9ca3af;border-color:#374151;}
+[data-theme="dark"] .badge-quoted{background:rgba(240,128,48,.12);color:#ffaa60;border-color:rgba(240,128,48,.3);}
+[data-theme="dark"] .badge-order_received{background:rgba(212,112,10,.15);color:#f08030;border-color:rgba(212,112,10,.35);}
+[data-theme="dark"] .badge-processed{background:rgba(183,134,11,.15);color:#fbbf24;border-color:rgba(251,191,36,.3);}
+[data-theme="dark"] .badge-completed{background:rgba(8,80,48,.25);color:#6ee7b7;border-color:rgba(110,231,183,.3);}
+[data-theme="dark"] .badge-on_hold{background:rgba(198,40,40,.15);color:#fca5a5;border-color:rgba(252,165,165,.3);}
+[data-theme="dark"] .badge-cancelled{background:rgba(97,97,97,.15);color:#9e9e9e;border-color:rgba(158,158,158,.25);}
+.tl{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;border:2px solid transparent;}
+.tl-green{background:#dcfce7;color:#15803d;border-color:#86efac;}
+.tl-yellow{background:#fef9c3;color:#a16207;border-color:#fde047;}
+.tl-red{background:#fee2e2;color:#b91c1c;border-color:#fca5a5;}
+.tl-tbc{background:#f3f4f6;color:#9ca3af;border-color:#e5e7eb;font-size:.6rem;}
+[data-theme="dark"] .tl-green{background:rgba(22,163,74,.2);color:#4ade80;border-color:rgba(74,222,128,.4);}
+[data-theme="dark"] .tl-yellow{background:rgba(234,179,8,.15);color:#fde047;border-color:rgba(253,224,71,.4);}
+[data-theme="dark"] .tl-red{background:rgba(220,38,38,.2);color:#fca5a5;border-color:rgba(252,165,165,.4);}
+[data-theme="dark"] .tl-tbc{background:rgba(55,65,81,.3);color:#6b7280;border-color:#374151;}
+.card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.5rem;box-shadow:var(--shadow);}
+
+{% block extra_style %}{% endblock %}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <div class="nav-logo">
+    <a href="{% url 'dashboard' %}"><img src="{% static 'logo.png' %}" alt="EZR Shelving"></a>
+  </div>
+  {% if user.is_authenticated %}
+  <div class="nav-links">
+    <a href="{% url 'dashboard' %}" class="nav-btn {% if request.resolver_match.url_name == 'dashboard' %}active-nav{% endif %}">Dashboard</a>
+    <a href="{% url 'calendar_view' %}" class="nav-btn {% if request.resolver_match.url_name == 'calendar_view' %}active-nav{% endif %}">Calendar</a>
+    <a href="{% url 'week_view' %}" class="nav-btn {% if request.resolver_match.url_name == 'week_view' %}active-nav{% endif %}">Next 2 Weeks</a>
+    <a href="{% url 'board_view' %}" class="nav-btn {% if request.resolver_match.url_name == 'board_view' %}active-nav{% endif %}">Board</a>
+  </div>
+  <div class="nav-so-wrap">
+    <input type="text" id="nav-so-input" class="nav-so-input" placeholder="Search SO#..." autocomplete="off">
+    <div class="nav-so-results" id="nav-so-results"></div>
+  </div>
+  <div class="nav-right">
+    <a href="{% url 'team_chat' %}" class="nav-icon {% if request.resolver_match.url_name == 'team_chat' %}active-nav{% endif %}" style="width:auto;padding:0 14px;font-size:.88rem;">Chat</a>
+    <a href="{% url 'inbox' %}" class="nav-icon" title="Messages">&#9993;<span class="nav-badge" id="msg-badge" style="display:none"></span></a>
+    <a href="{% url 'notifications' %}" class="nav-icon" title="Notifications">&#128276;<span class="nav-badge" id="notif-badge" style="display:none"></span></a>
+    <a href="{% url 'staff_profile' user.pk %}" class="nav-user" style="text-decoration:none;"><strong>{{ user.get_full_name|default:user.username }}</strong></a>
+    <a href="{% url 'logout' %}" class="nav-logout">Log out</a>
+  </div>
+  {% endif %}
+</nav>
+
+{% if user.is_authenticated %}
+<div class="left-sidebar">
+  <div class="sb-section">
+    <a href="{% url 'customer_list' %}" class="{% if request.resolver_match.url_name == 'customer_list' or request.resolver_match.url_name == 'customer_detail' %}sb-active{% endif %}">Customers</a>
+    <a href="{% url 'stock_list' %}" class="{% if request.resolver_match.url_name == 'stock_list' %}sb-active{% endif %}">Stock</a>
+    <a href="{% url 'template_list' %}" class="{% if 'template' in request.resolver_match.url_name %}sb-active{% endif %}" style="padding-left:1.8rem;font-size:.82rem;border-left:3px solid transparent;{% if 'template' in request.resolver_match.url_name %}border-left-color:var(--acc);background:var(--acc-bg);color:var(--acc);{% endif %}">└ Templates</a>
+    <a href="{% url 'leave_overview' %}" class="{% if request.resolver_match.url_name == 'leave_overview' %}sb-active{% endif %}">Leave</a>
+    <a href="{% url 'staff_directory' %}" class="{% if request.resolver_match.url_name == 'staff_directory' or request.resolver_match.url_name == 'staff_profile' %}sb-active{% endif %}">Staff</a>
+  </div>
+  <div class="sb-bottom">
+    <a href="{% url 'monthly_summary' %}" class="{% if request.resolver_match.url_name == 'monthly_summary' %}sb-active{% endif %}" style="display:block;padding:.6rem .85rem;margin-bottom:.4rem;border-radius:var(--rad);font-size:.875rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">📊 Summary</a>
+    <a href="{% url 'activity_log' %}" class="{% if request.resolver_match.url_name == 'activity_log' %}sb-active{% endif %}" style="display:block;padding:.6rem .85rem;margin-bottom:.4rem;border-radius:var(--rad);font-size:.875rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">Activity Log</a>
+    <button id="theme-btn" onclick="toggleTheme()">Dark mode</button>
+  </div>
+</div>
+<div class="main-content">
+{% else %}
+<div class="main-content-no-sidebar">
+{% endif %}
+  <div class="container">
+    {% if messages %}{% for msg in messages %}
+    <div class="msg {% if msg.tags == 'error' %}error{% endif %}">{{ msg }}</div>
+    {% endfor %}{% endif %}
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<script>
+(function(){
+  var t = localStorage.getItem('pt-theme') || 'light';
+  document.documentElement.dataset.theme = t;
+  document.addEventListener('DOMContentLoaded', function(){
+    var b = document.getElementById('theme-btn');
+    if(b) b.textContent = t === 'dark' ? 'Light mode' : 'Dark mode';
+  });
+})();
+
+function toggleTheme(){
+  var h = document.documentElement;
+  var b = document.getElementById('theme-btn');
+  if(h.dataset.theme === 'light'){
+    h.dataset.theme = 'dark';
+    if(b) b.textContent = 'Light mode';
+    localStorage.setItem('pt-theme','dark');
+  } else {
+    h.dataset.theme = 'light';
+    if(b) b.textContent = 'Dark mode';
+    localStorage.setItem('pt-theme','light');
+  }
+}
+
+var soInput = document.getElementById('nav-so-input');
+var soResults = document.getElementById('nav-so-results');
+if(soInput){
+  soInput.addEventListener('input', function(){
+    var q = this.value.trim();
+    if(q.length < 1){ soResults.style.display='none'; return; }
+    fetch('/api/so-search/?q=' + encodeURIComponent(q))
+      .then(function(r){ return r.json(); })
+      .then(function(items){
+        if(!items.length){ soResults.style.display='none'; return; }
+        soResults.innerHTML = items.map(function(p){
+          return '<div class="nav-so-item" onclick="window.location=\'/project/'+p.id+'/edit/\'"><strong>'+p.sales_order+'</strong> — '+p.project_name+'<div style="font-size:.72rem;color:var(--mut)">'+p.customer+'</div></div>';
+        }).join('');
+        soResults.style.display = 'block';
+      });
+  });
+  document.addEventListener('click', function(e){
+    if(!soInput.contains(e.target) && !soResults.contains(e.target)) soResults.style.display='none';
+  });
+}
+
+async function pollCounts(){
+  try{
+    var r = await fetch('/notifications/count/');
+    var d = await r.json();
+    var nb = document.getElementById('notif-badge');
+    if(nb){ nb.textContent=d.count; nb.style.display=d.count>0?'flex':'none'; }
+    var mb = document.getElementById('msg-badge');
+    if(mb){ mb.textContent=d.messages; mb.style.display=d.messages>0?'flex':'none'; }
+  }catch(e){}
+}
+pollCounts();
+setInterval(pollCounts, 30000);
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

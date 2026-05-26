@@ -1,0 +1,906 @@
+{% extends 'projects/base.html' %}
+{% block title %}Dashboard — Project Tracker{% endblock %}
+{% block extra_style %}
+.pg-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem;flex-wrap:wrap;gap:1rem;}
+.pg-title{font-size:1.5rem;font-weight:600;color:var(--txt);letter-spacing:-.02em;}
+.pg-title span{font-size:.95rem;font-weight:400;color:var(--mut);margin-left:.5rem;}
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(7,1fr);gap:.85rem;margin-bottom:1.4rem;}
+.stat{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1rem 1.1rem;box-shadow:var(--shadow);}
+.stat-link{text-decoration:none;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .1s;display:block;}
+.stat-link:hover{border-color:var(--acc);box-shadow:var(--shadow-md);transform:translateY(-1px);}
+.stat-active{border-color:var(--acc);background:var(--acc-bg);box-shadow:0 0 0 3px var(--acc-bg);}
+.stat-l{font-size:.72rem;font-weight:500;color:var(--mut);margin-bottom:.4rem;letter-spacing:.01em;}
+.stat-v{font-size:1.6rem;font-weight:600;color:var(--txt);font-family:var(--fm);}
+/* Filters */
+.filters{display:flex;gap:.65rem;margin-bottom:1.1rem;flex-wrap:wrap;align-items:center;}
+.f-search{flex:1;min-width:200px;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);color:var(--txt);font-family:var(--f);font-size:.875rem;outline:none;padding:0 1rem;height:36px;line-height:36px;box-shadow:var(--shadow);transition:border-color .15s,box-shadow .15s;}
+.f-search:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-bg);}
+.f-search::placeholder{color:var(--mut2);}
+.f-sel{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);color:var(--txt);font-family:var(--f);font-size:.875rem;outline:none;cursor:pointer;height:36px;padding:0 .85rem;line-height:36px;box-shadow:var(--shadow);-webkit-appearance:auto;appearance:auto;}
+/* Table */
+.tbl-wrap{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);}
+table{width:100%;border-collapse:collapse;}
+thead{background:var(--surf2);border-bottom:1px solid var(--bdr);}
+th{text-align:left;padding:.75rem 1rem;font-size:.75rem;font-weight:600;color:var(--mut);white-space:nowrap;letter-spacing:.03em;text-transform:uppercase;}
+th a{color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;}
+th a:hover{color:var(--txt2);}
+th.sorted a{color:var(--acc);}
+td{padding:.85rem 1rem;font-size:.875rem;border-top:1px solid var(--bdr);vertical-align:middle;color:var(--txt2);}
+tr:hover td{background:var(--surf2);}
+.pname{font-weight:600;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.9rem;}
+.psub{color:var(--mut);font-size:.78rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.so-tag{font-family:var(--fm);font-size:.78rem;color:var(--acc);background:var(--acc-bg);padding:2px 8px;border-radius:5px;border:1px solid var(--acc-bdr);white-space:nowrap;}
+.ck-wrap{display:flex;align-items:center;gap:5px;margin-top:4px;}
+.ck-box{width:14px;height:14px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;font-weight:700;}
+.ck-box-yes{background:var(--acc);border:1.5px solid var(--acc);color:#fff;}
+.ck-box-no{background:var(--surf2);border:1.5px solid var(--bdr);}
+.ck-lbl{font-size:.72rem;}
+.ck-lbl-yes{color:var(--grn);}
+.ck-lbl-no{color:var(--mut2);}
+/* Edit button */
+.inline-status-sel{appearance:none;-webkit-appearance:none;border:none;cursor:pointer;font-family:var(--f);font-size:.75rem;font-weight:500;padding:2px 9px;border-radius:99px;outline:none;background-image:none;}
+.inline-status-sel:hover{opacity:.85;}
+.edit-btn{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);color:var(--txt2);padding:4px 12px;font-size:.8rem;font-weight:500;cursor:pointer;font-family:var(--f);transition:all .15s;white-space:nowrap;}
+.edit-btn:hover{background:var(--acc);color:#fff;border-color:var(--acc);}
+.empty{text-align:center;padding:3.5rem;color:var(--mut);}
+.empty h3{font-size:1rem;font-weight:600;color:var(--txt2);margin-bottom:.4rem;}
+/* Panel overlay */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200;opacity:0;pointer-events:none;transition:opacity .22s;backdrop-filter:blur(2px);}
+.overlay.open{opacity:1;pointer-events:all;}
+.qc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;opacity:0;pointer-events:none;transition:opacity .2s;}
+.qc-overlay.open{opacity:1;pointer-events:all;}
+.qc-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-60%);width:420px;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);z-index:301;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
+.qc-modal.open{opacity:1;pointer-events:all;transform:translate(-50%,-50%);}
+.qc-head{padding:1.1rem 1.3rem;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;background:var(--surf2);border-radius:var(--rad-lg) var(--rad-lg) 0 0;}
+.qc-title{font-size:1rem;font-weight:600;color:var(--txt);}
+.qc-body{padding:1.3rem;}
+.qc-foot{padding:.85rem 1.3rem;border-top:1px solid var(--bdr);display:flex;gap:.6rem;justify-content:flex-end;align-items:center;}
+/* Comments section in panel */
+.comments-section{margin-top:1.5rem;border-top:2px solid var(--bdr);padding-top:1.2rem;}
+.comment-entry{display:flex;align-items:flex-start;gap:.6rem;margin-bottom:.75rem;}
+.comment-av{width:28px;height:28px;border-radius:50%;background:var(--acc-bg);display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:600;color:var(--acc);flex-shrink:0;border:1px solid var(--acc-bdr);}
+.comment-body{flex:1;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--rad);padding:.55rem .8rem;font-size:.85rem;color:var(--txt2);}
+.comment-meta{font-size:.7rem;color:var(--mut);margin-top:.2rem;}
+.comment-input-row{display:flex;gap:.5rem;margin-top:.75rem;}
+.comment-input{flex:1;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--rad);color:var(--txt);padding:7px 10px;font-size:.85rem;outline:none;font-family:var(--f);}
+.comment-input:focus{border-color:var(--acc);}
+.comment-send{background:var(--acc);color:#fff;border:none;border-radius:var(--rad);padding:7px 14px;font-size:.82rem;font-weight:500;cursor:pointer;font-family:var(--f);}
+.sp-log-section{border-top:2px solid var(--bdr);background:var(--surf2);padding:1.2rem 1.5rem;flex-shrink:0;}
+.sp-log-title{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:.85rem;}
+.sp-btn-del:hover{text-decoration:underline;}
+.sp-loading{text-align:center;padding:3rem;color:var(--mut);}
+/* AC */
+.sp-ac-wrap{position:relative;}
+.sp-ac-list{position:absolute;top:100%;left:0;right:0;background:var(--surf);border:1px solid var(--acc);border-top:none;border-radius:0 0 var(--rad) var(--rad);z-index:100;max-height:150px;overflow-y:auto;display:none;box-shadow:var(--shadow-md);}
+.sp-ac-item{padding:8px 12px;font-size:.875rem;cursor:pointer;color:var(--txt2);}
+.sp-ac-item:hover{background:var(--acc-bg);color:var(--acc);}
+.sp-ac-item strong{color:var(--acc);}
+@media(max-width:900px){.slide-panel{width:100%;}.stats{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr);}.sp-grid{grid-template-columns:1fr;}}
+{% endblock %}
+
+{% block content %}
+<div class="pg-hdr">
+  <h1 class="pg-title">Projects <span>{{ projects|length }} shown</span></h1>
+  <button class="btn btn-primary" onclick="openNewPanel()">+ New Project</button>
+</div>
+
+<!-- 6 stat cards -->
+<div class="stats">
+  <a href="{% url 'dashboard' %}" class="stat stat-link {% if not stat_filter and not selected_status and not tl and not query %}stat-active{% endif %}">
+    <div class="stat-l">Total</div>
+    <div class="stat-v">{{ counts.total }}</div>
+  </a>
+  <a href="?sf=overdue" class="stat stat-link {% if stat_filter == 'overdue' %}stat-active{% endif %}">
+    <div class="stat-l">⚠ Overdue</div>
+    <div class="stat-v" style="color:var(--red)">{{ counts.overdue }}</div>
+  </a>
+  <a href="?sf=sfp{% if query %}&q={{ query }}{% endif %}" class="stat stat-link {% if stat_filter == 'sfp' %}stat-active{% endif %}">
+    <div class="stat-l">Processed</div>
+    <div class="stat-v" style="color:var(--amb)">{{ counts.sfp }}</div>
+  </a>
+  <a href="?sf=del_to_book{% if query %}&q={{ query }}{% endif %}" class="stat stat-link {% if stat_filter == 'del_to_book' %}stat-active{% endif %}">
+    <div class="stat-l">Deliveries to Book</div>
+    <div class="stat-v" style="color:var(--acc)">{{ counts.del_to_book }}</div>
+  </a>
+  <a href="?sf=inst_to_book{% if query %}&q={{ query }}{% endif %}" class="stat stat-link {% if stat_filter == 'inst_to_book' %}stat-active{% endif %}">
+    <div class="stat-l">Installs to Book</div>
+    <div class="stat-v" style="color:var(--acc)">{{ counts.inst_to_book }}</div>
+  </a>
+  <a href="?sf=rams_to_send{% if query %}&q={{ query }}{% endif %}" class="stat stat-link {% if stat_filter == 'rams_to_send' %}stat-active{% endif %}">
+    <div class="stat-l">RAMS to Send</div>
+    <div class="stat-v" style="color:var(--red)">{{ counts.rams_to_send }}</div>
+  </a>
+  <a href="?sf=completed{% if query %}&q={{ query }}{% endif %}" class="stat stat-link {% if stat_filter == 'completed' %}stat-active{% endif %}">
+    <div class="stat-l">Completed</div>
+    <div class="stat-v" style="color:var(--grn)">{{ counts.completed }}</div>
+  </a>
+</div>
+
+<!-- Filters -->
+<form method="get" class="filters">
+  <input type="text" name="q" value="{{ query }}" class="f-search" placeholder="Search project, customer, location, SO…">
+  <select name="status" class="f-sel" onchange="this.form.submit()" style="width:170px;">
+    <option value="">All statuses</option>
+    {% for val,label in status_choices %}<option value="{{ val }}" {% if val == selected_status %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  <select name="tl" class="f-sel" onchange="this.form.submit()" style="width:170px;">
+    <option value="">All priorities</option>
+    <option value="green"  {% if tl == 'green'  %}selected{% endif %}>🟢 OK (30+ days)</option>
+    <option value="yellow" {% if tl == 'yellow' %}selected{% endif %}>🟡 Soon (15–30 days)</option>
+    <option value="red"    {% if tl == 'red'    %}selected{% endif %}>🔴 Urgent (≤15 days)</option>
+    <option value="tbc"    {% if tl == 'tbc'    %}selected{% endif %}>⚫ TBC</option>
+  </select>
+  <select name="assigned" class="f-sel" onchange="this.form.submit()" style="width:160px;">
+    <option value="">All assignees</option>
+    <option value="me" {% if assigned_filter == 'me' %}selected{% endif %}>Assigned to me</option>
+    {% for u in all_users %}
+    <option value="{{ u.id }}" {% if assigned_filter == u.id|stringformat:'s' %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-ghost btn-sm">Search</button>
+  {% if query or selected_status or tl or stat_filter or assigned_filter %}<a href="{% url 'dashboard' %}" class="btn btn-ghost btn-sm">Clear</a>{% endif %}
+</form>
+
+<!-- Table -->
+<div class="tbl-wrap">
+{% if projects %}
+<table>
+  <thead><tr>
+    <th style="width:36px;padding-left:1rem;"><input type="checkbox" id="sel-all" onchange="toggleAll(this)" title="Select all"></th>
+    <th {% if sort == 'sales_order' or sort == '-sales_order' %}class="sorted"{% endif %}>
+      <a href="?q={{ query }}&status={{ selected_status }}&tl={{ tl }}&sort={% if sort == 'sales_order' %}-sales_order{% else %}sales_order{% endif %}">SO# {% if sort == 'sales_order' %}↑{% elif sort == '-sales_order' %}↓{% else %}↕{% endif %}</a>
+    </th>
+    <th {% if sort == 'customer' or sort == '-customer' %}class="sorted"{% endif %} style="width:24%">
+      <a href="?q={{ query }}&status={{ selected_status }}&tl={{ tl }}&sort={% if sort == 'customer' %}-customer{% else %}customer{% endif %}">Project {% if sort == 'customer' %}↑{% elif sort == '-customer' %}↓{% else %}↕{% endif %}</a>
+    </th>
+    <th {% if sort == 'status' or sort == '-status' %}class="sorted"{% endif %}>
+      <a href="?q={{ query }}&status={{ selected_status }}&tl={{ tl }}&sort={% if sort == 'status' %}-status{% else %}status{% endif %}">Status {% if sort == 'status' %}↑{% elif sort == '-status' %}↓{% else %}↕{% endif %}</a>
+    </th>
+    <th {% if sort == 'delivery_date' or sort == '-delivery_date' %}class="sorted"{% endif %}>
+      <a href="?q={{ query }}&status={{ selected_status }}&tl={{ tl }}&sort={% if sort == 'delivery_date' %}-delivery_date{% else %}delivery_date{% endif %}">Delivery {% if sort == 'delivery_date' %}↑{% elif sort == '-delivery_date' %}↓{% else %}↕{% endif %}</a>
+    </th>
+    <th {% if sort == 'installation_date' or sort == '-installation_date' %}class="sorted"{% endif %}>
+      <a href="?q={{ query }}&status={{ selected_status }}&tl={{ tl }}&sort={% if sort == 'installation_date' %}-installation_date{% else %}installation_date{% endif %}">Installation {% if sort == 'installation_date' %}↑{% elif sort == '-installation_date' %}↓{% else %}↕{% endif %}</a>
+    </th>
+    <th>RAMS</th>
+    <th style="text-align:center">Priority</th>
+    <th></th>
+  </tr></thead>
+  <tbody>
+  {% for p in projects %}
+  {% with tl_val=p.get_traffic_light %}
+  <tr>
+    <td style="width:36px;padding-left:1rem;"><input type="checkbox" class="row-sel-cb" value="{{ p.pk }}" onchange="updateBulkBar()"></td>
+    <td>{% if p.sales_order %}<span class="so-tag">{{ p.sales_order }}</span>{% else %}<span style="color:var(--mut2)">—</span>{% endif %}</td>
+    <td>
+      <div class="pname">
+        {% if p.is_overdue %}<span style="background:var(--red-bg);color:var(--red);font-size:.65rem;font-weight:600;padding:1px 6px;border-radius:4px;margin-right:4px;border:1px solid rgba(220,38,38,.2);">OVERDUE</span>{% endif %}
+        {{ p.project_name }}
+      </div>
+      {% if p.description %}<div class="psub">{{ p.description }}</div>{% endif %}
+    </td>
+    <td>
+      <select class="inline-status-sel badge badge-{{ p.status }}" data-pk="{{ p.pk }}" data-current="{{ p.status }}" onchange="quickStatus(this)">
+        {% for val,label in status_choices %}
+        <option value="{{ val }}" {% if val == p.status %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </td>
+    <td>
+      {% if p.delivery_required %}
+        <div style="font-size:.875rem;color:var(--txt2)">{{ p.delivery_date|date:"d M Y"|default:"TBC" }}</div>
+        <div class="ck-wrap">
+          <span class="ck-box {% if p.delivery_booked %}ck-box-yes{% else %}ck-box-no{% endif %}">{% if p.delivery_booked %}✓{% endif %}</span>
+          <span class="ck-lbl {% if p.delivery_booked %}ck-lbl-yes{% else %}ck-lbl-no{% endif %}">{% if p.delivery_booked %}Booked{% else %}Not booked{% endif %}</span>
+        </div>
+      {% else %}<span style="color:var(--mut2)">N/A</span>{% endif %}
+    </td>
+    <td>
+      {% if p.installation_required %}
+        {% if p.installation_same_as_delivery %}
+          <div style="font-size:.875rem;color:var(--txt2)">{{ p.delivery_date|date:"d M Y"|default:"TBC" }} <span style="font-size:.72rem;color:var(--acc)">(= delivery)</span></div>
+        {% elif p.installation_date_type == 'exact' %}
+          <div style="font-size:.875rem;color:var(--txt2)">{{ p.installation_date|date:"d M Y"|default:"TBC" }}</div>
+        {% elif p.installation_month %}
+          <div style="font-size:.875rem;color:var(--txt2)">{{ p.installation_month }}{% if p.installation_month_part %} ({{ p.get_installation_month_part_display }}){% endif %}</div>
+        {% else %}<div style="color:var(--mut2)">TBC</div>{% endif %}
+        <div class="ck-wrap">
+          <span class="ck-box {% if p.installation_booked %}ck-box-yes{% else %}ck-box-no{% endif %}">{% if p.installation_booked %}✓{% endif %}</span>
+          <span class="ck-lbl {% if p.installation_booked %}ck-lbl-yes{% else %}ck-lbl-no{% endif %}">{% if p.installation_booked %}Booked{% else %}Not booked{% endif %}</span>
+        </div>
+      {% else %}<span style="color:var(--mut2)">N/A</span>{% endif %}
+    </td>
+    <td style="font-size:.82rem;">
+      {% if p.installation_required %}
+        {% if p.rams_required %}
+          <div style="color:var(--grn);font-weight:500">✓ Required</div>
+          {% if p.rams_sent %}<div style="color:var(--grn)">✓ Sent</div>{% else %}<div style="color:var(--red)">Not sent</div>{% endif %}
+        {% else %}<span style="color:var(--mut2)">Not req.</span>{% endif %}
+      {% else %}<span style="color:var(--mut2)">N/A</span>{% endif %}
+    </td>
+    <td style="text-align:center">
+      {% if p.status == 'completed' %}
+        <span class="tl tl-green" title="Completed">✓</span>
+      {% elif p.status == 'on_hold' %}
+        <span class="tl tl-yellow" title="On Hold">⏸</span>
+      {% elif p.status == 'cancelled' %}
+        <span class="tl tl-red" title="Cancelled">✕</span>
+      {% elif tl_val == 'green'  %}<span class="tl tl-green"  title="30+ days">!</span>
+      {% elif tl_val == 'yellow' %}<span class="tl tl-yellow" title="15–30 days">!!</span>
+      {% elif tl_val == 'red'    %}<span class="tl tl-red"    title="≤15 days">!!!</span>
+      {% else %}<span class="tl tl-tbc" title="No date">—</span>{% endif %}
+    </td>
+    <td style="white-space:nowrap;vertical-align:middle;">
+      {% if p.assigned_to %}
+      {% with name=p.assigned_to.get_full_name|default:p.assigned_to.username %}
+      {% with parts=name.split %}
+      <span title="{{ name }}" style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#d4700a;color:#fff;font-size:.62rem;font-weight:800;margin-right:5px;vertical-align:middle;letter-spacing:0;">{{ parts.0|slice:":1"|upper }}{% if parts|length > 1 %}{{ parts|last|slice:":1"|upper }}{% endif %}</span>
+      {% endwith %}{% endwith %}
+      {% endif %}
+      <a href="{% url 'project_edit' p.pk %}" class="edit-btn">Edit</a>
+    </td>
+  </tr>
+  {% endwith %}
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">
+  <h3>No projects found</h3>
+  <p>{% if query or selected_status or tl %}Try adjusting your filters{% else %}Get started by creating your first project{% endif %}</p>
+  {% if not query and not selected_status and not tl %}<button class="btn btn-primary" style="margin-top:1rem" onclick="openNewPanel()">+ New Project</button>{% endif %}
+</div>
+{% endif %}
+</div>
+
+<!-- Quick-create popup -->
+<div class="qc-overlay" id="qc-overlay" onclick="closeQC()"></div>
+<div class="qc-modal" id="qc-modal">
+  <div class="qc-head">
+    <div class="qc-title">New Project</div>
+    <button onclick="closeQC()" style="background:none;border:1px solid var(--bdr);border-radius:var(--rad);color:var(--mut);cursor:pointer;padding:3px 9px;">✕</button>
+  </div>
+  <div class="qc-body">
+    <div class="form-group"><label class="form-label">Customer *</label>
+      <div style="position:relative">
+        <input class="form-input" id="qc-customer" type="text" placeholder="Customer name" autocomplete="off">
+        <div id="qc-ac-list" style="position:absolute;top:100%;left:0;right:0;background:var(--surf);border:1px solid var(--acc);border-top:none;border-radius:0 0 var(--rad) var(--rad);z-index:300;display:none;box-shadow:var(--shadow-md);"></div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Location</label>
+      <input class="form-input" id="qc-location" type="text" placeholder="Site address or postcode">
+    </div>
+    <div id="qc-error" style="color:var(--red);font-size:.82rem;display:none;margin-top:.5rem;"></div>
+  </div>
+  <div class="qc-foot">
+    <button class="btn btn-ghost btn-sm" onclick="closeQC()">Cancel</button>
+    <button class="btn btn-primary" onclick="submitQC()">Create</button>
+  </div>
+</div>
+
+<!-- Overlay -->
+<div class="overlay" id="overlay" onclick="closePanel()"></div>
+
+<!-- Slide-in panel -->
+
+<div class="qc-modal" id="qc-modal">
+  <div class="qc-head">
+    <div class="qc-title">New Project</div>
+    <button onclick="closeQC()" style="background:none;border:1px solid var(--bdr);border-radius:var(--rad);color:var(--mut);cursor:pointer;padding:3px 9px;">✕</button>
+  </div>
+  <div class="qc-body">
+    <div class="form-group"><label class="form-label">Customer *</label>
+      <div style="position:relative">
+        <input class="form-input" id="qc-customer" type="text" placeholder="Customer name" autocomplete="off">
+        <div id="qc-ac-list" style="position:absolute;top:100%;left:0;right:0;background:var(--surf);border:1px solid var(--acc);border-top:none;border-radius:0 0 var(--rad) var(--rad);z-index:300;display:none;box-shadow:var(--shadow-md);"></div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Location</label>
+      <input class="form-input" id="qc-location" type="text" placeholder="Site address or postcode">
+    </div>
+    <div id="qc-error" style="color:var(--red);font-size:.82rem;display:none;margin-top:.5rem;"></div>
+  </div>
+  <div class="qc-foot">
+    <button class="btn btn-ghost btn-sm" onclick="closeQC()">Cancel</button>
+    <button class="btn btn-primary" onclick="submitQC()">Create</button>
+  </div>
+</div>
+
+<!-- Overlay -->
+<div class="overlay" id="overlay" onclick="closePanel()"></div>
+
+<!-- Slide-in panel -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const CSRF='{{ csrf_token }}';
+const ALL_USERS = [{% for u in all_users %}{"id":{{ u.id }},"name":"{{ u.get_full_name|default:u.username }}"}{% if not forloop.last %},{% endif %}{% endfor %}];
+let currentPk=null;
+
+function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${parseInt(day)} ${MN[parseInt(m)-1]} ${y}`;}
+
+async function quickStatus(sel){
+  const pk = sel.dataset.pk;
+  const newStatus = sel.value;
+  const old_status = sel.dataset.current;
+  const r = await fetch(`/project/${pk}/status/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},body:JSON.stringify({status:newStatus})});
+  const d = await r.json();
+  if(d.ok){
+    sel.dataset.current = newStatus;
+    // Update badge class
+    sel.className = `inline-status-sel badge badge-${newStatus}`;
+  } else {
+    sel.value = old_status; // revert
+  }
+}
+
+function closePanel(){
+  document.getElementById('overlay').classList.remove('open');
+  document.getElementById('slide-panel').classList.remove('open');
+  currentPk=null;
+}
+
+function openNewPanel(){
+  document.getElementById('qc-overlay').classList.add('open');
+  document.getElementById('qc-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('qc-customer').focus(),100);
+  qcAcWire();
+}
+function closeQC(){
+  document.getElementById('qc-overlay').classList.remove('open');
+  document.getElementById('qc-modal').classList.remove('open');
+}
+async function submitQC(){
+  const cust = document.getElementById('qc-customer').value.trim();
+  const loc  = document.getElementById('qc-location').value.trim();
+  const err  = document.getElementById('qc-error');
+  if(!cust){err.textContent='Customer is required';err.style.display='block';return;}
+  err.style.display='none';
+  const btn = document.getElementById('qc-submit') || document.querySelector('.qc-foot .btn-primary');
+  btn.textContent = 'Creating…';
+  btn.disabled = true;
+  const r = await fetch('/project/quick-create/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},body:JSON.stringify({customer:cust,location:loc})});
+  const d = await r.json();
+  if(d.error){
+    err.textContent=d.error;err.style.display='block';
+    btn.textContent='Create';btn.disabled=false;
+    return;
+  }
+  window.location.reload();
+}
+function qcAcWire(){
+  const inp=document.getElementById('qc-customer');
+  const list=document.getElementById('qc-ac-list');
+  let acIdx=-1;
+
+  inp.addEventListener('input',async function(){
+    acIdx=-1;
+    const q=this.value.trim();
+    if(q.length<1){list.style.display='none';return;}
+    const r=await fetch('/api/customers/?q='+encodeURIComponent(q));
+    const names=await r.json();
+    if(!names.length){list.style.display='none';return;}
+    list.innerHTML=names.map((n,i)=>`<div class="qc-ac-item" data-name="${n.replace(/"/g,'&quot;')}" style="padding:8px 12px;cursor:pointer;font-size:.85rem;color:var(--txt2);">${n}</div>`).join('');
+    list.querySelectorAll('.qc-ac-item').forEach(item=>{
+      item.addEventListener('mousedown',()=>{ inp.value=item.dataset.name; list.style.display='none'; });
+    });
+    list.style.display='block';
+  });
+
+  inp.addEventListener('keydown',function(e){
+    const items=list.querySelectorAll('.qc-ac-item');
+    if(list.style.display==='block' && items.length){
+      if(e.key==='ArrowDown'){
+        e.preventDefault();
+        acIdx=Math.min(acIdx+1,items.length-1);
+        items.forEach((it,i)=>it.style.background=i===acIdx?'var(--acc-bg)':'');
+      } else if(e.key==='ArrowUp'){
+        e.preventDefault();
+        acIdx=Math.max(acIdx-1,0);
+        items.forEach((it,i)=>it.style.background=i===acIdx?'var(--acc-bg)':'');
+      } else if(e.key==='Enter' && acIdx>=0){
+        e.preventDefault();
+        inp.value=items[acIdx].dataset.name;
+        list.style.display='none';
+        acIdx=-1;
+        document.getElementById('qc-location').focus();
+        return;
+      }
+    }
+    if(e.key==='Enter' && list.style.display!=='block'){
+      e.preventDefault();
+      submitQC();
+    }
+    if(e.key==='Escape'){ closeQC(); }
+  });
+
+  inp.addEventListener('blur',()=>setTimeout(()=>list.style.display='none',150));
+
+  // Enter on location field submits
+  const loc=document.getElementById('qc-location');
+  if(loc){
+    loc.addEventListener('keydown',function(e){
+      if(e.key==='Enter'){ e.preventDefault(); submitQC(); }
+      if(e.key==='Escape'){ closeQC(); }
+    });
+  }
+}
+
+// Close QC on Escape globally
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    if(document.getElementById('qc-modal').classList.contains('open')) closeQC();
+  }
+});
+
+async function qcAcWire(){
+  const inp=document.getElementById('qc-customer');
+  const list=document.getElementById('qc-ac-list');
+  let acIdx=-1;
+
+  inp.addEventListener('input',async function(){
+    acIdx=-1;
+    const q=this.value.trim();
+    if(q.length<1){list.style.display='none';return;}
+    const r=await fetch('/api/customers/?q='+encodeURIComponent(q));
+    const names=await r.json();
+    if(!names.length){list.style.display='none';return;}
+    list.innerHTML=names.map((n,i)=>`<div class="qc-ac-item" data-name="${n.replace(/"/g,'&quot;')}" style="padding:8px 12px;cursor:pointer;font-size:.85rem;color:var(--txt2);">${n}</div>`).join('');
+    list.querySelectorAll('.qc-ac-item').forEach(item=>{
+      item.addEventListener('mousedown',()=>{ inp.value=item.dataset.name; list.style.display='none'; });
+    });
+    list.style.display='block';
+  });
+
+  inp.addEventListener('keydown',function(e){
+    const items=list.querySelectorAll('.qc-ac-item');
+    if(list.style.display==='block' && items.length){
+      if(e.key==='ArrowDown'){
+        e.preventDefault();
+        acIdx=Math.min(acIdx+1,items.length-1);
+        items.forEach((it,i)=>it.style.background=i===acIdx?'var(--acc-bg)':'');
+      } else if(e.key==='ArrowUp'){
+        e.preventDefault();
+        acIdx=Math.max(acIdx-1,0);
+        items.forEach((it,i)=>it.style.background=i===acIdx?'var(--acc-bg)':'');
+      } else if(e.key==='Enter' && acIdx>=0){
+        e.preventDefault();
+        inp.value=items[acIdx].dataset.name;
+        list.style.display='none';
+        acIdx=-1;
+        document.getElementById('qc-location').focus();
+        return;
+      }
+    }
+    if(e.key==='Enter' && list.style.display!=='block'){
+      e.preventDefault();
+      submitQC();
+    }
+    if(e.key==='Escape'){ closeQC(); }
+  });
+
+  inp.addEventListener('blur',()=>setTimeout(()=>list.style.display='none',150));
+
+  // Enter on location field submits
+  const loc=document.getElementById('qc-location');
+  if(loc){
+    loc.addEventListener('keydown',function(e){
+      if(e.key==='Enter'){ e.preventDefault(); submitQC(); }
+      if(e.key==='Escape'){ closeQC(); }
+    });
+  }
+}
+
+// Close QC on Escape globally
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    if(document.getElementById('qc-modal').classList.contains('open')) closeQC();
+  }
+});
+
+async function openPanel(pk){
+  currentPk=pk;
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('slide-panel').classList.add('open');
+  document.getElementById('sp-body').innerHTML='<div class="sp-loading">Loading…</div>';
+  document.getElementById('sp-title').textContent='Loading…';
+  document.getElementById('sp-meta').innerHTML='';
+  document.getElementById('sp-del-btn').style.display='none';
+
+  const res=await fetch(`/project/${pk}/data/`);
+  const d=await res.json();
+
+  document.getElementById('sp-title').textContent=d.project_name;
+  let meta='';
+  if(d.created_by) meta+=`Created by <strong>${d.created_by}</strong> &nbsp;·&nbsp; ${d.created_at}`;
+  if(d.last_edited_by&&d.last_edited_by!==d.created_by) meta+=` &nbsp;·&nbsp; Last edited by <strong>${d.last_edited_by}</strong> &nbsp;·&nbsp; ${d.updated_at}`;
+  document.getElementById('sp-meta').innerHTML=meta;
+  document.getElementById('sp-del-btn').style.display='block';
+
+  const statusOpts=d.status_choices.map(([v,l])=>`<option value="${v}" ${d.status===v?'selected':''}>${l}</option>`).join('');
+  let monthOpts='<option value="">— Select month —</option>';
+  const now=new Date();
+  for(let i=0;i<18;i++){
+    const dt=new Date(now.getFullYear(),now.getMonth()+i,1);
+    const v=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+    monthOpts+=`<option value="${v}" ${d.installation_month===v?'selected':''}>${MN[dt.getMonth()]} ${dt.getFullYear()}</option>`;
+  }
+
+  const isSame=d.installation_same_as_delivery;
+  const isMonth=d.installation_date_type==='month';
+  const iP=d.installation_month_part;
+
+  document.getElementById('sp-body').innerHTML=`
+    <div class="sp-grid">
+      <div>
+        <div class="sp-sec">
+          <div class="sp-sec-t">Customer & location</div>
+          <div class="form-group"><label class="form-label">Customer</label>
+            <div class="sp-ac-wrap">
+              <input class="sp-inp" id="f-customer" type="text" value="${d.customer}" placeholder="Customer name" autocomplete="off">
+              <div id="sp-ac-list" class="sp-ac-list"></div>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">Location</label><input class="sp-inp" id="f-location" type="text" value="${d.location}" placeholder="Site address"></div>
+          <div class="form-group"><label class="form-label">Description</label><input class="sp-inp" id="f-desc" type="text" value="${d.description||''}" placeholder="e.g. Remote stockroom, Ground floor…"></div>
+        </div>
+        <div class="sp-sec">
+          <div class="sp-sec-t">Status & sales</div>
+          <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="f-status">${statusOpts}</select></div>
+          <div class="form-group"><label class="form-label">Sales order</label><input class="sp-inp" id="f-so" type="text" value="${d.sales_order}" placeholder="10000" maxlength="5" style="font-family:var(--fm)"></div>
+          <div class="form-group"><label class="form-label">Drawing number</label><input class="sp-inp" id="f-drawing" type="text" value="${d.drawing_number}" placeholder="e.g. DRW-2025-001"></div>
+        </div>
+        <div class="sp-sec">
+          <div class="sp-sec-t">Assigned to</div>
+          <div class="form-group">
+            <select class="form-input" id="f-assigned">
+              <option value="">— Unassigned —</option>
+              ${ALL_USERS.map(u=>`<option value="${u.id}" ${d.assigned_to_id==u.id?'selected':''}>${u.name}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+
+
+      </div>
+      <div>
+        <div class="sp-sec">
+          <div class="sp-sec-t">Delivery</div>
+          <div class="sp-dblk">
+            <div class="sp-chk"><input type="checkbox" id="f-dreq" ${d.delivery_required?'checked':''} onchange="togDel()"><label for="f-dreq">Delivery required</label></div>
+            <div class="sp-inner ${!d.delivery_required?'off':''}" id="del-inner">
+              <div class="form-group"><label class="form-label">Delivery date</label><input class="sp-inp" id="f-del" type="date" value="${d.delivery_date}" oninput="onDelChange()"></div>
+              <div class="sp-chk" style="margin-bottom:0"><input type="checkbox" id="f-dbook" ${d.delivery_booked?'checked':''}><label for="f-dbook">Delivery booked</label></div>
+            </div>
+          </div>
+        </div>
+        <div class="sp-sec">
+          <div class="sp-sec-t">Installation</div>
+          <div class="sp-dblk">
+            <div class="sp-chk" style="margin-bottom:.35rem"><input type="checkbox" id="f-ireq" ${d.installation_required?'checked':''} onchange="togInst()"><label for="f-ireq">Installation required</label></div>
+            <div class="sp-inner ${!d.installation_required?'off':''}" id="inst-inner">
+              <div class="same-row"><input type="checkbox" id="f-same" ${isSame?'checked':''} onchange="togSame()"><label for="f-same">Same as delivery date</label></div>
+              <div id="same-disp" class="same-disp" style="display:${isSame?'block':'none'}">
+                <div class="form-label">Installation date</div>
+                <div class="same-disp-v" id="same-val">${d.delivery_date?fmtDate(d.delivery_date):'— set delivery date first'}</div>
+                <div class="same-disp-h">Automatically matches delivery date</div>
+              </div>
+              <div id="inst-date-sec" style="display:${isSame?'none':'block'}">
+                <div class="dt-tog">
+                  <button type="button" class="dt-btn ${!isMonth?'on':''}" id="dt-ex" onclick="setDT('exact')">Exact date</button>
+                  <button type="button" class="dt-btn ${isMonth?'on':''}" id="dt-mo" onclick="setDT('month')">Month</button>
+                </div>
+                <div id="ex-wrap" class="${!isMonth?'sp-vis':'sp-hidden'}">
+                  <div class="sp-err-banner" id="date-err">⚠ Installation date cannot be before delivery date</div>
+                  <div class="form-group"><label class="form-label">Installation date</label><input class="sp-inp" id="f-inst" type="date" value="${!isSame?d.installation_date:''}" oninput="valDates()"></div>
+                </div>
+                <div id="mo-wrap" class="${isMonth?'sp-vis':'sp-hidden'}">
+                  <div class="form-group"><label class="form-label">Month</label><select class="form-input" id="f-imonth">${monthOpts}</select></div>
+                  <div class="form-label" style="margin-bottom:.35rem">Part of month <span style="color:var(--mut2);font-size:.72rem">(optional)</span></div>
+                  <div class="mp-row">
+                    <button type="button" class="mp-btn ${iP==='early'?'on':''}" onclick="setPart(this,'early')">Early</button>
+                    <button type="button" class="mp-btn ${iP==='mid'?'on':''}" onclick="setPart(this,'mid')">Mid</button>
+                    <button type="button" class="mp-btn ${iP==='end'?'on':''}" onclick="setPart(this,'end')">End</button>
+                    <button type="button" class="mp-btn ${!iP?'on':''}" onclick="setPart(this,'')">Any</button>
+                  </div>
+                </div>
+              </div>
+              <div class="sp-chk" style="margin-top:.7rem;margin-bottom:0"><input type="checkbox" id="f-ibook" ${d.installation_booked?'checked':''}><label for="f-ibook">Installation booked</label></div>
+            </div>
+          </div>
+        </div>
+        <div class="sp-sec">
+          <div class="sp-sec-t">RAMS</div>
+          <div class="sp-chk"><input type="checkbox" id="f-rreq" ${d.rams_required?'checked':''}><label for="f-rreq">RAMS required</label></div>
+          <div class="sp-chk" style="margin-bottom:0"><input type="checkbox" id="f-rsent" ${d.rams_sent?'checked':''}><label for="f-rsent">RAMS sent</label></div>
+        </div>
+      </div>
+    </div>
+    <div class="comments-section">
+      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:.85rem;">Comments <span style="color:var(--mut2);font-weight:400;text-transform:none;letter-spacing:0;font-size:.7rem;">Type @ to tag someone</span></div>
+      <div id="comments-list">
+        ${d.comments && d.comments.length ? d.comments.map(c=>`
+          <div class="comment-entry">
+            <div class="comment-av">${c.user.slice(0,2).toUpperCase()}</div>
+            <div>
+              <div class="comment-body">${highlightMentions(c.text)}</div>
+              <div class="comment-meta">${c.user} · ${c.timestamp}</div>
+            </div>
+          </div>`).join('') : '<div style="font-size:.82rem;color:var(--mut)">No comments yet</div>'}
+      </div>
+      <div style="position:relative;">
+        <div id="mention-dropdown" style="display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--surf);border:1px solid var(--acc);border-radius:var(--rad);box-shadow:var(--shadow-md);z-index:50;max-height:160px;overflow-y:auto;"></div>
+      </div>
+      <div class="comment-input-row">
+        <input class="comment-input" id="comment-input" type="text" placeholder="Add a comment… (@ to tag)">
+        <button class="comment-send" onclick="sendComment(${d.id})">Post</button>
+      </div>
+    </div>
+    ${d.logs && d.logs.length ? `
+    <div style="margin-top:1.5rem;border-top:2px solid var(--bdr);padding-top:1.2rem;">
+      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:.85rem;">Project History</div>
+      ${d.logs.map(l=>`
+        <div style="display:flex;align-items:flex-start;gap:.65rem;padding:.55rem 0;border-bottom:0.5px solid var(--bdr);">
+          <div class="log-av" style="width:28px;height:28px;border-radius:50%;background:var(--acc-bg);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:600;color:var(--acc);flex-shrink:0;border:1px solid var(--acc-bdr);">${l.user.slice(0,2).toUpperCase()}</div>
+          <div style="flex:1;font-size:.82rem;color:var(--txt2);">
+            ${l.field==='Project created'
+              ? `<strong style="color:var(--txt)">${l.user}</strong> <span style="color:var(--mut)">created this project</span>`
+              : `<strong style="color:var(--txt)">${l.user}</strong> <span style="color:var(--mut)">changed</span> <span style="color:var(--acc)">${l.field}</span>
+                 <div style="display:flex;align-items:center;gap:.35rem;margin-top:.25rem;">
+                   <span style="background:var(--red-bg);color:var(--red);padding:1px 7px;border-radius:4px;font-size:.75rem;border:1px solid rgba(220,38,38,.15)">${l.old_value||'—'}</span>
+                   <span style="color:var(--mut)">→</span>
+                   <span style="background:var(--grn-bg);color:var(--grn);padding:1px 7px;border-radius:4px;font-size:.75rem;border:1px solid rgba(22,163,74,.15)">${l.new_value}</span>
+                 </div>`
+            }
+          </div>
+          <div style="font-size:.7rem;color:var(--mut);white-space:nowrap;">${l.timestamp}</div>
+        </div>`).join('')}
+    </div>` : ''}
+  `;
+
+  spAcWire();
+
+  // Live update panel title as customer/location changes
+  function updatePanelTitle(){
+    const cust = (document.getElementById('f-customer')||{}).value||'';
+    const loc  = (document.getElementById('f-location')||{}).value||'';
+    document.getElementById('sp-title').textContent = loc ? `${cust} — ${loc}` : cust || 'New Project';
+  }
+  const fCust = document.getElementById('f-customer');
+  const fLoc  = document.getElementById('f-location');
+  if(fCust) fCust.addEventListener('input', updatePanelTitle);
+  if(fLoc)  fLoc.addEventListener('input', updatePanelTitle);
+}
+
+function togDel(){const on=document.getElementById('f-dreq').checked;document.getElementById('del-inner').classList.toggle('off',!on);}
+function togInst(){const on=document.getElementById('f-ireq').checked;document.getElementById('inst-inner').classList.toggle('off',!on);}
+function togSame(){
+  const on=document.getElementById('f-same').checked;
+  document.getElementById('same-disp').style.display=on?'block':'none';
+  document.getElementById('inst-date-sec').style.display=on?'none':'block';
+  if(on){const dv=document.getElementById('f-del').value;document.getElementById('same-val').textContent=dv?fmtDate(dv):'— set delivery date first';}
+  document.getElementById('date-err').classList.remove('show');
+}
+function onDelChange(){
+  const sm=document.getElementById('f-same');
+  if(sm&&sm.checked){const dv=document.getElementById('f-del').value;document.getElementById('same-val').textContent=dv?fmtDate(dv):'—';}
+  valDates();
+}
+function setDT(t){
+  document.getElementById('dt-ex').classList.toggle('on',t==='exact');
+  document.getElementById('dt-mo').classList.toggle('on',t==='month');
+  document.getElementById('ex-wrap').className=t==='exact'?'sp-vis':'sp-hidden';
+  document.getElementById('mo-wrap').className=t==='month'?'sp-vis':'sp-hidden';
+}
+function setPart(btn,part){document.querySelectorAll('.mp-btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');btn.dataset.part=part;}
+function valDates(){
+  const dv=document.getElementById('f-del')?document.getElementById('f-del').value:'';
+  const iv=document.getElementById('f-inst')?document.getElementById('f-inst').value:'';
+  const err=document.getElementById('date-err'),inp=document.getElementById('f-inst');
+  if(!err||!inp) return true;
+  if(dv&&iv&&iv<dv){err.classList.add('show');inp.classList.add('err');return false;}
+  err.classList.remove('show');inp.classList.remove('err');return true;
+}
+
+async function savePanel(){
+  if(!valDates()) return;
+  const isSame=document.getElementById('f-same').checked;
+  const isExact=document.getElementById('dt-ex').classList.contains('on');
+  const ap=document.querySelector('.mp-btn.on');
+  const data=new FormData();
+  data.append('csrfmiddlewaretoken',CSRF);
+  data.append('customer',document.getElementById('f-customer').value);
+  data.append('location',document.getElementById('f-location').value);
+  data.append('drawing_number',document.getElementById('f-drawing').value);
+  data.append('description',document.getElementById('f-desc').value);
+  const assignedEl=document.getElementById('f-assigned');
+  if(assignedEl) data.append('assigned_to',assignedEl.value);
+  data.append('status',document.getElementById('f-status').value);
+  data.append('sales_order',document.getElementById('f-so').value);
+  if(document.getElementById('f-dreq').checked) data.append('delivery_required','on');
+  data.append('delivery_date',document.getElementById('f-del').value);
+  if(document.getElementById('f-dbook').checked) data.append('delivery_booked','on');
+  if(document.getElementById('f-ireq').checked) data.append('installation_required','on');
+  if(isSame) data.append('installation_same_as_delivery','on');
+  data.append('installation_date_type',isExact?'exact':'month');
+  data.append('installation_date',document.getElementById('f-inst')?document.getElementById('f-inst').value:'');
+  data.append('installation_month',document.getElementById('f-imonth')?document.getElementById('f-imonth').value:'');
+  data.append('installation_month_part',ap?(ap.dataset.part||''):'');
+  if(document.getElementById('f-ibook').checked) data.append('installation_booked','on');
+  if(document.getElementById('f-rreq').checked) data.append('rams_required','on');
+  if(document.getElementById('f-rsent').checked) data.append('rams_sent','on');
+  await fetch(`/project/${currentPk}/edit/`,{method:'POST',body:data});
+  closePanel();
+  window.location.reload();
+}
+
+function deleteProject(){
+  if(confirm('Delete this project? This cannot be undone.'))
+    window.location.href=`/project/${currentPk}/delete/`;
+}
+
+function highlightMentions(text){
+  let t = text.replace(/@\[([^\]]+)\]\(\d+\)/g, '<span style="color:var(--acc);font-weight:600">@$1</span>');
+  t = t.replace(/#\[([^\]]+)\]\((\d+)\)/g, '<a href="/project/$2/edit/" style="color:var(--grn);font-weight:600">#$1</a>');
+  return t;
+}
+
+async function sendComment(pk){
+  const inp = document.getElementById('comment-input');
+  const text = inp.value.trim();
+  if(!text) return;
+  const r = await fetch(`/project/${pk}/comment/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},body:JSON.stringify({text})});
+  const c = await r.json();
+  if(c.error) return;
+  inp.value = '';
+  mentionQuery = '';
+  document.getElementById('mention-dropdown').style.display='none';
+  const list = document.getElementById('comments-list');
+  const noMsg = list.querySelector('div:not(.comment-entry)');
+  if(noMsg) noMsg.remove();
+  const entry = document.createElement('div');
+  entry.className = 'comment-entry';
+  entry.innerHTML = `<div class="comment-av">${c.user.slice(0,2).toUpperCase()}</div><div><div class="comment-body">${highlightMentions(c.text)}</div><div class="comment-meta">${c.user} · ${c.timestamp}</div></div>`;
+  list.appendChild(entry);
+}
+
+// @mention and #project logic for comment box
+let mentionStart = -1;
+let mentionType = null;
+
+document.addEventListener('input', async function(e){
+  if(e.target.id !== 'comment-input') return;
+  const inp = e.target;
+  const val = inp.value;
+  const pos = inp.selectionStart;
+  const before = val.slice(0, pos);
+  const dropdown = document.getElementById('mention-dropdown');
+  const atIdx = before.lastIndexOf('@');
+  const hashIdx = before.lastIndexOf('#');
+  let triggerIdx = -1, trigger = null;
+  if(atIdx > hashIdx && !before.slice(atIdx+1).includes(' ')){ triggerIdx=atIdx; trigger='@'; }
+  else if(hashIdx > atIdx && !before.slice(hashIdx+1).includes(' ')){ triggerIdx=hashIdx; trigger='#'; }
+
+  if(triggerIdx >= 0 && trigger){
+    mentionStart = triggerIdx;
+    mentionType = trigger;
+    const q = before.slice(triggerIdx+1).toLowerCase();
+    if(trigger==='@'){
+      const matches = ALL_USERS.filter(u=>u.name.toLowerCase().includes(q));
+      if(matches.length){
+        dropdown.innerHTML = matches.map(u=>
+          `<div class="sp-ac-item" onmousedown="insertCommentTag('@','${u.name.replace(/'/g,"\'")}',${u.id})">
+            <span style="display:inline-flex;width:22px;height:22px;border-radius:50%;background:#d4700a;color:#fff;font-size:.58rem;font-weight:700;align-items:center;justify-content:center;margin-right:6px;">${u.name.slice(0,2).toUpperCase()}</span>${u.name}
+          </div>`).join('');
+        dropdown.style.display='block';
+      } else { dropdown.style.display='none'; }
+    } else if(trigger==='#'){
+      if(q.length<1){ dropdown.style.display='none'; return; }
+      const r = await fetch(`/api/projects-search/?q=${encodeURIComponent(q)}`);
+      const projs = await r.json();
+      if(projs.length){
+        dropdown.innerHTML = projs.map(p=>
+          `<div class="sp-ac-item" onmousedown="insertCommentTag('#','${p.project_name.replace(/'/g,"\'")}',${p.id})">
+            <span style="display:inline-flex;width:22px;height:22px;border-radius:4px;background:var(--grn);color:#fff;font-size:.65rem;font-weight:700;align-items:center;justify-content:center;margin-right:6px;">#</span>${p.project_name}
+          </div>`).join('');
+        dropdown.style.display='block';
+      } else { dropdown.style.display='none'; }
+    }
+  } else {
+    mentionStart=-1; mentionType=null;
+    dropdown.style.display='none';
+  }
+});
+
+function insertCommentTag(type, name, id){
+  const inp = document.getElementById('comment-input');
+  const val = inp.value;
+  const before = val.slice(0, mentionStart);
+  const after  = val.slice(inp.selectionStart);
+  inp.value = before + `${type}[${name}](${id}) ` + after;
+  document.getElementById('mention-dropdown').style.display='none';
+  mentionStart=-1; mentionType=null;
+  inp.focus();
+}
+
+document.addEventListener('keydown', function(e){
+  if(e.target.id==='comment-input' && e.key==='Escape'){
+    document.getElementById('mention-dropdown').style.display='none';
+  }
+  if(e.target.id==='comment-input' && e.key==='Enter' && document.getElementById('mention-dropdown').style.display==='none'){
+    e.preventDefault();
+    const pk = currentPk;
+    if(pk) sendComment(pk);
+  }
+});
+
+function spAcWire(){
+  const inp=document.getElementById('f-customer');
+  const list=document.getElementById('sp-ac-list');
+  if(!inp||!list) return;
+  inp.addEventListener('input',async function(){
+    const q=this.value.trim();
+    if(q.length<1){list.style.display='none';return;}
+    const r=await fetch(`/api/customers/?q=${encodeURIComponent(q)}`);
+    const names=await r.json();
+    if(!names.length){list.style.display='none';return;}
+    list.innerHTML=names.map(n=>{
+      const idx=n.toLowerCase().indexOf(q.toLowerCase());
+      const hi=n.slice(0,idx)+'<strong>'+n.slice(idx,idx+q.length)+'</strong>'+n.slice(idx+q.length);
+      return`<div class="sp-ac-item" onmousedown="spAcSel('${n.replace(/'/g,"\\'")}')">${hi}</div>`;
+    }).join('');
+    list.style.display='block';
+  });
+  inp.addEventListener('blur',()=>setTimeout(()=>list.style.display='none',150));
+}
+function spAcSel(name){document.getElementById('f-customer').value=name;document.getElementById('sp-ac-list').style.display='none';}
+
+// ── Bulk status ───────────────────────────────────────────────────────────────
+function toggleAll(cb){
+  document.querySelectorAll('.row-sel-cb').forEach(c=>c.checked=cb.checked);
+  updateBulkBar();
+}
+function updateBulkBar(){
+  const checked = [...document.querySelectorAll('.row-sel-cb:checked')];
+  const bar = document.getElementById('bulk-bar');
+  if(checked.length > 0){
+    bar.style.display='flex';
+    document.getElementById('bulk-count').textContent = `${checked.length} project${checked.length>1?'s':''} selected`;
+  } else {
+    bar.style.display='none';
+    document.getElementById('sel-all').checked=false;
+  }
+}
+function clearSelection(){
+  document.querySelectorAll('.row-sel-cb').forEach(c=>c.checked=false);
+  document.getElementById('sel-all').checked=false;
+  updateBulkBar();
+}
+async function applyBulkStatus(){
+  const ids=[...[...document.querySelectorAll('.row-sel-cb:checked')].map(c=>c.value)];
+  const status=document.getElementById('bulk-status-sel').value;
+  if(!ids.length) return;
+  const label=document.querySelector(`#bulk-status-sel option[value="${status}"]`).textContent;
+  if(!confirm(`Set ${ids.length} project(s) to "${label}"?`)) return;
+  const r=await fetch('/bulk-status/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},body:JSON.stringify({ids,status})});
+  const d=await r.json();
+  if(d.ok) location.reload();
+}
+
+// ── Filter persistence ────────────────────────────────────────────────────────
+(function(){
+  // Save current filters to session on any filter change
+  const params = new URLSearchParams(window.location.search);
+  if(params.toString()){
+    fetch('/dashboard/save-filters/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
+      body: JSON.stringify(Object.fromEntries(params))
+    });
+  }
+})();
+</script>
+{% endblock %}
