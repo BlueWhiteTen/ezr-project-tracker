@@ -2541,26 +2541,46 @@ def cost_wall_fixings_save(request, pk):
 
 
 def create_superuser_once(request):
-    """One-time superuser creation. Disabled after first use."""
+    from django.http import HttpResponse
     from django.contrib.auth.models import User
-    # Only works if no superuser exists yet
+    from django.middleware.csrf import get_token
     if User.objects.filter(is_superuser=True).exists():
-        from django.http import HttpResponse
-        return HttpResponse("Superuser already exists. This URL is disabled.", status=403)
+        return HttpResponse("Superuser already exists.", status=403)
+    token = get_token(request)
     if request.method == 'POST':
         email = request.POST.get('email','').strip()
         password = request.POST.get('password','').strip()
         if email and password:
-            user, created = User.objects.get_or_create(
-                username=email,
-                defaults={'email': email, 'is_active': True, 'is_staff': True, 'is_superuser': True}
-            )
-            if not created:
-                user.is_active = True
-                user.is_staff = True
-                user.is_superuser = True
-            user.set_password(password)
-            user.save()
-            from django.http import HttpResponse
-            return HttpResponse(f"✅ Superuser '{email}' created. You can now log in. Delete or disable this URL.", status=200)
-    return render(request, 'projects/setup_superuser.html', {})
+            try:
+                user = User.objects.filter(username=email).first()
+                if user:
+                    user.is_active = True
+                    user.is_staff = True
+                    user.is_superuser = True
+                    user.set_password(password)
+                    user.save()
+                else:
+                    parts = email.split('@')[0].split('.')
+                    user = User.objects.create_superuser(
+                        username=email,
+                        email=email,
+                        password=password,
+                        first_name=parts[0].title() if parts else '',
+                        last_name=parts[1].title() if len(parts)>1 else '',
+                    )
+                return HttpResponse(f"<h2>✅ Done! <a href='/login/'>Click here to log in</a></h2>")
+            except Exception as e:
+                return HttpResponse(f"<h2>Error: {e}</h2>", status=500)
+    html = f"""<!DOCTYPE html><html><head><title>Setup</title>
+    <style>body{{font-family:Arial;background:#1a1a1a;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}}
+    .b{{background:#2a2a2a;border:1px solid #444;border-radius:10px;padding:2rem;width:340px}}
+    h2{{color:#f97316;margin:0 0 1rem}}input{{width:100%;padding:.6rem;margin-bottom:.8rem;border:1px solid #555;border-radius:6px;background:#333;color:#fff;font-size:.95rem;box-sizing:border-box}}
+    button{{width:100%;padding:.7rem;background:#f97316;border:none;border-radius:6px;color:#fff;font-weight:700;cursor:pointer;font-size:1rem}}</style>
+    </head><body><div class="b"><h2>⚙ Create Admin Account</h2>
+    <form method="post"><input type="hidden" name="csrfmiddlewaretoken" value="{token}">
+    <input type="email" name="email" placeholder="Your email" required>
+    <input type="password" name="password" placeholder="Password" required>
+    <button type="submit">Create</button></form>
+    <p style="font-size:.75rem;color:#888;margin-top:.8rem">⚠ Disables after first use</p>
+    </div></body></html>"""
+    return HttpResponse(html)
