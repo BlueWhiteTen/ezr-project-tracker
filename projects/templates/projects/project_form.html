@@ -505,6 +505,55 @@ async function loadDocs(pk){
 }
 {% if project %}document.addEventListener('DOMContentLoaded', ()=>loadDocs({{ project.pk }}));{% endif %}
 
+// ── Comments ──────────────────────────────────────────────────────────────────
+async function postComment(pk){
+  const input = document.getElementById('comment-input');
+  const text = input ? input.value.trim() : '';
+  if(!text) return;
+  const btn = document.querySelector('[onclick="postComment({{ project.pk }})"]');
+  if(btn){ btn.textContent = 'Posting…'; btn.disabled = true; }
+  try {
+    const r = await fetch(`/project/${pk}/comment/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      body: JSON.stringify({ text })
+    });
+    const d = await r.json();
+    if(d.error){ alert(d.error); return; }
+    // Remove "no comments" placeholder
+    const none = document.getElementById('no-comments');
+    if(none) none.remove();
+    // Add comment to list
+    const list = document.getElementById('comments-list');
+    if(list){
+      const initials = d.user.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+      const div = document.createElement('div');
+      div.className = 'comment-entry';
+      div.style.cssText = 'display:flex;align-items:flex-start;gap:.75rem;margin-bottom:.75rem;';
+      div.innerHTML = `
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0;">${initials}</div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:baseline;gap:.5rem;margin-bottom:.2rem;">
+            <span style="font-weight:600;font-size:.85rem;">${d.user}</span>
+            <span style="font-size:.72rem;color:var(--mut);">${d.timestamp}</span>
+          </div>
+          <div style="font-size:.875rem;color:var(--txt2);">${d.text}</div>
+        </div>`;
+      list.appendChild(div);
+    }
+    input.value = '';
+  } catch(e) { alert('Could not post comment: ' + e.message); }
+  finally { if(btn){ btn.textContent = 'Post'; btn.disabled = false; } }
+}
+
+// Post comment on Enter key
+document.getElementById('comment-input')?.addEventListener('keydown', function(e){
+  if(e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    postComment({{ project.pk|default:0 }});
+  }
+});
+
 async function duplicateProject(){
   if(!confirm('⚠ Duplicate this project?\n\nA copy will be created with status "Received" and SO prefixed COPY-.\n\nIMPORTANT: Review all details carefully — dates, SO number and address will need updating.')) return;
   const r = await fetch('{% url "project_duplicate" project.pk %}', {
