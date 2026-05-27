@@ -102,13 +102,16 @@ AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'ezr-media')
 
 if CLOUDFLARE_ACCOUNT_ID and AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
     # Use Cloudflare R2 for media storage
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    AWS_S3_ENDPOINT_URL  = f'https://{CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com'
-    AWS_S3_REGION_NAME   = 'auto'
-    AWS_DEFAULT_ACL      = 'public-read'
-    AWS_QUERYSTRING_AUTH = False
+    DEFAULT_FILE_STORAGE  = 'storages.backends.s3boto3.S3Boto3Storage'
+    AWS_S3_ENDPOINT_URL   = f'https://{CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com'
+    AWS_S3_REGION_NAME    = 'auto'
+    AWS_DEFAULT_ACL       = None
+    AWS_QUERYSTRING_AUTH  = False
     AWS_S3_FILE_OVERWRITE = False
-    MEDIA_URL = os.environ.get('MEDIA_URL', f'https://{CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com/{AWS_STORAGE_BUCKET_NAME}/')
+    AWS_S3_SIGNATURE_VERSION = 's3v4'
+    AWS_S3_ADDRESSING_STYLE  = 'path'
+    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
+    MEDIA_URL  = os.environ.get('MEDIA_URL', f'https://{CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com/{AWS_STORAGE_BUCKET_NAME}/')
     MEDIA_ROOT = ''
 else:
     # Local storage fallback
