@@ -1380,6 +1380,8 @@ def picking_list_delete(request, pk):
 
 @login_required
 @require_POST
+@login_required
+@require_POST
 def stock_import(request):
     import openpyxl
     f = request.FILES.get('file')
