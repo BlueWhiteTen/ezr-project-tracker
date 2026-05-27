@@ -1187,7 +1187,6 @@ def project_documents(request, pk):
 
 
 @login_required
-@require_POST
 @login_required
 def document_download(request, pk):
     doc = get_object_or_404(ProjectDocument, pk=pk)
@@ -1204,11 +1203,13 @@ def document_download(request, pk):
     return HttpResponse('File not found', status=404)
 
 
+@login_required
 @require_POST
 def document_delete(request, pk):
     doc = get_object_or_404(ProjectDocument, pk=pk)
     try:
-        doc.file.delete(save=False)
+        if doc.file:
+            doc.file.delete(save=False)
     except Exception:
         pass
     doc.delete()
