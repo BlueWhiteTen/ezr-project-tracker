@@ -269,13 +269,17 @@ class ProjectDocument(models.Model):
         ('photo',        'Photo'),
         ('other',        'Other'),
     ]
-    project     = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='documents')
-    file        = models.FileField(upload_to='project_docs/')
-    name        = models.CharField(max_length=200)
-    doc_type    = models.CharField(max_length=20, choices=DOC_TYPES, default='other')
-    uploaded_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-    notes       = models.CharField(max_length=300, blank=True)
+    project      = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='documents')
+    file         = models.FileField(upload_to='project_docs/', null=True, blank=True)
+    # DB storage for production (no filesystem needed)
+    file_data    = models.BinaryField(null=True, blank=True)
+    file_mime    = models.CharField(max_length=100, blank=True)
+    file_original_name = models.CharField(max_length=200, blank=True)
+    name         = models.CharField(max_length=200)
+    doc_type     = models.CharField(max_length=20, choices=DOC_TYPES, default='other')
+    uploaded_by  = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    uploaded_at  = models.DateTimeField(auto_now_add=True)
+    notes        = models.CharField(max_length=300, blank=True)
 
     class Meta:
         ordering = ['-uploaded_at']

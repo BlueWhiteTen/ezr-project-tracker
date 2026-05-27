@@ -1145,52 +1145,65 @@ def project_documents(request, pk):
         if not f:
             return JsonResponse({'error': 'No file'}, status=400)
         try:
+            import mimetypes
+            mime = f.content_type or mimetypes.guess_type(f.name)[0] or 'application/octet-stream'
             doc = ProjectDocument.objects.create(
                 project=project,
-                file=f,
+                file_data=f.read(),
+                file_mime=mime,
+                file_original_name=f.name,
                 name=request.POST.get('name', f.name),
                 doc_type=request.POST.get('doc_type', 'other'),
                 notes=request.POST.get('notes', ''),
                 uploaded_by=request.user,
             )
-            try:
-                url = doc.file.url
-            except Exception:
-                url = f'/media/{doc.file.name}'
             return JsonResponse({
                 'id': doc.pk,
                 'name': doc.name,
                 'doc_type': doc.get_doc_type_display(),
-                'url': url,
+                'url': f'/document/{doc.pk}/download/',
                 'uploaded_by': request.user.get_full_name() or request.user.username,
                 'uploaded_at': doc.uploaded_at.strftime('%d %b %Y, %H:%M'),
                 'notes': doc.notes,
-                'ext': doc.file.name.split('.')[-1].upper(),
+                'ext': f.name.split('.')[-1].upper(),
             })
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
     docs = project.documents.select_related('uploaded_by').all()
     result = []
     for d in docs:
-        try:
-            url = d.file.url
-        except Exception:
-            url = f'/media/{d.file.name}'
+        ext = d.file_original_name.split('.')[-1].upper() if d.file_original_name else (d.file.name.split('.')[-1].upper() if d.file else '?')
         result.append({
             'id': d.pk,
             'name': d.name,
             'doc_type': d.get_doc_type_display(),
-            'url': url,
+            'url': f'/document/{d.pk}/download/',
             'uploaded_by': d.uploaded_by.get_full_name() if d.uploaded_by else '',
             'uploaded_at': d.uploaded_at.strftime('%d %b %Y, %H:%M'),
             'notes': d.notes,
-            'ext': d.file.name.split('.')[-1].upper(),
+            'ext': ext,
         })
     return JsonResponse(result, safe=False)
 
 
 @login_required
 @require_POST
+@login_required
+def document_download(request, pk):
+    doc = get_object_or_404(ProjectDocument, pk=pk)
+    if doc.file_data:
+        from django.http import HttpResponse
+        response = HttpResponse(bytes(doc.file_data), content_type=doc.file_mime or 'application/octet-stream')
+        filename = doc.file_original_name or doc.name
+        response['Content-Disposition'] = f'inline; filename="{filename}"'
+        return response
+    elif doc.file:
+        from django.http import FileResponse
+        return FileResponse(doc.file.open(), content_type='application/octet-stream')
+    from django.http import HttpResponse
+    return HttpResponse('File not found', status=404)
+
+
 @require_POST
 def document_delete(request, pk):
     doc = get_object_or_404(ProjectDocument, pk=pk)

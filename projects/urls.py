@@ -34,6 +34,7 @@ urlpatterns = [
     path('customers/<int:pk>/',           views.customer_detail,       name='customer_detail'),
     path('customers/<int:pk>/delete/',    views.customer_delete,       name='customer_delete'),
     path('project/<int:pk>/documents/',   views.project_documents,     name='project_documents'),
+    path('document/<int:pk>/download/', views.document_download, name='document_download'),
     path('document/<int:pk>/delete/',     views.document_delete,       name='document_delete'),
     path('stock/',                           views.stock_list,            name='stock_list'),
     path('stock/import/',                  views.stock_import,          name='stock_import'),
