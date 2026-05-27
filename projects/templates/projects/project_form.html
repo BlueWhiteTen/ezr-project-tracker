@@ -435,6 +435,76 @@ async function saveAddress(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAddress();});
 {% endif %}
 
+// ── Document upload ──────────────────────────────────────────────────────────
+function docFileChanged(input){
+  const label = document.getElementById('doc-file-name');
+  if(label) label.textContent = input.files.length ? input.files[0].name : 'No file chosen';
+}
+
+async function uploadDoc(pk){
+  const fileEl = document.getElementById('doc-file');
+  if(!fileEl || !fileEl.files.length){ alert('Please choose a file first.'); return; }
+  const nameEl = document.getElementById('doc-name');
+  const typeEl = document.getElementById('doc-type');
+  const notesEl = document.getElementById('doc-notes');
+  const formData = new FormData();
+  formData.append('file', fileEl.files[0]);
+  formData.append('name', nameEl ? nameEl.value || fileEl.files[0].name : fileEl.files[0].name);
+  formData.append('doc_type', typeEl ? typeEl.value : 'other');
+  formData.append('notes', notesEl ? notesEl.value : '');
+  formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+  const btn = document.querySelector('[onclick="uploadDoc({{ project.pk }})"]');
+  if(btn){ btn.textContent = 'Uploading…'; btn.disabled = true; }
+  try {
+    const r = await fetch(`/project/${pk}/documents/`, { method: 'POST', body: formData });
+    const d = await r.json();
+    if(d.error){ alert('Upload failed: ' + d.error); }
+    else {
+      // Add to docs list in DOM
+      const list = document.getElementById('doc-list');
+      if(list){
+        const row = document.createElement('div');
+        row.style.cssText='display:flex;align-items:center;gap:.6rem;padding:.4rem 0;border-bottom:.5px solid var(--bdr);font-size:.85rem;';
+        row.innerHTML = `<span style="font-family:var(--fm);font-size:.7rem;background:var(--acc-bg);color:var(--acc);padding:1px 6px;border-radius:3px;">${d.ext}</span>
+          <a href="${d.url}" target="_blank" style="flex:1;color:var(--txt);">${d.name}</a>
+          <span style="font-size:.75rem;color:var(--mut);">${d.uploaded_by}</span>`;
+        list.appendChild(row);
+      }
+      // Reset form
+      fileEl.value = '';
+      document.getElementById('doc-file-name').textContent = 'No file chosen';
+      if(nameEl) nameEl.value = '';
+      if(notesEl) notesEl.value = '';
+    }
+  } catch(e) {
+    const errEl = document.getElementById('doc-error');
+    if(errEl){ errEl.textContent = 'Upload error: ' + e.message; errEl.style.display='block'; }
+    else { alert('Upload error: ' + e.message); }
+  }
+  finally { if(btn){ btn.textContent = 'Upload Document'; btn.disabled = false; } }
+}
+
+// Load existing docs on page open
+async function loadDocs(pk){
+  const list = document.getElementById('doc-list');
+  if(!list) return;
+  try {
+    const r = await fetch(`/project/${pk}/documents/`);
+    const docs = await r.json();
+    list.innerHTML = '';
+    docs.forEach(d => {
+      const row = document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:.6rem;padding:.4rem 0;border-bottom:.5px solid var(--bdr);font-size:.85rem;';
+      row.innerHTML = `<span style="font-family:var(--fm);font-size:.7rem;background:var(--acc-bg);color:var(--acc);padding:1px 6px;border-radius:3px;flex-shrink:0;">${d.ext}</span>
+        <a href="${d.url}" target="_blank" style="flex:1;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}</a>
+        <span style="font-size:.72rem;color:var(--mut);flex-shrink:0;">${d.uploaded_by}</span>
+        <a href="/document/${d.id}/delete/" onclick="return confirm('Delete this document?')" style="color:var(--red);font-size:.8rem;text-decoration:none;flex-shrink:0;">✕</a>`;
+      list.appendChild(row);
+    });
+  } catch(e) { console.log('Could not load docs', e); }
+}
+{% if project %}document.addEventListener('DOMContentLoaded', ()=>loadDocs({{ project.pk }}));{% endif %}
+
 async function duplicateProject(){
   if(!confirm('⚠ Duplicate this project?\n\nA copy will be created with status "Received" and SO prefixed COPY-.\n\nIMPORTANT: Review all details carefully — dates, SO number and address will need updating.')) return;
   const r = await fetch('{% url "project_duplicate" project.pk %}', {

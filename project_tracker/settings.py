@@ -95,7 +95,9 @@ WHITENOISE_AUTOREFRESH = True
 
 # ── Media files ───────────────────────────────────────────────────────────────
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = Path(os.environ.get('MEDIA_ROOT', BASE_DIR / 'media'))
+# Ensure media directory exists
+MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
