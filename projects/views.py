@@ -719,9 +719,10 @@ def add_comment_with_tags(request, pk):
     if not text:
         return JsonResponse({'error': 'Empty comment'}, status=400)
 
-    import re as _re
-    clean_text = _re.sub(r'@\[([^\]]+)\]\(\d+\)', r'@', text)
-    clean_text = _re.sub(r'#\[([^\]]+)\]\((\d+)\)', r'#', clean_text)
+    # Store readable text — replace @[Name](id) → @Name
+    import re as _re2
+    clean_text = _re2.sub("@\[([^\]]+)\]\(\d+\)", "@\1", text)
+    clean_text = _re2.sub("#\[([^\]]+)\]\((\d+)\)", "#\1", clean_text)
     c = Comment.objects.create(project=p, user=request.user, text=clean_text)
     sender_name = request.user.get_full_name() or request.user.username
 
