@@ -457,7 +457,9 @@ async function uploadDoc(pk){
   if(btn){ btn.textContent = 'Uploading…'; btn.disabled = true; }
   try {
     const r = await fetch(`/project/${pk}/documents/`, { method: 'POST', body: formData });
-    const d = await r.json();
+    const text = await r.text();
+    let d;
+    try { d = JSON.parse(text); } catch(e) { throw new Error('Server error: ' + text.slice(0,200)); }
     if(d.error){ alert('Upload failed: ' + d.error); }
     else {
       // Add to docs list in DOM

@@ -1144,35 +1144,49 @@ def project_documents(request, pk):
         f = request.FILES.get('file')
         if not f:
             return JsonResponse({'error': 'No file'}, status=400)
-        doc = ProjectDocument.objects.create(
-            project=project,
-            file=f,
-            name=request.POST.get('name', f.name),
-            doc_type=request.POST.get('doc_type', 'other'),
-            notes=request.POST.get('notes', ''),
-            uploaded_by=request.user,
-        )
-        return JsonResponse({
-            'id': doc.pk,
-            'name': doc.name,
-            'doc_type': doc.get_doc_type_display(),
-            'url': doc.file.url,
-            'uploaded_by': request.user.get_full_name() or request.user.username,
-            'uploaded_at': doc.uploaded_at.strftime('%d %b %Y, %H:%M'),
-            'notes': doc.notes,
-            'ext': doc.file.name.split('.')[-1].upper(),
-        })
+        try:
+            doc = ProjectDocument.objects.create(
+                project=project,
+                file=f,
+                name=request.POST.get('name', f.name),
+                doc_type=request.POST.get('doc_type', 'other'),
+                notes=request.POST.get('notes', ''),
+                uploaded_by=request.user,
+            )
+            try:
+                url = doc.file.url
+            except Exception:
+                url = f'/media/{doc.file.name}'
+            return JsonResponse({
+                'id': doc.pk,
+                'name': doc.name,
+                'doc_type': doc.get_doc_type_display(),
+                'url': url,
+                'uploaded_by': request.user.get_full_name() or request.user.username,
+                'uploaded_at': doc.uploaded_at.strftime('%d %b %Y, %H:%M'),
+                'notes': doc.notes,
+                'ext': doc.file.name.split('.')[-1].upper(),
+            })
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
     docs = project.documents.select_related('uploaded_by').all()
-    return JsonResponse([{
-        'id': d.pk,
-        'name': d.name,
-        'doc_type': d.get_doc_type_display(),
-        'url': d.file.url,
-        'uploaded_by': d.uploaded_by.get_full_name() if d.uploaded_by else '',
-        'uploaded_at': d.uploaded_at.strftime('%d %b %Y, %H:%M'),
-        'notes': d.notes,
-        'ext': d.file.name.split('.')[-1].upper(),
-    } for d in docs], safe=False)
+    result = []
+    for d in docs:
+        try:
+            url = d.file.url
+        except Exception:
+            url = f'/media/{d.file.name}'
+        result.append({
+            'id': d.pk,
+            'name': d.name,
+            'doc_type': d.get_doc_type_display(),
+            'url': url,
+            'uploaded_by': d.uploaded_by.get_full_name() if d.uploaded_by else '',
+            'uploaded_at': d.uploaded_at.strftime('%d %b %Y, %H:%M'),
+            'notes': d.notes,
+            'ext': d.file.name.split('.')[-1].upper(),
+        })
+    return JsonResponse(result, safe=False)
 
 
 @login_required
