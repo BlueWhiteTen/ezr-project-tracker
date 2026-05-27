@@ -465,9 +465,10 @@ async function uploadDoc(pk){
       if(list){
         const row = document.createElement('div');
         row.style.cssText='display:flex;align-items:center;gap:.6rem;padding:.4rem 0;border-bottom:.5px solid var(--bdr);font-size:.85rem;';
-        row.innerHTML = `<span style="font-family:var(--fm);font-size:.7rem;background:var(--acc-bg);color:var(--acc);padding:1px 6px;border-radius:3px;">${d.ext}</span>
-          <a href="${d.url}" target="_blank" style="flex:1;color:var(--txt);">${d.name}</a>
-          <span style="font-size:.75rem;color:var(--mut);">${d.uploaded_by}</span>`;
+        row.innerHTML = `<span style="font-family:var(--fm);font-size:.7rem;background:var(--acc-bg);color:var(--acc);padding:1px 6px;border-radius:3px;flex-shrink:0;">${d.ext}</span>
+          <a href="${d.url}" target="_blank" style="flex:1;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}</a>
+          <span style="font-size:.75rem;color:var(--mut);flex-shrink:0;">${d.uploaded_by}</span>
+          <button onclick="deleteDoc(${d.id}, this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;padding:2px 6px;flex-shrink:0;">✕</button>`;
         list.appendChild(row);
       }
       // Reset form
@@ -495,15 +496,32 @@ async function loadDocs(pk){
     docs.forEach(d => {
       const row = document.createElement('div');
       row.style.cssText='display:flex;align-items:center;gap:.6rem;padding:.4rem 0;border-bottom:.5px solid var(--bdr);font-size:.85rem;';
+      row.dataset.docId = d.id;
       row.innerHTML = `<span style="font-family:var(--fm);font-size:.7rem;background:var(--acc-bg);color:var(--acc);padding:1px 6px;border-radius:3px;flex-shrink:0;">${d.ext}</span>
         <a href="${d.url}" target="_blank" style="flex:1;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}</a>
         <span style="font-size:.72rem;color:var(--mut);flex-shrink:0;">${d.uploaded_by}</span>
-        <a href="/document/${d.id}/delete/" onclick="return confirm('Delete this document?')" style="color:var(--red);font-size:.8rem;text-decoration:none;flex-shrink:0;">✕</a>`;
+        <button onclick="deleteDoc(${d.id}, this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;padding:2px 6px;flex-shrink:0;">✕</button>`;
       list.appendChild(row);
     });
   } catch(e) { console.log('Could not load docs', e); }
 }
 {% if project %}document.addEventListener('DOMContentLoaded', ()=>loadDocs({{ project.pk }}));{% endif %}
+
+// ── Document delete ──────────────────────────────────────────────────────────
+async function deleteDoc(id, btn){
+  if(!confirm('Delete this document?')) return;
+  const r = await fetch(`/document/${id}/delete/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+  });
+  const d = await r.json();
+  if(d.ok){
+    // Remove the row from the DOM
+    btn.closest('div').remove();
+  } else {
+    alert('Could not delete document.');
+  }
+}
 
 // ── Comments ──────────────────────────────────────────────────────────────────
 async function postComment(pk){

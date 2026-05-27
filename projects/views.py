@@ -1177,9 +1177,13 @@ def project_documents(request, pk):
 
 @login_required
 @require_POST
+@require_POST
 def document_delete(request, pk):
     doc = get_object_or_404(ProjectDocument, pk=pk)
-    doc.file.delete()
+    try:
+        doc.file.delete(save=False)
+    except Exception:
+        pass
     doc.delete()
     return JsonResponse({'ok': True})
 
