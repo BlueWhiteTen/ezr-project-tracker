@@ -175,10 +175,10 @@ tr:hover td{background:var(--surf2);}
     <td style="width:36px;padding-left:1rem;"><input type="checkbox" class="row-sel-cb" value="{{ p.pk }}" onchange="updateBulkBar()"></td>
     <td>{% if p.sales_order %}<span class="so-tag">{{ p.sales_order }}</span>{% else %}<span style="color:var(--mut2)">—</span>{% endif %}</td>
     <td>
-      <div class="pname">
+      <a href="{% url 'project_edit' p.pk %}" class="pname" style="text-decoration:none;">
         {% if p.is_overdue %}<span style="background:var(--red-bg);color:var(--red);font-size:.65rem;font-weight:600;padding:1px 6px;border-radius:4px;margin-right:4px;border:1px solid rgba(220,38,38,.2);">OVERDUE</span>{% endif %}
         {{ p.project_name }}
-      </div>
+      </a>
       {% if p.description %}<div class="psub">{{ p.description }}</div>{% endif %}
     </td>
     <td>
