@@ -9,7 +9,7 @@ from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 import json
 
-from .models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride
+from .models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder
 from .forms import RegisterForm, ProjectForm
 
 
@@ -281,9 +281,10 @@ def project_edit(request, pk):
     logs = project.logs.select_related('user').order_by('-timestamp')[:30]
     from .models import Comment
     comments = project.comments.select_related('user').order_by('timestamp')
+    staff_users = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
     return render(request, 'projects/project_form.html', {
         'form': form, 'action': 'Edit', 'project': project, 'logs': logs,
-        'comments': comments,
+        'comments': comments, 'staff_users': staff_users,
     })
 
 
@@ -2619,3 +2620,79 @@ def create_superuser_once(request):
     <p style="font-size:.75rem;color:#888;margin-top:.8rem">⚠ Disables after first use</p>
     </div></body></html>"""
     return HttpResponse(html)
+
+
+# ── Reminders ─────────────────────────────────────────────────────────────────
+
+@login_required
+@require_POST
+def reminder_add(request, pk):
+    project = get_object_or_404(Project, pk=pk)
+    data = json.loads(request.body)
+    user_id   = data.get('user_id')
+    message   = data.get('message', '').strip()
+    remind_at = data.get('remind_at', '')
+    if not user_id or not remind_at:
+        return JsonResponse({'error': 'Missing fields'}, status=400)
+    from django.utils.dateparse import parse_datetime
+    from django.utils import timezone
+    dt = parse_datetime(remind_at)
+    if not dt:
+        return JsonResponse({'error': 'Invalid date'}, status=400)
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt)
+    user = get_object_or_404(User, pk=user_id)
+    r = Reminder.objects.create(
+        project=project, notify_user=user,
+        created_by=request.user,
+        message=message or f"Reminder: {project.project_name}",
+        remind_at=dt,
+    )
+    return JsonResponse({'ok': True, 'id': r.pk,
+        'remind_at': dt.strftime('%d %b %Y, %H:%M'),
+        'user': user.get_full_name() or user.username,
+        'message': r.message,
+    })
+
+
+@login_required
+@require_POST
+def reminder_delete(request, pk):
+    r = get_object_or_404(Reminder, pk=pk)
+    r.delete()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+def reminders_list(request, pk):
+    project = get_object_or_404(Project, pk=pk)
+    reminders = project.reminders.select_related('notify_user').filter(sent=False)
+    return JsonResponse([{
+        'id': r.pk,
+        'message': r.message,
+        'remind_at': r.remind_at.strftime('%d %b %Y, %H:%M'),
+        'user': r.notify_user.get_full_name() or r.notify_user.username,
+        'user_id': r.notify_user.pk,
+    } for r in reminders], safe=False)
+
+
+@login_required
+def check_reminders(request):
+    """Called periodically by the frontend — fires due reminders as notifications."""
+    from django.utils import timezone
+    now = timezone.now()
+    due = Reminder.objects.filter(
+        notify_user=request.user, sent=False, remind_at__lte=now
+    ).select_related('project')
+    fired = []
+    for r in due:
+        Notification.objects.create(
+            user=r.notify_user,
+            type='reminder',
+            text=r.message,
+            link=f'/project/{r.project.pk}/edit/',
+        )
+        r.sent = True
+        r.save()
+        fired.append({'id': r.pk, 'message': r.message, 'link': f'/project/{r.project.pk}/edit/'})
+    return JsonResponse({'fired': fired})

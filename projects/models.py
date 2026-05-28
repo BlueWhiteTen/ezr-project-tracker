@@ -159,8 +159,9 @@ class Message(models.Model):
 
 class Notification(models.Model):
     TYPES = [
-        ('tag',     'Tagged in comment'),
-        ('message', 'New message'),
+        ('tag',      'Tagged in comment'),
+        ('message',  'New message'),
+        ('reminder', 'Reminder'),
     ]
     user      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     type      = models.CharField(max_length=20, choices=TYPES)
@@ -171,6 +172,22 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ['-timestamp']
+
+
+class Reminder(models.Model):
+    project     = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='reminders')
+    notify_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reminders')
+    created_by  = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='reminders_created')
+    message     = models.CharField(max_length=300)
+    remind_at   = models.DateTimeField()
+    sent        = models.BooleanField(default=False)
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['remind_at']
+
+    def __str__(self):
+        return f"Reminder for {self.notify_user} at {self.remind_at}"
 
 
 class TeamMessage(models.Model):

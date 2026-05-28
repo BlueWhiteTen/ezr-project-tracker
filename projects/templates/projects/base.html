@@ -312,6 +312,36 @@ setInterval(pollCounts, 30000);
 </script>
 {% block extra_js %}{% endblock %}
 <script>
+// ── Reminder polling (checks every 60 seconds) ────────────────────────────────
+{% if user.is_authenticated %}
+async function checkReminders(){
+  try {
+    const r = await fetch('/api/check-reminders/');
+    const d = await r.json();
+    if(d.fired && d.fired.length){
+      d.fired.forEach(rem => {
+        // Update notification badge
+        const badge = document.getElementById('notif-badge');
+        if(badge){
+          const current = parseInt(badge.textContent) || 0;
+          badge.textContent = current + 1;
+          badge.style.display = 'flex';
+        }
+        // Show a toast
+        const toast = document.createElement('div');
+        toast.innerHTML = `🔔 <strong>Reminder:</strong> ${rem.message} <a href="${rem.link}" style="color:#fff;margin-left:.5rem;text-decoration:underline;">Open</a>`;
+        toast.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;background:#7c3aed;color:#fff;padding:.85rem 1.2rem;border-radius:8px;font-size:.88rem;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);max-width:340px;cursor:pointer;';
+        toast.onclick = () => { window.location.href = rem.link; };
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 8000);
+      });
+    }
+  } catch(e) {}
+}
+checkReminders();
+setInterval(checkReminders, 60000);
+{% endif %}
+
 function toggleMobileMenu(){
   const sb = document.querySelector('.left-sidebar');
   const overlay = document.getElementById('mobile-overlay');

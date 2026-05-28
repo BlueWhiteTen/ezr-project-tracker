@@ -39,7 +39,7 @@
   <div class="cust-letter">{{ letter_group.grouper }}</div>
   {% for c in letter_group.list %}
   <div class="cust-row">
-    <div class="cust-name">{{ c.name }}</div>
+    <a href="{% url 'customer_detail' c.pk %}" class="cust-name" style="text-decoration:none;color:inherit;">{{ c.name }}</a>
     <div class="cust-contact">{% if c.contact_name %}{{ c.contact_name }}{% endif %}{% if c.contact_name and c.email %} · {% endif %}{% if c.email %}{{ c.email }}{% endif %}</div>
     <div class="cust-phone">{% if c.phone %}{{ c.phone }}{% endif %}</div>
     <a href="{% url 'customer_detail' c.pk %}" class="btn btn-ghost btn-sm">View</a>

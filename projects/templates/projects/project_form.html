@@ -509,6 +509,52 @@ async function loadDocs(pk){
 }
 {% if project %}document.addEventListener('DOMContentLoaded', ()=>loadDocs({{ project.pk }}));{% endif %}
 
+// ── Reminders ────────────────────────────────────────────────────────────────
+async function loadReminders(pk){
+  const list = document.getElementById('reminders-list');
+  if(!list) return;
+  const r = await fetch(`/project/${pk}/reminders/`);
+  const reminders = await r.json();
+  if(!reminders.length){
+    list.innerHTML = '<div style="font-size:.85rem;color:var(--mut);">No reminders set</div>';
+    return;
+  }
+  list.innerHTML = reminders.map(r => `
+    <div style="display:flex;align-items:center;gap:.75rem;padding:.4rem 0;border-bottom:.5px solid var(--bdr);font-size:.85rem;">
+      <span style="font-size:1rem;">🔔</span>
+      <span style="flex:1;font-weight:500;">${r.message}</span>
+      <span style="color:var(--mut);font-size:.78rem;">${r.user}</span>
+      <span style="color:var(--acc);font-size:.78rem;">${r.remind_at}</span>
+      <button onclick="deleteReminder(${r.id})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.85rem;">✕</button>
+    </div>`).join('');
+}
+
+async function addReminder(pk){
+  const msg  = document.getElementById('rem-msg').value.trim();
+  const dt   = document.getElementById('rem-dt').value;
+  const uid  = document.getElementById('rem-user').value;
+  if(!dt){ alert('Please choose a date and time.'); return; }
+  const r = await fetch(`/project/${pk}/reminders/add/`, {
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
+    body: JSON.stringify({message: msg, remind_at: dt, user_id: uid})
+  });
+  const d = await r.json();
+  if(d.ok){
+    document.getElementById('rem-msg').value = '';
+    document.getElementById('rem-dt').value = '';
+    loadReminders(pk);
+  } else { alert(d.error || 'Failed to set reminder'); }
+}
+
+async function deleteReminder(id){
+  await fetch(`/reminder/${id}/delete/`, {method:'POST', headers:{'X-CSRFToken':'{{ csrf_token }}'}});
+  {% if project %}loadReminders({{ project.pk }});{% endif %}
+}
+
+{% if project %}
+document.addEventListener('DOMContentLoaded', () => loadReminders({{ project.pk }}));
+{% endif %}
+
 // ── Document delete ──────────────────────────────────────────────────────────
 async function deleteDoc(id, btn){
   if(!confirm('Delete this document?')) return;
