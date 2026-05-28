@@ -281,6 +281,32 @@
   </div>
 </form>
 
+{% if project %}
+<div class="form-card" style="margin-top:1.2rem;">
+  <div class="section-title" style="margin-bottom:.85rem;">🔔 Reminders</div>
+  <div id="reminders-list" style="margin-bottom:1rem;"></div>
+  <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:flex-end;">
+    <div style="flex:1;min-width:180px;">
+      <label class="form-label">Message</label>
+      <input class="form-input" type="text" id="rem-msg" placeholder="e.g. Chase delivery date">
+    </div>
+    <div>
+      <label class="form-label">Date &amp; Time</label>
+      <input class="form-input" type="datetime-local" id="rem-dt">
+    </div>
+    <div>
+      <label class="form-label">Notify</label>
+      <select class="form-input" id="rem-user">
+        {% for u in staff_users %}
+        <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="button" class="btn btn-primary" onclick="addReminder({{ project.pk }})">Set Reminder</button>
+  </div>
+</div>
+{% endif %}
+
 {% if logs %}
 <div class="log-section">
   <div class="log-section-title">Project History</div>
