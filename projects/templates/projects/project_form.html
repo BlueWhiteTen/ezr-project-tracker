@@ -536,6 +536,44 @@ async function loadDocs(pk){
 }
 {% if project %}document.addEventListener('DOMContentLoaded', ()=>loadDocs({{ project.pk }}));{% endif %}
 
+// ── Postcode lookup (Postcodes.io — free, no API key) ───────────────────────
+async function lookupPostcode(){
+  const pc = document.getElementById('a-postcode').value.trim().replace(/\s/g,'');
+  if(pc.length < 5) return;
+  const status = document.getElementById('postcode-status');
+  const btn = document.getElementById('postcode-btn');
+  status.textContent = 'Looking up…';
+  status.style.color = 'var(--mut)';
+  btn.disabled = true;
+  try {
+    const r = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}`);
+    const d = await r.json();
+    if(d.status === 200 && d.result){
+      const res = d.result;
+      // Fill city if empty
+      const cityEl = document.getElementById('a-city');
+      if(!cityEl.value.trim()){
+        cityEl.value = res.admin_district || res.parish || res.admin_ward || '';
+      }
+      // Format postcode properly with space
+      document.getElementById('a-postcode').value = res.postcode;
+      status.textContent = `✓ ${res.admin_district || ''}${res.region ? ', ' + res.region : ''}`;
+      status.style.color = 'var(--grn)';
+    } else {
+      status.textContent = '✗ Postcode not found';
+      status.style.color = 'var(--red)';
+    }
+  } catch(e) {
+    status.textContent = '✗ Lookup failed';
+    status.style.color = 'var(--red)';
+  }
+  btn.disabled = false;
+}
+function clearPostcodeStatus(){
+  const s = document.getElementById('postcode-status');
+  if(s) s.textContent = '';
+}
+
 // ── Reminders ────────────────────────────────────────────────────────────────
 async function loadReminders(pk){
   const list = document.getElementById('reminders-list');
@@ -673,7 +711,15 @@ async function duplicateProject(){
     <div style="grid-column:1/-1;"><label class="form-label">Address Line 1</label><input class="form-input" id="a-line1" value="{{ project.addr_line1 }}" placeholder="Street address"></div>
     <div style="grid-column:1/-1;"><label class="form-label">Address Line 2</label><input class="form-input" id="a-line2" value="{{ project.addr_line2 }}" placeholder="Unit, floor, etc."></div>
     <div><label class="form-label">City / Town</label><input class="form-input" id="a-city" value="{{ project.addr_city }}" placeholder="City"></div>
-    <div><label class="form-label">Post Code</label><input class="form-input" id="a-postcode" value="{{ project.addr_postcode }}" placeholder="SW1A 1AA"></div>
+    <div>
+      <label class="form-label">Post Code</label>
+      <div style="display:flex;gap:.4rem;">
+        <input class="form-input" id="a-postcode" value="{{ project.addr_postcode }}" placeholder="SW1A 1AA" style="flex:1;"
+          oninput="clearPostcodeStatus()" onblur="lookupPostcode()">
+        <button type="button" id="postcode-btn" onclick="lookupPostcode()" class="btn btn-ghost btn-sm" style="flex-shrink:0;white-space:nowrap;">Look up</button>
+      </div>
+      <div id="postcode-status" style="font-size:.75rem;margin-top:3px;"></div>
+    </div>
     <div><label class="form-label">FAO (For Attention Of)</label><input class="form-input" id="a-fao" value="{{ project.addr_fao }}" placeholder="Contact name"></div>
     <div><label class="form-label">Phone</label><input class="form-input" id="a-phone" value="{{ project.addr_phone }}" placeholder="Phone number"></div>
   </div>
