@@ -177,12 +177,28 @@
       {% empty %}
       <p style="color:var(--mut);font-size:.85rem;">No accessories configured.</p>
       {% endfor %}
-      <div style="margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--bdr);display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
-        <label style="font-size:.88rem;color:var(--txt2);">Wall fixings required:</label>
-        <input type="number" id="wall-fixings-input" value="{{ cost.wall_fixings }}" min="0" step="1"
-          class="form-input" style="width:80px;"
-          onblur="saveWallFixings(this.value)">
-        <span style="font-size:.78rem;color:var(--mut);">Adds M6 penny washer + brown wall plug + 3" screw per fixing</span>
+      <div style="margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--bdr);display:flex;flex-direction:column;gap:.55rem;">
+        <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+          <label style="font-size:.88rem;color:var(--txt2);min-width:210px;">Wall fixings required:</label>
+          <input type="number" id="wall-fixings-input" value="{{ cost.wall_fixings }}" min="0" step="1"
+            class="form-input" style="width:80px;padding:3px 7px;font-size:.82rem;"
+            onblur="saveWallFixings(this.value)">
+          <span style="font-size:.78rem;color:var(--mut);">M6 washer + brown wall plug + 3" screw per fixing</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+          <label style="font-size:.88rem;color:var(--txt2);min-width:210px;">Back-to-back fixings required:</label>
+          <input type="number" id="btb-input" value="{{ cost.back_to_back_fixings }}" min="0" step="1"
+            class="form-input" style="width:80px;padding:3px 7px;font-size:.82rem;"
+            onblur="saveExtras()">
+          <span style="font-size:.78rem;color:var(--mut);">M8x50 bolt + M8 nut per fixing (~£0.10 each)</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+          <label style="font-size:.88rem;color:var(--txt2);min-width:210px;">Mobile base upright sets:</label>
+          <input type="number" id="mob-base-input" value="{{ cost.mobile_base_sets }}" min="0" step="1"
+            class="form-input" style="width:80px;padding:3px 7px;font-size:.82rem;"
+            onblur="saveExtras()">
+          <span style="font-size:.78rem;color:var(--mut);">Adds plate+buffer+bolt+nyloc+tek. Subtracts same qty of SM foot fixings.</span>
+        </div>
       </div>
       <div style="font-size:.74rem;color:var(--mut);padding-top:.4rem;margin-top:.1rem;">Costs are calculated per upright and included in the buying total.</div>
     </div>
