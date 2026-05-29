@@ -57,21 +57,11 @@
           </div>
           <div style="grid-column:1/-1;">
             <label class="form-label">Fitting Crew</label>
-            <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem;">
+            <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem;">
               <select id="crew-select" class="form-input" style="flex:1;" onchange="selectCrew(this)">
                 <option value="">— Select saved crew —</option>
               </select>
-              <button type="button" class="btn btn-ghost btn-sm" onclick="showAddCrew()">+ Add new</button>
-            </div>
-            <div id="add-crew-form" style="display:none;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--rad);padding:.75rem;margin-bottom:.5rem;">
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem;">
-                <input class="form-input" id="new-crew-name" placeholder="Fitter name">
-                <input class="form-input" id="new-crew-phone" placeholder="Mobile number">
-              </div>
-              <div style="display:flex;gap:.5rem;">
-                <button type="button" class="btn btn-primary btn-sm" onclick="saveCrew()">Save</button>
-                <button type="button" class="btn btn-ghost btn-sm" onclick="hideAddCrew()">Cancel</button>
-              </div>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="openCrewManager()">✏ Edit List</button>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
               <div>
@@ -151,6 +141,30 @@
     <button type="submit" class="btn btn-primary">Save Report</button>
   </div>
 </form>
+
+<!-- Crew Manager Modal -->
+<div id="crew-overlay" onclick="closeCrewManager()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;"></div>
+<div id="crew-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:480px;max-width:95vw;max-height:80vh;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:0 8px 32px rgba(0,0,0,.3);z-index:9999;display:none;flex-direction:column;">
+  <div style="padding:1rem 1.2rem;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div style="font-weight:700;font-size:1rem;">Fitting Crew List</div>
+    <button onclick="closeCrewManager()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--mut);">✕</button>
+  </div>
+  <div style="padding:1rem 1.2rem;overflow-y:auto;flex:1;">
+    <div id="crew-list-items"></div>
+    <div style="border-top:1px solid var(--bdr);margin-top:.75rem;padding-top:.75rem;">
+      <div style="font-size:.78rem;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;">Add new</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem;">
+        <input class="form-input" id="new-crew-name" placeholder="Name">
+        <input class="form-input" id="new-crew-phone" placeholder="Mobile number">
+      </div>
+      <button type="button" class="btn btn-primary btn-sm" onclick="addCrewEntry()">+ Add</button>
+    </div>
+  </div>
+  <div style="padding:.75rem 1.2rem;border-top:1px solid var(--bdr);display:flex;justify-content:flex-end;flex-shrink:0;">
+    <button type="button" class="btn btn-ghost" onclick="closeCrewManager()">Close</button>
+  </div>
+</div>
+
 <script>
 function saveAndOpenSatNote(){
   // Submit the form silently then open sat note
@@ -163,11 +177,14 @@ function saveAndOpenSatNote(){
 
 // ── Fitting Crew ──────────────────────────────────────────────────────────────
 let crewList = [];
+const CSRF = '{{ csrf_token }}';
 
 async function loadCrews(){
   const r = await fetch('/api/fitting-crews/');
   crewList = await r.json();
+  // Update dropdown
   const sel = document.getElementById('crew-select');
+  const prev = sel.value;
   sel.innerHTML = '<option value="">— Select saved crew —</option>';
   crewList.forEach(c => {
     const o = document.createElement('option');
@@ -177,48 +194,75 @@ async function loadCrews(){
     o.dataset.phone = c.phone;
     sel.appendChild(o);
   });
-  // Add delete options
-  crewList.forEach(c => {
-    const o = document.createElement('option');
-    o.value = 'del-' + c.id;
-    o.textContent = '🗑 Remove: ' + c.name;
-    sel.appendChild(o);
-  });
+  // Refresh modal list if open
+  if(document.getElementById('crew-modal').style.display === 'flex') renderCrewList();
 }
 
 function selectCrew(sel){
-  const val = sel.value;
-  if(!val) return;
-  if(val.startsWith('del-')){
-    const id = parseInt(val.replace('del-',''));
-    const crew = crewList.find(c=>c.id===id);
-    if(crew && confirm(`Remove "${crew.name}" from saved crews?`)){
-      fetch('/api/fitting-crews/', {method:'DELETE', headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
-        body: JSON.stringify({id})}).then(()=>loadCrews());
-    }
-    sel.value = '';
-    return;
-  }
   const opt = sel.selectedOptions[0];
+  if(!opt || !opt.value) return;
   document.getElementById('fitting-crew-name').value = opt.dataset.name || '';
   document.getElementById('fitting-crew-phone').value = opt.dataset.phone || '';
-  sel.value = '';
 }
 
-function showAddCrew(){ document.getElementById('add-crew-form').style.display='block'; }
-function hideAddCrew(){ document.getElementById('add-crew-form').style.display='none'; }
+function openCrewManager(){
+  document.getElementById('crew-overlay').style.display = 'block';
+  document.getElementById('crew-modal').style.display = 'flex';
+  renderCrewList();
+}
+function closeCrewManager(){
+  document.getElementById('crew-overlay').style.display = 'none';
+  document.getElementById('crew-modal').style.display = 'none';
+}
 
-async function saveCrew(){
+function renderCrewList(){
+  const el = document.getElementById('crew-list-items');
+  if(!crewList.length){
+    el.innerHTML = '<div style="color:var(--mut);font-size:.85rem;margin-bottom:.5rem;">No saved crew yet.</div>';
+    return;
+  }
+  el.innerHTML = crewList.map(c => `
+    <div style="display:flex;align-items:center;gap:.5rem;padding:.45rem 0;border-bottom:.5px solid var(--bdr);">
+      <div style="flex:1;">
+        <span style="font-weight:600;font-size:.88rem;">${c.name}</span>
+        ${c.phone ? `<span style="color:var(--mut);font-size:.82rem;margin-left:.5rem;">${c.phone}</span>` : ''}
+      </div>
+      <button type="button" onclick="selectAndClose(${c.id})" class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:.78rem;">Use</button>
+      <button type="button" onclick="deleteCrew(${c.id})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;padding:2px 6px;">✕</button>
+    </div>`).join('');
+}
+
+function selectAndClose(id){
+  const c = crewList.find(x => x.id === id);
+  if(!c) return;
+  document.getElementById('fitting-crew-name').value = c.name;
+  document.getElementById('fitting-crew-phone').value = c.phone || '';
+  // Also update dropdown
+  document.getElementById('crew-select').value = id;
+  closeCrewManager();
+}
+
+async function addCrewEntry(){
   const name = document.getElementById('new-crew-name').value.trim();
   const phone = document.getElementById('new-crew-phone').value.trim();
-  if(!name){ alert('Enter a name'); return; }
+  if(!name){ alert('Please enter a name.'); return; }
   await fetch('/api/fitting-crews/', {method:'POST',
-    headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
+    headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
     body: JSON.stringify({name, phone})});
   document.getElementById('new-crew-name').value = '';
   document.getElementById('new-crew-phone').value = '';
-  hideAddCrew();
-  loadCrews();
+  await loadCrews();
+  renderCrewList();
+}
+
+async function deleteCrew(id){
+  const c = crewList.find(x => x.id === id);
+  if(!c || !confirm(`Remove "${c.name}" from the list?`)) return;
+  await fetch('/api/fitting-crews/', {method:'DELETE',
+    headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+    body: JSON.stringify({id})});
+  await loadCrews();
+  renderCrewList();
 }
 
 document.addEventListener('DOMContentLoaded', loadCrews);
