@@ -74,6 +74,7 @@ urlpatterns = [
     path('project/<int:pk>/duplicate/',      views.project_duplicate,       name='project_duplicate'),
     path('dashboard/save-filters/',          views.save_dashboard_filters,  name='save_dashboard_filters'),
     path('customer/<int:pk>/history/',       views.customer_history,        name='customer_history'),
+    path('project/<int:pk>/satisfaction-note/', views.satisfaction_note, name='satisfaction_note'),
     path('project/<int:pk>/quote/',          views.customer_quote,          name='customer_quote'),
     path('project/<int:pk>/reminders/',        views.reminders_list,  name='reminders_list'),
     path('project/<int:pk>/reminders/add/',    views.reminder_add,    name='reminder_add'),

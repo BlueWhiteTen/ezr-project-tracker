@@ -234,12 +234,21 @@ class LeaveRequest(models.Model):
 
 
 class InstallationReport(models.Model):
-    project    = models.OneToOneField(Project, on_delete=models.CASCADE, related_name='install_report')
-    notes      = models.TextField(blank=True)
-    issues     = models.TextField(blank=True)
-    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    project        = models.OneToOneField(Project, on_delete=models.CASCADE, related_name='install_report')
+    notes          = models.TextField(blank=True)
+    issues         = models.TextField(blank=True)
+    job_tasks      = models.TextField(blank=True, help_text='Schedule of works / job tasks for satisfaction note')
+    fitting_crew   = models.CharField(max_length=300, blank=True)
+    site_contact   = models.CharField(max_length=200, blank=True)
+    contact_number = models.CharField(max_length=50, blank=True)
+    site_cleared   = models.BooleanField(null=True, blank=True)
+    site_cleared_notes = models.TextField(blank=True)
+    work_completed = models.BooleanField(null=True, blank=True)
+    work_completed_notes = models.TextField(blank=True)
+    return_visit_required = models.BooleanField(null=True, blank=True)
+    created_by     = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    created_at     = models.DateTimeField(auto_now_add=True)
+    updated_at     = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"Report — {self.project}"

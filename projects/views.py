@@ -1024,8 +1024,20 @@ def install_report(request, pk):
     )
 
     if request.method == 'POST':
-        report.notes  = request.POST.get('notes', '').strip()
-        report.issues = request.POST.get('issues', '').strip()
+        report.notes          = request.POST.get('notes', '').strip()
+        report.issues         = request.POST.get('issues', '').strip()
+        report.job_tasks      = request.POST.get('job_tasks', '').strip()
+        report.fitting_crew   = request.POST.get('fitting_crew', '').strip()
+        report.site_contact   = request.POST.get('site_contact', '').strip()
+        report.contact_number = request.POST.get('contact_number', '').strip()
+        sc = request.POST.get('site_cleared', '')
+        report.site_cleared = True if sc == 'yes' else (False if sc == 'no' else None)
+        report.site_cleared_notes = request.POST.get('site_cleared_notes', '').strip()
+        wc = request.POST.get('work_completed', '')
+        report.work_completed = True if wc == 'yes' else (False if wc == 'no' else None)
+        report.work_completed_notes = request.POST.get('work_completed_notes', '').strip()
+        rv = request.POST.get('return_visit_required', '')
+        report.return_visit_required = True if rv == 'yes' else (False if rv == 'no' else None)
         report.save()
 
         # Handle photo uploads
@@ -2696,3 +2708,21 @@ def check_reminders(request):
         r.save()
         fired.append({'id': r.pk, 'message': r.message, 'link': f'/project/{r.project.pk}/edit/'})
     return JsonResponse({'fired': fired})
+
+
+@login_required
+def satisfaction_note(request, pk):
+    """Generate a client satisfaction note as a printable HTML page."""
+    project = get_object_or_404(Project, pk=pk)
+    report = getattr(project, 'install_report', None)
+    # Try to get customer profile for extra details
+    try:
+        customer_profile = CustomerProfile.objects.get(name__iexact=project.customer)
+    except CustomerProfile.DoesNotExist:
+        customer_profile = None
+    return render(request, 'projects/satisfaction_note.html', {
+        'project': project,
+        'report': report,
+        'customer_profile': customer_profile,
+        'today': __import__('datetime').date.today(),
+    })

@@ -59,6 +59,7 @@
     <a href="{% url 'project_cost' project.pk %}" class="btn btn-primary" style="background:#7c3aed;box-shadow:none;">💰 Costing</a>
     <a href="{% url 'picking_list_view' project.pk %}" class="btn btn-primary" style="background:#2563eb;box-shadow:none;">📦 Picking List</a>
     <button type="submit" form="project-form" class="btn btn-primary" style="box-shadow:none;">💾 Save Changes</button>
+    <a href="{% url 'satisfaction_note' project.pk %}" target="_blank" class="btn btn-ghost" style="box-shadow:none;">📋 Sat Note</a>
     {% endif %}
     {% if project %}
     <button class="btn btn-ghost" onclick="duplicateProject()" title="Duplicate this project">⧉ Duplicate</button>

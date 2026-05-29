@@ -45,7 +45,58 @@
       </div>
 
       <div class="form-card">
-        <div class="section-title">Satisfaction Note</div>
+        <div class="section-title" style="margin-top:1.2rem;">Job Details (for Satisfaction Note)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem;">
+          <div>
+            <label class="form-label">Site Contact</label>
+            <input class="form-input" type="text" name="site_contact" value="{{ report.site_contact }}" placeholder="Contact name on site">
+          </div>
+          <div>
+            <label class="form-label">Contact Number</label>
+            <input class="form-input" type="text" name="contact_number" value="{{ report.contact_number }}" placeholder="Phone number">
+          </div>
+          <div style="grid-column:1/-1;">
+            <label class="form-label">Fitting Crew</label>
+            <input class="form-input" type="text" name="fitting_crew" value="{{ report.fitting_crew }}" placeholder="Names and numbers of crew members">
+          </div>
+        </div>
+        <label class="form-label">Schedule of Works / Job Tasks</label>
+        <textarea class="form-input" name="job_tasks" rows="4" placeholder="Describe the work carried out e.g. BUILD 2 RUNS OF 2 BAYS — GROUND FLOOR AND FIRST FLOOR" style="margin-bottom:.75rem;">{{ report.job_tasks }}</textarea>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:.75rem;">
+          <div>
+            <label class="form-label">Site Cleared</label>
+            <select class="form-input" name="site_cleared">
+              <option value="">—</option>
+              <option value="yes" {% if report.site_cleared == True %}selected{% endif %}>Yes</option>
+              <option value="no" {% if report.site_cleared == False %}selected{% endif %}>No</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Work Completed</label>
+            <select class="form-input" name="work_completed">
+              <option value="">—</option>
+              <option value="yes" {% if report.work_completed == True %}selected{% endif %}>Yes</option>
+              <option value="no" {% if report.work_completed == False %}selected{% endif %}>No</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Return Visit Required</label>
+            <select class="form-input" name="return_visit_required">
+              <option value="">—</option>
+              <option value="yes" {% if report.return_visit_required == True %}selected{% endif %}>Yes</option>
+              <option value="no" {% if report.return_visit_required == False %}selected{% endif %}>No</option>
+            </select>
+          </div>
+        </div>
+        <label class="form-label">Work Completed / Not Complete Notes</label>
+        <textarea class="form-input" name="work_completed_notes" rows="2" placeholder="Details of completed work or what remains outstanding">{{ report.work_completed_notes }}</textarea>
+
+        <div style="margin-top:.75rem;">
+          <a href="{% url 'satisfaction_note' project.pk %}" target="_blank" class="btn btn-primary" style="background:#D4700A;">📋 Generate Satisfaction Note</a>
+        </div>
+
+        <div class="section-title" style="margin-top:1.2rem;">Satisfaction Note</div>
         <p style="font-size:.82rem;color:var(--mut);margin-bottom:.75rem;">Upload a signed satisfaction note, PDF or image</p>
         {% if satisfaction_notes %}
           {% for sat in satisfaction_notes %}

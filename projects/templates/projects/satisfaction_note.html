@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Satisfaction Note — {{ project.customer }}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:Arial,Helvetica,sans-serif; font-size:10.5pt; color:#1a1a1a; background:#f5f5f5; }
+  .page { max-width:780px; margin:0 auto; background:#fff; padding:1.5cm 2cm; }
+
+  /* Header */
+  .logo-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:.8rem; padding-bottom:.8rem; border-bottom:3pt solid #1a1a1a; }
+  .co-name  { font-size:18pt; font-weight:700; }
+  .doc-title { font-size:16pt; font-weight:700; color:#D4700A; text-align:right; }
+
+  /* Section grid */
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0; margin-bottom:.5rem; }
+  .field-block { padding:.4rem 0; }
+  .field-label { font-size:8pt; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#888; margin-bottom:.2rem; }
+  .field-value { font-size:11pt; font-weight:600; color:#1a1a1a; min-height:18pt; border-bottom:1pt solid #ddd; padding-bottom:2pt; }
+
+  /* Body sections */
+  .section { margin-top:.8rem; }
+  .section-title { font-size:9pt; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#1a1a1a; background:#f0f0f0; padding:.35rem .6rem; margin-bottom:.4rem; }
+  .section-body { font-size:10.5pt; min-height:40pt; border:1pt solid #ddd; padding:.5rem; border-radius:2pt; white-space:pre-wrap; line-height:1.6; }
+  .section-body.lines { min-height:60pt; }
+
+  /* Yes/No fields */
+  .yn-row { display:flex; align-items:center; gap:1rem; margin:.3rem 0; font-size:10.5pt; }
+  .yn-box { display:inline-flex; align-items:center; justify-content:center; width:16pt; height:16pt; border:1pt solid #888; font-size:9pt; font-weight:700; margin-right:3pt; }
+  .yn-box.checked { background:#1a1a1a; color:#fff; border-color:#1a1a1a; }
+  .comment-lines { border:1pt solid #ddd; min-height:35pt; margin-top:.3rem; padding:.4rem; border-radius:2pt; white-space:pre-wrap; font-size:10pt; }
+
+  /* Signature block */
+  .sig-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-top:.6rem; }
+  .sig-field { padding-top:30pt; border-top:1pt solid #888; font-size:9pt; color:#666; }
+
+  /* Statement */
+  .statement { font-size:9pt; color:#444; line-height:1.6; border:1pt solid #ddd; padding:.5rem; background:#fafafa; margin:.6rem 0; }
+
+  /* Print button */
+  .no-print { background:#f9fafb; border-bottom:1pt solid #e5e7eb; padding:.75rem 2cm; display:flex; gap:.75rem; align-items:center; }
+  .no-print button { padding:8px 18px; background:#1a1a1a; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:.9rem; font-weight:600; }
+  .no-print a { font-size:.85rem; color:#888; text-decoration:none; }
+  @media print {
+    body { background:#fff; }
+    .no-print { display:none !important; }
+    .page { padding:1cm 1.5cm; }
+    @page { margin:0; size:A4 portrait; }
+  }
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <button onclick="window.print()">🖨 Print / Save PDF</button>
+  <button onclick="sendToOutlook()" style="padding:8px 18px;background:#0078d4;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:.9rem;font-weight:600;">✉ Send to Outlook</button>
+  <a href="{% url 'project_edit' project.pk %}">← Back to project</a>
+</div>
+
+<div class="page">
+
+  <!-- Header -->
+  <div class="logo-bar">
+    {% load static %}
+    <div style="display:flex;align-items:center;gap:.75rem;">
+      <img src="{% static 'logo.png' %}" alt="EZR" style="height:42px;">
+      <div class="co-name">EZR Shelving</div>
+    </div>
+    <div class="doc-title">CLIENT / JOB SATISFACTION NOTE</div>
+  </div>
+
+  <!-- Client + Address -->
+  <div class="grid2">
+    <div class="field-block">
+      <div class="field-label">Client</div>
+      <div class="field-value">{{ project.customer }}</div>
+    </div>
+    <div class="field-block" style="padding-left:1rem;">
+      <div class="field-label">Site Address</div>
+      <div class="field-value">
+        {{ project.location }}{% if project.addr_line1 %}<br>{{ project.addr_line1 }}{% endif %}{% if project.addr_line2 %}<br>{{ project.addr_line2 }}{% endif %}{% if project.addr_city %}<br>{{ project.addr_city }}{% if project.addr_postcode %} {{ project.addr_postcode }}{% endif %}{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-top:.5rem;">
+    <div class="field-block">
+      <div class="field-label">Site Contact</div>
+      <div class="field-value">{% if report %}{{ report.site_contact }}{% elif customer_profile %}{{ customer_profile.contact_name }}{% endif %}</div>
+    </div>
+    <div class="field-block" style="padding-left:1rem;">
+      <div class="field-label">Contact Number</div>
+      <div class="field-value">{% if report %}{{ report.contact_number }}{% elif customer_profile %}{{ customer_profile.phone }}{% endif %}</div>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-top:.5rem;">
+    <div class="field-block">
+      <div class="field-label">Job Number / SO</div>
+      <div class="field-value">{{ project.sales_order|default:"—" }}</div>
+    </div>
+    <div class="field-block" style="padding-left:1rem;">
+      <div class="field-label">Installation Date</div>
+      <div class="field-value">{% if project.installation_date %}{{ project.installation_date|date:"d.m.y" }}{% elif project.installation_month %}{{ project.installation_month }}{% else %}—{% endif %}</div>
+    </div>
+  </div>
+
+  <div class="field-block" style="margin-top:.5rem;">
+    <div class="field-label">Fitting Crew</div>
+    <div class="field-value">{% if report %}{{ report.fitting_crew }}{% endif %}</div>
+  </div>
+
+  <!-- Schedule of Works -->
+  <div class="section">
+    <div class="section-title">Schedule of Works</div>
+    <p style="font-size:8.5pt;color:#888;margin-bottom:.3rem;">Please note any alterations to original schedule.</p>
+    <div class="section-body lines">{% if report and report.job_tasks %}{{ report.job_tasks }}{% endif %}</div>
+  </div>
+
+  <!-- Site Cleared -->
+  <div class="section">
+    <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:.3rem;">
+      <span style="font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:.07em;">Site Cleared:</span>
+      <span class="yn-row">
+        <span class="yn-box {% if report and report.site_cleared == True %}checked{% endif %}">✓</span> YES &nbsp;&nbsp;
+        <span class="yn-box {% if report and report.site_cleared == False %}checked{% endif %}">✓</span> NO
+        {% if report and report.site_cleared == False and report.site_cleared_notes %}
+          &nbsp; If NO: {{ report.site_cleared_notes }}
+        {% else %}
+          &nbsp; If NO why? ……………………………………………………………..
+        {% endif %}
+      </span>
+    </div>
+    <div class="field-label" style="margin-top:.3rem;">Crew's Comments</div>
+    <div class="comment-lines">{% if report %}{{ report.notes }}{% endif %}</div>
+  </div>
+
+  <!-- Work Completed -->
+  <div class="section">
+    <div class="section-title">Work Completed</div>
+    <div class="comment-lines" style="min-height:30pt;">{% if report %}{{ report.work_completed_notes }}{% endif %}</div>
+  </div>
+
+  <!-- Statement -->
+  <div class="statement">
+    I, the undersigned, confirm that I am satisfied with the materials and services provided, as described above, and that
+    the installation crew behaved in a professional and courteous manner, and that the site was left clean and tidy.
+  </div>
+
+  <!-- Signatures -->
+  <div class="sig-grid">
+    <div><div class="sig-field">Signed: ……………………………………………………………</div></div>
+    <div><div class="sig-field">Print: ……………………………………………………………</div></div>
+    <div style="margin-top:.75rem;"><div class="sig-field">Position: ……………………………………………………………</div></div>
+    <div style="margin-top:.75rem;"><div class="sig-field">Date: ……………………………………………………………</div></div>
+  </div>
+
+  <!-- Work Not Complete -->
+  <div class="section" style="margin-top:.8rem;">
+    <div class="section-title">Work Not Complete</div>
+    <p style="font-size:8.5pt;color:#888;margin-bottom:.3rem;">Please specify:</p>
+    <div class="comment-lines" style="min-height:35pt;">{% if report and report.work_completed == False %}{{ report.work_completed_notes }}{% endif %}</div>
+    <div style="margin-top:.4rem;display:flex;align-items:center;gap:1rem;font-size:9pt;">
+      <span style="font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Return Visit Required:</span>
+      <span class="yn-box {% if report and report.return_visit_required == True %}checked{% endif %}">✓</span> YES &nbsp;
+      <span class="yn-box {% if report and report.return_visit_required == False %}checked{% endif %}">✓</span> NO
+    </div>
+  </div>
+
+</div>
+
+<script>
+function sendToOutlook(){
+  const client   = {{ project.customer|default:"''"|escapejs|safe }};
+  const location = {{ project.location|default:"''"|escapejs|safe }};
+  const so       = {{ project.sales_order|default:"''"|escapejs|safe }};
+  {% if project.installation_date %}
+  const instDate = '{{ project.installation_date|date:"d/m/Y" }}';
+  {% else %}
+  const instDate = '{{ project.installation_month|default:"TBC" }}';
+  {% endif %}
+  {% if report %}
+  const tasks    = {{ report.job_tasks|default:"''"|escapejs|safe }};
+  const crew     = {{ report.fitting_crew|default:"''"|escapejs|safe }};
+  const contact  = {{ report.site_contact|default:"''"|escapejs|safe }};
+  {% else %}
+  const tasks = ''; const crew = ''; const contact = '';
+  {% endif %}
+
+  const subject = encodeURIComponent(`Client Satisfaction Note — ${client} / ${location}`);
+  const body = encodeURIComponent(
+`CLIENT / JOB SATISFACTION NOTE
+===============================
+Client:             ${client}
+Site Address:       ${location}
+Site Contact:       ${contact}
+Job Number / SO:    ${so}
+Installation Date:  ${instDate}
+Fitting Crew:       ${crew}
+
+SCHEDULE OF WORKS:
+${tasks}
+
+WORK COMPLETED:
+[ ] Yes  [ ] No
+
+I, the undersigned, confirm that I am satisfied with the materials and services provided,
+as described above, and that the installation crew behaved in a professional and courteous
+manner, and that the site was left clean and tidy.
+
+Signed: ______________________________    Print: ______________________________
+
+Position: ____________________________    Date: _______________________________
+
+RETURN VISIT REQUIRED:  [ ] Yes  [ ] No
+`);
+
+  {% if customer_profile and customer_profile.email %}
+  const to = '{{ customer_profile.email }}';
+  {% else %}
+  const to = '';
+  {% endif %}
+
+  window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+}
+</script>
+</body>
+</html>
