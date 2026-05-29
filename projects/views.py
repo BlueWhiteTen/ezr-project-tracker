@@ -1662,6 +1662,7 @@ def project_address_save(request, pk):
     project.addr_line1   = data.get('addr_line1', '').strip()
     project.addr_line2   = data.get('addr_line2', '').strip()
     project.addr_city    = data.get('addr_city', '').strip()
+    project.addr_county  = data.get('addr_county', '').strip()
     project.addr_postcode= data.get('addr_postcode', '').strip()
     project.addr_fao     = data.get('addr_fao', '').strip()
     project.addr_phone   = data.get('addr_phone', '').strip()
@@ -2364,6 +2365,7 @@ def project_duplicate(request, pk):
         addr_line1      = original.addr_line1,
         addr_line2      = original.addr_line2,
         addr_city       = original.addr_city,
+        addr_county     = original.addr_county,
         addr_postcode   = original.addr_postcode,
         addr_fao        = original.addr_fao,
         addr_phone      = original.addr_phone,
@@ -2746,6 +2748,7 @@ def satisfaction_note(request, pk):
     if project.addr_line2: address_parts.append(project.addr_line2)
     if project.addr_city:
         city = project.addr_city
+        if project.addr_county: city += ', ' + project.addr_county
         if project.addr_postcode: city += ' ' + project.addr_postcode
         address_parts.append(city)
     return render(request, 'projects/satisfaction_note.html', {

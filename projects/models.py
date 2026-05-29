@@ -56,6 +56,7 @@ class Project(models.Model):
     addr_line1    = models.CharField(max_length=200, blank=True)
     addr_line2    = models.CharField(max_length=200, blank=True)
     addr_city     = models.CharField(max_length=100, blank=True)
+    addr_county   = models.CharField(max_length=100, blank=True)
     addr_postcode = models.CharField(max_length=20, blank=True)
     addr_fao      = models.CharField(max_length=200, blank=True)
     addr_phone    = models.CharField(max_length=30, blank=True)
