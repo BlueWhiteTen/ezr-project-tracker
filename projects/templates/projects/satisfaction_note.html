@@ -5,31 +5,67 @@
 <meta charset="UTF-8">
 <title>Satisfaction Note — {{ project.customer }}</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:Arial,Helvetica,sans-serif; font-size:10.5pt; color:#1a1a1a; background:#f5f5f5; }
-  .page { max-width:780px; margin:0 auto; background:#fff; padding:1.5cm 2cm; }
-  .logo-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; padding-bottom:.8rem; border-bottom:3pt solid #1a1a1a; }
-  .co-name  { font-size:18pt; font-weight:700; }
-  .doc-title { font-size:15pt; font-weight:700; color:#D4700A; text-align:right; }
-  .field-label { font-size:8pt; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#888; margin-bottom:3pt; }
-  .field-value { font-size:11.5pt; font-weight:600; border-bottom:1pt solid #bbb; padding-bottom:3pt; min-height:18pt; }
-  .field-blank { font-size:11.5pt; border-bottom:1pt solid #bbb; padding-bottom:3pt; min-height:18pt; }
-  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12pt; margin-bottom:10pt; }
-  .section-bar { background:#f0f0f0; padding:4pt 7pt; font-size:8.5pt; font-weight:700; text-transform:uppercase; letter-spacing:.07em; margin:10pt 0 5pt; }
-  .blank-lines { border:1pt solid #ddd; min-height:55pt; padding:6pt; border-radius:2pt; margin-bottom:8pt; }
-  .yn-row { display:flex; align-items:center; gap:16pt; margin:5pt 0; font-size:11pt; }
-  .yn-box { display:inline-flex; align-items:center; justify-content:center; width:14pt; height:14pt; border:1pt solid #666; font-size:9pt; margin-right:3pt; }
-  .sig-grid { display:grid; grid-template-columns:1fr 1fr; gap:20pt; margin-top:8pt; }
-  .sig-line { padding-top:28pt; border-top:1pt solid #888; font-size:9pt; color:#666; }
-  .statement { font-size:9pt; color:#444; line-height:1.6; border:1pt solid #ddd; padding:7pt; background:#fafafa; margin:8pt 0; border-radius:2pt; }
-  .no-print { background:#f9fafb; border-bottom:1pt solid #e5e7eb; padding:.75rem 2cm; display:flex; gap:.75rem; align-items:center; }
-  .no-print button { padding:8px 18px; border:none; border-radius:4px; cursor:pointer; font-size:.9rem; font-weight:600; }
-  @media print {
-    .no-print { display:none !important; }
-    body { background:#fff; }
-    .page { padding:1cm 1.5cm; }
-    @page { margin:0; size:A4 portrait; }
-  }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#1a1a1a; background:#f0f0f0; }
+.page { max-width:760px; margin:0 auto; background:#fff; padding:1.2cm 1.5cm; }
+
+/* Header */
+.hdr { display:flex; justify-content:space-between; align-items:center; border-bottom:2.5pt solid #1a1a1a; padding-bottom:8pt; margin-bottom:10pt; }
+.hdr-left { display:flex; align-items:center; gap:10pt; }
+.hdr-co { font-size:15pt; font-weight:700; }
+.hdr-title { font-size:13pt; font-weight:700; color:#D4700A; text-align:right; }
+
+/* Field rows */
+.row { display:grid; gap:0; border-left:1pt solid #bbb; border-right:1pt solid #bbb; border-top:1pt solid #bbb; }
+.row:last-of-type, .row + .section-gap { border-bottom:1pt solid #bbb; }
+.row-2col { grid-template-columns:1fr 1fr; }
+.row-1col { grid-template-columns:1fr; }
+.cell { padding:4pt 7pt; border-right:1pt solid #bbb; }
+.cell:last-child { border-right:none; }
+.cell-label { font-size:7.5pt; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#888; margin-bottom:2pt; }
+.cell-value { font-size:11pt; font-weight:600; min-height:14pt; }
+.cell-blank { min-height:14pt; }
+.cell-tall { min-height:40pt; }
+.cell-xtall { min-height:60pt; }
+
+/* Section bars */
+.sec { background:#e8e8e8; border:1pt solid #bbb; border-top:none; padding:4pt 7pt; font-size:8pt; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+.sec-note { font-size:7.5pt; color:#888; font-style:italic; font-weight:400; text-transform:none; letter-spacing:0; margin-left:8pt; }
+
+/* Schedule content */
+.sched-content { border:1pt solid #bbb; border-top:none; padding:6pt 7pt; min-height:65pt; font-size:10.5pt; line-height:1.6; white-space:pre-wrap; }
+
+/* Inline yes/no row */
+.yn-row { border:1pt solid #bbb; border-top:none; padding:5pt 7pt; display:flex; align-items:center; gap:0; font-size:10pt; }
+.yn-label { font-weight:700; min-width:90pt; font-size:9.5pt; }
+.yn-box { display:inline-flex; align-items:center; justify-content:center; width:13pt; height:13pt; border:1pt solid #555; font-size:9pt; margin-right:4pt; flex-shrink:0; }
+.yn-option { display:flex; align-items:center; margin-right:14pt; }
+.yn-reason { font-size:9pt; color:#555; flex:1; }
+
+/* Comments box */
+.comments-box { border:1pt solid #bbb; border-top:none; padding:5pt 7pt; min-height:50pt; }
+.comments-label { font-size:8pt; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#888; margin-bottom:3pt; }
+
+/* Statement */
+.statement { border:1pt solid #bbb; border-top:none; padding:6pt 7pt; font-size:8.5pt; line-height:1.6; color:#333; background:#fafafa; }
+
+/* Signature grid */
+.sig-grid { border:1pt solid #bbb; border-top:none; display:grid; grid-template-columns:1fr 1fr; }
+.sig-cell { padding:22pt 7pt 5pt; border-right:1pt solid #bbb; }
+.sig-cell:last-child { border-right:none; }
+.sig-line-text { font-size:9pt; color:#666; border-top:1pt solid #888; padding-top:3pt; }
+
+/* Gap between sections */
+.gap { height:8pt; }
+
+.no-print { background:#f9fafb; border-bottom:1pt solid #e5e7eb; padding:.6rem 1.5cm; display:flex; gap:.6rem; align-items:center; }
+.no-print button { padding:6px 16px; border:none; border-radius:4px; cursor:pointer; font-size:.85rem; font-weight:600; }
+@media print {
+  .no-print { display:none !important; }
+  body { background:#fff; }
+  .page { padding:.8cm 1.2cm; }
+  @page { margin:0; size:A4 portrait; }
+}
 </style>
 </head>
 <body>
@@ -37,93 +73,134 @@
 <div class="no-print">
   <button onclick="window.print()" style="background:#1a1a1a;color:#fff;">🖨 Print / Save PDF</button>
   <button onclick="sendToOutlook()" style="background:#0078d4;color:#fff;">✉ Send to Outlook</button>
-  <a href="{% url 'project_edit' project.pk %}" style="font-size:.85rem;color:#888;text-decoration:none;">← Back to project</a>
+  <a href="{% url 'project_edit' project.pk %}" style="font-size:.82rem;color:#888;text-decoration:none;">← Back to project</a>
 </div>
 
 <div class="page">
 
-  <div class="logo-bar">
-    <div style="display:flex;align-items:center;gap:10pt;">
-      <img src="{% static 'logo.png' %}" alt="EZR" style="height:40pt;">
-      <div class="co-name">EZR Shelving</div>
+  <!-- Header -->
+  <div class="hdr">
+    <div class="hdr-left">
+      <img src="{% static 'logo.png' %}" alt="EZR" style="height:38pt;">
+      <div class="hdr-co">EZR Shelving</div>
     </div>
-    <div class="doc-title">CLIENT / JOB SATISFACTION NOTE</div>
+    <div class="hdr-title">CLIENT / JOB SATISFACTION NOTE</div>
   </div>
 
-  <!-- Pre-filled fields -->
-  <div class="grid2">
-    <div>
-      <div class="field-label">Client</div>
-      <div class="field-value">{{ project.customer }}</div>
+  <!-- CLIENT / SITE ADDRESS -->
+  <div class="row row-2col">
+    <div class="cell">
+      <div class="cell-label">Client:</div>
+      <div class="cell-value">{{ project.customer }}</div>
     </div>
-    <div>
-      <div class="field-label">Site Address</div>
-      <div class="field-value" style="font-size:10pt;">
-        {{ project.location }}{% if project.addr_line1 %}, {{ project.addr_line1 }}{% endif %}{% if project.addr_city %}, {{ project.addr_city }}{% endif %}{% if project.addr_postcode %} {{ project.addr_postcode }}{% endif %}
+    <div class="cell">
+      <div class="cell-label">Site Address:</div>
+      <div class="cell-value" style="font-size:10pt;">
+        {{ project.location }}{% if project.addr_line1 %}<br>{{ project.addr_line1 }}{% if project.addr_line2 %}, {{ project.addr_line2 }}{% endif %}{% endif %}{% if project.addr_city %}<br>{{ project.addr_city }}{% if project.addr_postcode %} {{ project.addr_postcode }}{% endif %}{% endif %}
       </div>
     </div>
-    <div>
-      <div class="field-label">Site Contact</div>
-      <div class="field-value">{% if project.addr_fao %}{{ project.addr_fao }}{% elif report and report.site_contact %}{{ report.site_contact }}{% else %}&nbsp;{% endif %}</div>
+  </div>
+
+  <!-- SITE CONTACT / CONTACT NUMBER -->
+  <div class="row row-2col" style="border-top:none;">
+    <div class="cell">
+      <div class="cell-label">Site Contact:</div>
+      <div class="cell-value">{% if project.addr_fao %}{{ project.addr_fao }}{% elif report and report.site_contact %}{{ report.site_contact }}{% else %}&nbsp;{% endif %}</div>
+      <div class="cell-blank"></div>
     </div>
-    <div>
-      <div class="field-label">Contact Number</div>
-      <div class="field-value">{% if project.addr_phone %}{{ project.addr_phone }}{% elif report and report.contact_number %}{{ report.contact_number }}{% else %}&nbsp;{% endif %}</div>
-    </div>
-    <div>
-      <div class="field-label">Job Number / SO</div>
-      <div class="field-value">{{ project.sales_order|default:"—" }}</div>
-    </div>
-    <div>
-      <div class="field-label">Installation Date</div>
-      <div class="field-value">{% if project.installation_date %}{{ project.installation_date|date:"d/m/Y" }}{% elif project.installation_month %}{{ project.installation_month }}{% else %}&nbsp;{% endif %}</div>
-    </div>
-    <div style="grid-column:1/-1;">
-      <div class="field-label">Fitting Crew</div>
-      <div class="field-value">{% if report and report.fitting_crew %}{{ report.fitting_crew }}{% else %}&nbsp;{% endif %}</div>
+    <div class="cell">
+      <div class="cell-label">Contact Number:</div>
+      <div class="cell-value">{% if project.addr_phone %}{{ project.addr_phone }}{% elif report and report.contact_number %}{{ report.contact_number }}{% else %}&nbsp;{% endif %}</div>
+      <div class="cell-blank"></div>
     </div>
   </div>
 
-  <!-- Schedule of works — pre-filled from installation report -->
-  <div class="section-bar">Schedule of Works</div>
-  <p style="font-size:8pt;color:#888;margin-bottom:4pt;">Please note any alterations to original schedule.</p>
-  <div class="blank-lines" style="min-height:65pt;">{% if report and report.job_tasks %}{{ report.job_tasks }}{% endif %}</div>
-
-  <!-- Crew comments — blank for fitters -->
-  <div class="section-bar">Crew's Comments</div>
-  <div class="blank-lines"></div>
-
-  <!-- Checkboxes — blank for fitters -->
-  <div style="margin-bottom:8pt;">
-    <div class="yn-row">
-      <span style="font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:.05em;min-width:110pt;">Site cleared:</span>
-      <span><span class="yn-box"></span> Yes</span>
-      <span><span class="yn-box"></span> No</span>
-      <span style="font-size:9pt;color:#888;">If NO, why? ……………………………………………………</span>
+  <!-- JOB NUMBER / INSTALLATION DATE -->
+  <div class="row row-2col" style="border-top:none;">
+    <div class="cell">
+      <div class="cell-label">Job Number:</div>
+      <div class="cell-value">{{ project.sales_order|default:"" }}</div>
+    </div>
+    <div class="cell">
+      <div class="cell-label">Installation Date:</div>
+      <div class="cell-value">{% if project.installation_date %}{{ project.installation_date|date:"d.m.y" }}{% elif project.installation_month %}{{ project.installation_month }}{% else %}&nbsp;{% endif %}</div>
     </div>
   </div>
 
-  <!-- Statement -->
-  <div class="statement">
-    I, the undersigned, confirm that I am satisfied with the materials and services provided, as described above,
-    and that the installation crew behaved in a professional and courteous manner, and that the site was left clean and tidy.
+  <!-- FITTING CREW -->
+  <div class="row row-1col" style="border-top:none;">
+    <div class="cell">
+      <div class="cell-label">Fitting Crew:</div>
+      <div class="cell-value">{% if report and report.fitting_crew %}{{ report.fitting_crew }}{% else %}&nbsp;{% endif %}</div>
+      <div class="cell-blank"></div>
+    </div>
   </div>
 
-  <!-- Signatures -->
-  <div class="sig-grid">
-    <div><div class="sig-line">Signed: ………………………………………………</div></div>
-    <div><div class="sig-line">Print: ………………………………………………</div></div>
-    <div style="margin-top:12pt;"><div class="sig-line">Position: ………………………………………………</div></div>
-    <div style="margin-top:12pt;"><div class="sig-line">Date: ………………………………………………</div></div>
-  </div>
+  <div class="gap"></div>
 
-  <!-- Work not complete — blank for fitters -->
-  <div class="section-bar" style="margin-top:14pt;">Work Not Complete — Please Specify</div>
-  <div class="blank-lines"></div>
+  <!-- SCHEDULE OF WORKS -->
+  <div class="sec">Schedule of Works: <span class="sec-note">Please note any alterations to original schedule.</span></div>
+  <div class="sched-content">{% if report and report.job_tasks %}{{ report.job_tasks }}{% endif %}</div>
+
+  <!-- SITE CLEARED -->
   <div class="yn-row">
-    <span style="font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:.05em;min-width:160pt;">Return visit required:</span>
-    <span><span class="yn-box"></span> Yes</span>
-    <span><span class="yn-box"></span> No</span>
+    <span class="yn-label">Site cleared:</span>
+    <span class="yn-option"><span class="yn-box"></span> YES</span>
+    <span class="yn-option"><span class="yn-box"></span> NO</span>
+    <span class="yn-reason">If NO why? ………………………………………………………………………</span>
+  </div>
+
+  <!-- CREW'S COMMENTS -->
+  <div class="comments-box">
+    <div class="comments-label">Crew's comments:</div>
+    <div style="min-height:40pt;"></div>
+  </div>
+
+  <div class="gap"></div>
+
+  <!-- WORK COMPLETED -->
+  <div class="sec">Work Completed:</div>
+  <div class="comments-box">
+    <div class="comments-label">Comments:</div>
+    <div style="min-height:40pt;"></div>
+  </div>
+
+  <!-- STATEMENT -->
+  <div class="statement">
+    I, the undersigned, confirm that I am satisfied with the materials and services provided, as described above, and that
+    the installation crew behaved in a professional and courteous manner, and that the site was left clean and tidy.
+  </div>
+
+  <!-- SIGNATURES -->
+  <div class="sig-grid">
+    <div class="sig-cell"><div class="sig-line-text">Signed: …………………………………………………</div></div>
+    <div class="sig-cell"><div class="sig-line-text">Print: …………………………………………………</div></div>
+    <div class="sig-cell" style="border-top:1pt solid #bbb;"><div class="sig-line-text">Position: …………………………………………………</div></div>
+    <div class="sig-cell" style="border-top:1pt solid #bbb;"><div class="sig-line-text">Date: …………………………………………………</div></div>
+  </div>
+
+  <div class="gap"></div>
+
+  <!-- WORK NOT COMPLETE -->
+  <div class="sec">Work Not Complete:</div>
+  <div class="comments-box">
+    <div class="comments-label">Please specify:</div>
+    <div style="min-height:40pt;"></div>
+  </div>
+
+  <!-- RETURN VISIT -->
+  <div class="yn-row">
+    <span class="yn-label">Return visit required:</span>
+    <span class="yn-option"><span class="yn-box"></span> YES</span>
+    <span class="yn-option"><span class="yn-box"></span> NO</span>
+  </div>
+
+  <!-- SECOND SIGNATURE BLOCK -->
+  <div class="sig-grid" style="border-top:none;">
+    <div class="sig-cell"><div class="sig-line-text">Signed: …………………………………………………</div></div>
+    <div class="sig-cell"><div class="sig-line-text">Print: …………………………………………………</div></div>
+    <div class="sig-cell" style="border-top:1pt solid #bbb;"><div class="sig-line-text">Position: …………………………………………………</div></div>
+    <div class="sig-cell" style="border-top:1pt solid #bbb;"><div class="sig-line-text">Date: …………………………………………………</div></div>
   </div>
 
 </div>
@@ -133,27 +210,25 @@ function sendToOutlook(){
   const subject = encodeURIComponent('Satisfaction Note — {{ project.customer|escapejs }} / {{ project.location|escapejs }}');
   const body = encodeURIComponent(
 `CLIENT / JOB SATISFACTION NOTE
-===============================
+================================
 Client:            {{ project.customer }}
-Site:              {{ project.location }}{% if project.addr_line1 %}, {{ project.addr_line1 }}{% endif %}
-Site Contact:      {% if project.addr_fao %}{{ project.addr_fao }}{% elif report and report.site_contact %}{{ report.site_contact }}{% endif %}
-Contact Number:    {% if project.addr_phone %}{{ project.addr_phone }}{% elif report and report.contact_number %}{{ report.contact_number }}{% endif %}
-Job Number / SO:   {{ project.sales_order|default:"—" }}
-Installation Date: {% if project.installation_date %}{{ project.installation_date|date:"d/m/Y" }}{% elif project.installation_month %}{{ project.installation_month }}{% else %}TBC{% endif %}
+Site Address:      {{ project.location }}{% if project.addr_line1 %}, {{ project.addr_line1 }}{% endif %}{% if project.addr_city %}, {{ project.addr_city }}{% if project.addr_postcode %} {{ project.addr_postcode }}{% endif %}{% endif %}
+Site Contact:      {% if project.addr_fao %}{{ project.addr_fao }}{% endif %}
+Contact Number:    {% if project.addr_phone %}{{ project.addr_phone }}{% endif %}
+Job Number:        {{ project.sales_order|default:"" }}
+Installation Date: {% if project.installation_date %}{{ project.installation_date|date:"d.m.y" }}{% elif project.installation_month %}{{ project.installation_month }}{% endif %}
 Fitting Crew:      {% if report and report.fitting_crew %}{{ report.fitting_crew }}{% endif %}
 
 SCHEDULE OF WORKS:
-{% if report and report.job_tasks %}{{ report.job_tasks }}{% else %}(to be confirmed){% endif %}
+{% if report and report.job_tasks %}{{ report.job_tasks }}{% else %}(see attached){% endif %}
 
 Please print, complete on site and return signed.
 `);
   {% if customer_profile and customer_profile.email %}const to='{{ customer_profile.email }}';{% else %}const to='';{% endif %}
-  // Use ms-outlook: URI for classic Outlook, fallback to mailto:
-  const uri = `ms-outlook:compose?to=${to}&subject=${subject}&body=${body}`;
   const link = document.createElement('a');
-  link.href = uri;
+  link.href = `ms-outlook:compose?to=${to}&subject=${subject}&body=${body}`;
   link.click();
-  setTimeout(() => { window.location.href = `mailto:${to}?subject=${subject}&body=${body}`; }, 500);
+  setTimeout(()=>{ window.location.href=`mailto:${to}?subject=${subject}&body=${body}`; }, 300);
 }
 </script>
 </body>
