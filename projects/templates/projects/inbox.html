@@ -20,7 +20,7 @@
 [data-theme="dark"] .chat-av{box-shadow:0 0 0 2.5px #1e1b18,0 0 0 4px rgba(255,255,255,.15);}
 .chat-name{font-weight:600;font-size:.95rem;}
 .chat-messages{flex:1;overflow-y:auto;padding:1.2rem 1.3rem;display:flex;flex-direction:column;gap:.75rem;}
-.msg-bubble{max-width:70%;min-width:80px;padding:.6rem .9rem;border-radius:12px;font-size:.875rem;line-height:1.4;white-space:pre-wrap;word-break:break-word;}
+.msg-bubble{display:inline-block;max-width:100%;min-width:120px;padding:.6rem .9rem;border-radius:12px;font-size:.875rem;line-height:1.4;white-space:normal;word-break:normal;overflow-wrap:break-word;}
 .msg-me{align-self:flex-end;background:#d4700a;color:#fff;border-radius:12px 12px 3px 12px;}
 .msg-them{align-self:flex-start;background:var(--surf2);color:var(--txt);border:1px solid var(--bdr);border-radius:12px 12px 12px 3px;}
 .msg-meta{font-size:.68rem;margin-top:3px;opacity:.65;}
@@ -80,7 +80,7 @@
       {% for msg in messages_qs %}
       <div style="display:flex;flex-direction:{% if msg.sender == request.user %}row-reverse{% else %}row{% endif %};align-items:flex-end;gap:.5rem;">
         <div class="chat-av" style="width:28px;height:28px;font-size:.58rem;flex-shrink:0;margin-bottom:4px;background:{{ msg.sender.pk|avatar_colour }};">{% with n=msg.sender.get_full_name|default:msg.sender.username %}{% with p=n.split %}{{ p.0|slice:":1"|upper }}{% if p|length > 1 %}{{ p|last|slice:":1"|upper }}{% endif %}{% endwith %}{% endwith %}</div>
-        <div>
+        <div style="min-width:0;max-width:65%;">
           <div class="msg-bubble {% if msg.sender == request.user %}msg-me{% else %}msg-them{% endif %}">{{ msg.text }}</div>
           <div class="msg-meta {% if msg.sender == request.user %}msg-meta-me{% endif %}">{{ msg.timestamp|date:"d M Y, H:i" }}</div>
         </div>
