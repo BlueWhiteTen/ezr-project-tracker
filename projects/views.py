@@ -1315,10 +1315,13 @@ def stock_adjust(request, pk):
         product.description = data.get('description', product.description).strip()
         product.quantity    = data.get('quantity', product.quantity)
         product.reorder_level = data.get('reorder_level', product.reorder_level)
+        if 'sales_price' in data:
+            product.sales_price = data.get('sales_price') or 0
         product.save()
         return JsonResponse({'ok': True, 'deleted': False})
     return JsonResponse({'id': product.pk, 'code': product.code, 'description': product.description,
-                         'quantity': float(product.quantity), 'reorder_level': float(product.reorder_level)})
+                         'quantity': float(product.quantity), 'reorder_level': float(product.reorder_level),
+                         'sales_price': float(product.sales_price)})
 
 
 # ── Picking Lists ─────────────────────────────────────────────────────────────
