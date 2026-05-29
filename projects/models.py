@@ -428,6 +428,17 @@ class MaterialPrice(models.Model):
         return f"{self.name}: £{self.price_per_sqft}/sqft"
 
 
+class FittingCrew(models.Model):
+    name  = models.CharField(max_length=200)
+    phone = models.CharField(max_length=50, blank=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} {self.phone}".strip()
+
+
 class UprightAccessory(models.Model):
     """Per-upright accessories (e.g. SM footplates, top caps) that auto-calculate from frame counts."""
     name        = models.CharField(max_length=100)

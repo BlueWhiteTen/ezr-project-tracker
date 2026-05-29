@@ -80,6 +80,7 @@ urlpatterns = [
     path('project/<int:pk>/reminders/add/',    views.reminder_add,    name='reminder_add'),
     path('reminder/<int:pk>/delete/',          views.reminder_delete,  name='reminder_delete'),
     path('api/check-reminders/',               views.check_reminders, name='check_reminders'),
+    path('api/fitting-crews/', views.fitting_crew_api, name='fitting_crew_api'),
     path('settings/material-prices/',       views.material_price_update,name='material_price_update'),
     path('project/<int:pk>/address/',      views.project_address_save,  name='project_address'),
     path('api/customers/',                views.customer_autocomplete, name='customer_autocomplete'),

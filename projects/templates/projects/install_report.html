@@ -55,13 +55,34 @@
             <label class="form-label">Contact Number</label>
             <input class="form-input" type="text" name="contact_number" value="{{ report.contact_number }}" placeholder="Phone number">
           </div>
-          <div>
+          <div style="grid-column:1/-1;">
             <label class="form-label">Fitting Crew</label>
-            <input class="form-input" type="text" name="fitting_crew" value="{{ report.fitting_crew }}" placeholder="Names of crew members">
-          </div>
-          <div>
-            <label class="form-label">Crew Mobile</label>
-            <input class="form-input" type="text" name="fitting_crew_phone" value="{{ report.fitting_crew_phone }}" placeholder="Mobile number(s)">
+            <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem;">
+              <select id="crew-select" class="form-input" style="flex:1;" onchange="selectCrew(this)">
+                <option value="">— Select saved crew —</option>
+              </select>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="showAddCrew()">+ Add new</button>
+            </div>
+            <div id="add-crew-form" style="display:none;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--rad);padding:.75rem;margin-bottom:.5rem;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem;">
+                <input class="form-input" id="new-crew-name" placeholder="Fitter name">
+                <input class="form-input" id="new-crew-phone" placeholder="Mobile number">
+              </div>
+              <div style="display:flex;gap:.5rem;">
+                <button type="button" class="btn btn-primary btn-sm" onclick="saveCrew()">Save</button>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="hideAddCrew()">Cancel</button>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
+              <div>
+                <label class="form-label">Name</label>
+                <input class="form-input" type="text" name="fitting_crew" id="fitting-crew-name" value="{{ report.fitting_crew }}" placeholder="Crew member names">
+              </div>
+              <div>
+                <label class="form-label">Mobile</label>
+                <input class="form-input" type="text" name="fitting_crew_phone" id="fitting-crew-phone" value="{{ report.fitting_crew_phone }}" placeholder="Mobile number(s)">
+              </div>
+            </div>
           </div>
         </div>
         <label class="form-label">Schedule of Works / Job Tasks</label>
@@ -139,6 +160,68 @@ function saveAndOpenSatNote(){
     .then(() => window.open('{% url "satisfaction_note" project.pk %}', '_blank'))
     .catch(() => window.open('{% url "satisfaction_note" project.pk %}', '_blank'));
 }
+
+// ── Fitting Crew ──────────────────────────────────────────────────────────────
+let crewList = [];
+
+async function loadCrews(){
+  const r = await fetch('/api/fitting-crews/');
+  crewList = await r.json();
+  const sel = document.getElementById('crew-select');
+  sel.innerHTML = '<option value="">— Select saved crew —</option>';
+  crewList.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c.id;
+    o.textContent = c.name + (c.phone ? ' — ' + c.phone : '');
+    o.dataset.name = c.name;
+    o.dataset.phone = c.phone;
+    sel.appendChild(o);
+  });
+  // Add delete options
+  crewList.forEach(c => {
+    const o = document.createElement('option');
+    o.value = 'del-' + c.id;
+    o.textContent = '🗑 Remove: ' + c.name;
+    sel.appendChild(o);
+  });
+}
+
+function selectCrew(sel){
+  const val = sel.value;
+  if(!val) return;
+  if(val.startsWith('del-')){
+    const id = parseInt(val.replace('del-',''));
+    const crew = crewList.find(c=>c.id===id);
+    if(crew && confirm(`Remove "${crew.name}" from saved crews?`)){
+      fetch('/api/fitting-crews/', {method:'DELETE', headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
+        body: JSON.stringify({id})}).then(()=>loadCrews());
+    }
+    sel.value = '';
+    return;
+  }
+  const opt = sel.selectedOptions[0];
+  document.getElementById('fitting-crew-name').value = opt.dataset.name || '';
+  document.getElementById('fitting-crew-phone').value = opt.dataset.phone || '';
+  sel.value = '';
+}
+
+function showAddCrew(){ document.getElementById('add-crew-form').style.display='block'; }
+function hideAddCrew(){ document.getElementById('add-crew-form').style.display='none'; }
+
+async function saveCrew(){
+  const name = document.getElementById('new-crew-name').value.trim();
+  const phone = document.getElementById('new-crew-phone').value.trim();
+  if(!name){ alert('Enter a name'); return; }
+  await fetch('/api/fitting-crews/', {method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
+    body: JSON.stringify({name, phone})});
+  document.getElementById('new-crew-name').value = '';
+  document.getElementById('new-crew-phone').value = '';
+  hideAddCrew();
+  loadCrews();
+}
+
+document.addEventListener('DOMContentLoaded', loadCrews);
 </script>
 {% endblock %}
 

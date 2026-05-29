@@ -9,7 +9,7 @@ from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 import json
 
-from .models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder
+from .models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew
 from .forms import RegisterForm, ProjectForm
 
 
@@ -2763,3 +2763,26 @@ def satisfaction_note(request, pk):
         'inst_date': inst_date,
         'site_address': '\n'.join(filter(None, address_parts)),
     })
+
+
+@login_required
+def fitting_crew_api(request):
+    if request.method == 'GET':
+        crews = list(FittingCrew.objects.values('id', 'name', 'phone'))
+        return JsonResponse(crews, safe=False)
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        name  = data.get('name', '').strip()
+        phone = data.get('phone', '').strip()
+        if not name:
+            return JsonResponse({'error': 'Name required'}, status=400)
+        crew, created = FittingCrew.objects.get_or_create(name=name, defaults={'phone': phone})
+        if not created and phone:
+            crew.phone = phone
+            crew.save()
+        return JsonResponse({'id': crew.pk, 'name': crew.name, 'phone': crew.phone})
+    if request.method == 'DELETE':
+        data = json.loads(request.body)
+        FittingCrew.objects.filter(pk=data.get('id')).delete()
+        return JsonResponse({'ok': True})
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
