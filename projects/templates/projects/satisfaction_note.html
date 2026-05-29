@@ -64,11 +64,11 @@
     </div>
     <div>
       <div class="field-label">Site Contact</div>
-      <div class="field-value">{% if report and report.site_contact %}{{ report.site_contact }}{% elif customer_profile and customer_profile.contact_name %}{{ customer_profile.contact_name }}{% else %}&nbsp;{% endif %}</div>
+      <div class="field-value">{% if project.addr_fao %}{{ project.addr_fao }}{% elif report and report.site_contact %}{{ report.site_contact }}{% else %}&nbsp;{% endif %}</div>
     </div>
     <div>
       <div class="field-label">Contact Number</div>
-      <div class="field-value">{% if report and report.contact_number %}{{ report.contact_number }}{% elif customer_profile and customer_profile.phone %}{{ customer_profile.phone }}{% else %}&nbsp;{% endif %}</div>
+      <div class="field-value">{% if project.addr_phone %}{{ project.addr_phone }}{% elif report and report.contact_number %}{{ report.contact_number }}{% else %}&nbsp;{% endif %}</div>
     </div>
     <div>
       <div class="field-label">Job Number / SO</div>
@@ -136,8 +136,8 @@ function sendToOutlook(){
 ===============================
 Client:            {{ project.customer }}
 Site:              {{ project.location }}{% if project.addr_line1 %}, {{ project.addr_line1 }}{% endif %}
-Site Contact:      {% if report and report.site_contact %}{{ report.site_contact }}{% elif customer_profile and customer_profile.contact_name %}{{ customer_profile.contact_name }}{% endif %}
-Contact Number:    {% if report and report.contact_number %}{{ report.contact_number }}{% elif customer_profile and customer_profile.phone %}{{ customer_profile.phone }}{% endif %}
+Site Contact:      {% if project.addr_fao %}{{ project.addr_fao }}{% elif report and report.site_contact %}{{ report.site_contact }}{% endif %}
+Contact Number:    {% if project.addr_phone %}{{ project.addr_phone }}{% elif report and report.contact_number %}{{ report.contact_number }}{% endif %}
 Job Number / SO:   {{ project.sales_order|default:"—" }}
 Installation Date: {% if project.installation_date %}{{ project.installation_date|date:"d/m/Y" }}{% elif project.installation_month %}{{ project.installation_month }}{% else %}TBC{% endif %}
 Fitting Crew:      {% if report and report.fitting_crew %}{{ report.fitting_crew }}{% endif %}
@@ -148,7 +148,12 @@ SCHEDULE OF WORKS:
 Please print, complete on site and return signed.
 `);
   {% if customer_profile and customer_profile.email %}const to='{{ customer_profile.email }}';{% else %}const to='';{% endif %}
-  window.location.href=`mailto:${to}?subject=${subject}&body=${body}`;
+  // Use ms-outlook: URI for classic Outlook, fallback to mailto:
+  const uri = `ms-outlook:compose?to=${to}&subject=${subject}&body=${body}`;
+  const link = document.createElement('a');
+  link.href = uri;
+  link.click();
+  setTimeout(() => { window.location.href = `mailto:${to}?subject=${subject}&body=${body}`; }, 500);
 }
 </script>
 </body>
