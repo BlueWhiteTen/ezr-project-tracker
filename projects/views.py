@@ -690,8 +690,8 @@ def conversation(request, user_id):
         conversations = []
     for u in users_messaged:
         last_msg = Message.objects.filter(
-            Q2(sender=request.user, recipient=u) |
-            Q2(sender=u, recipient=request.user)
+            Q(sender=request.user, recipient=u) |
+            Q(sender=u, recipient=request.user)
         ).order_by('-timestamp').first()
         unread = Message.objects.filter(sender=u, recipient=request.user, read=False).count()
         conversations.append({'user': u, 'last_msg': last_msg, 'unread': unread})
