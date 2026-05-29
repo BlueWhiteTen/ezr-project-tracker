@@ -2730,10 +2730,17 @@ def satisfaction_note(request, pk):
     job_tasks = report.job_tasks if report else ''
     import datetime
     inst_date = ''
-    if project.installation_date:
-        inst_date = project.installation_date.strftime('%d.%m.%y')
-    elif hasattr(project, 'installation_month') and project.installation_month:
-        inst_date = project.installation_month
+    eff = project.get_effective_installation_date()
+    if eff:
+        inst_date = eff.strftime('%d.%m.%y')
+    elif project.installation_month:
+        # Format month string e.g. "2025-09" -> "Sep 2025"
+        try:
+            y, m = project.installation_month.split('-')
+            import calendar
+            inst_date = f"{calendar.month_abbr[int(m)]} {y}"
+        except Exception:
+            inst_date = project.installation_month
     address_parts = [project.location]
     if project.addr_line1: address_parts.append(project.addr_line1)
     if project.addr_line2: address_parts.append(project.addr_line2)
