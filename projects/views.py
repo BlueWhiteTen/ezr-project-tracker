@@ -1053,6 +1053,8 @@ def install_report(request, pk):
                 caption=request.POST.get('sat_caption', '')
             )
         messages.success(request, 'Report saved.')
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept',''):
+            return JsonResponse({'ok': True})
         return redirect('install_report', pk=pk)
 
     return render(request, 'projects/install_report.html', {
