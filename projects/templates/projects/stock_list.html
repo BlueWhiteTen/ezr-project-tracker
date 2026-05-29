@@ -94,6 +94,9 @@ tr:hover td{background:var(--surf2);}
         >
       </td>
       <td style="text-align:right;color:var(--mut);">{{ p.reorder_qty|floatformat:0 }}</td>
+      <td style="text-align:right;font-family:var(--fm);">
+        {% if p.sales_price %}£{{ p.sales_price|floatformat:2 }}{% else %}<span style="color:var(--mut);">—</span>{% endif %}
+      </td>
       <td style="text-align:right;white-space:nowrap;">
         <button class="edit-qty" onclick="editProduct({{ p.pk }},'{{ p.code|escapejs }}','{{ p.description|escapejs }}',{{ p.quantity }},{{ p.reorder_level }})">Edit</button>
         <button class="edit-qty" id="act-btn-{{ p.pk }}" onclick="toggleActive({{ p.pk }}, this)"
@@ -103,7 +106,7 @@ tr:hover td{background:var(--surf2);}
       </td>
     </tr>
     {% empty %}
-    <tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--mut);">No products found — import your Excel file to get started</td></tr>
+    <tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--mut);">No products found — import your Excel file to get started</td></tr>
     {% endfor %}
     </tbody>
   </table>

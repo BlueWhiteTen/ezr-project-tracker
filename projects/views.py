@@ -1273,6 +1273,7 @@ def stock_list(request):
         {'key':'free_stock',    'label':'Free Stock',  'right':True,  'default_dir':'asc'},
         {'key':'reorder_level', 'label':'Reorder Lvl', 'right':True, 'default_dir':'desc'},
         {'key':'reorder_qty',   'label':'Reorder Qty', 'right':True, 'default_dir':'desc'},
+        {'key':'sales_price',   'label':'Price',       'right':True, 'default_dir':'desc'},
     ]
     return render(request, 'projects/stock_list.html', {
         'products': products, 'query': q,
