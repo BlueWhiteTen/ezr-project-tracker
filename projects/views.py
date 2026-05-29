@@ -1027,7 +1027,8 @@ def install_report(request, pk):
         report.notes          = request.POST.get('notes', '').strip()
         report.issues         = request.POST.get('issues', '').strip()
         report.job_tasks      = request.POST.get('job_tasks', '').strip()
-        report.fitting_crew   = request.POST.get('fitting_crew', '').strip()
+        report.fitting_crew        = request.POST.get('fitting_crew', '').strip()
+        report.fitting_crew_phone  = request.POST.get('fitting_crew_phone', '').strip()
         report.site_contact   = request.POST.get('site_contact', '').strip()
         report.contact_number = request.POST.get('contact_number', '').strip()
         sc = request.POST.get('site_cleared', '')
@@ -2715,14 +2716,38 @@ def satisfaction_note(request, pk):
     """Generate a client satisfaction note as a printable HTML page."""
     project = get_object_or_404(Project, pk=pk)
     report = getattr(project, 'install_report', None)
-    # Try to get customer profile for extra details
     try:
         customer_profile = CustomerProfile.objects.get(name__iexact=project.customer)
     except CustomerProfile.DoesNotExist:
         customer_profile = None
+    # Pre-resolve all fields so template is simple
+    site_contact = project.addr_fao or (report.site_contact if report else '') or (customer_profile.contact_name if customer_profile else '')
+    contact_number = project.addr_phone or (report.contact_number if report else '') or (customer_profile.phone if customer_profile else '')
+    fitting_crew = report.fitting_crew if report else ''
+    fitting_crew_phone = report.fitting_crew_phone if report else ''
+    job_tasks = report.job_tasks if report else ''
+    import datetime
+    inst_date = ''
+    if project.installation_date:
+        inst_date = project.installation_date.strftime('%d.%m.%y')
+    elif hasattr(project, 'installation_month') and project.installation_month:
+        inst_date = project.installation_month
+    address_parts = [project.location]
+    if project.addr_line1: address_parts.append(project.addr_line1)
+    if project.addr_line2: address_parts.append(project.addr_line2)
+    if project.addr_city:
+        city = project.addr_city
+        if project.addr_postcode: city += ' ' + project.addr_postcode
+        address_parts.append(city)
     return render(request, 'projects/satisfaction_note.html', {
         'project': project,
         'report': report,
         'customer_profile': customer_profile,
-        'today': __import__('datetime').date.today(),
+        'site_contact': site_contact,
+        'contact_number': contact_number,
+        'fitting_crew': fitting_crew,
+        'fitting_crew_phone': fitting_crew_phone,
+        'job_tasks': job_tasks,
+        'inst_date': inst_date,
+        'site_address': '\n'.join(filter(None, address_parts)),
     })

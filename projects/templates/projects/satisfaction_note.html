@@ -53,7 +53,7 @@ body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#1a1a1a; ba
 .sig-grid { border:1pt solid #bbb; border-top:none; display:grid; grid-template-columns:1fr 1fr; }
 .sig-cell { padding:22pt 7pt 5pt; border-right:1pt solid #bbb; }
 .sig-cell:last-child { border-right:none; }
-.sig-line-text { font-size:9pt; color:#666; border-top:1pt solid #888; padding-top:3pt; }
+.sig-line-text { font-size:9pt; color:#666; padding-top:3pt; }
 
 /* Gap between sections */
 .gap { height:8pt; }
@@ -72,7 +72,6 @@ body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#1a1a1a; ba
 
 <div class="no-print">
   <button onclick="window.print()" style="background:#1a1a1a;color:#fff;">🖨 Print / Save PDF</button>
-  <button onclick="sendToOutlook()" style="background:#0078d4;color:#fff;">✉ Send to Outlook</button>
   <a href="{% url 'project_edit' project.pk %}" style="font-size:.82rem;color:#888;text-decoration:none;">← Back to project</a>
 </div>
 
@@ -96,7 +95,7 @@ body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#1a1a1a; ba
     <div class="cell">
       <div class="cell-label">Site Address:</div>
       <div class="cell-value" style="font-size:10pt;">
-        {{ project.location }}{% if project.addr_line1 %}<br>{{ project.addr_line1 }}{% if project.addr_line2 %}, {{ project.addr_line2 }}{% endif %}{% endif %}{% if project.addr_city %}<br>{{ project.addr_city }}{% if project.addr_postcode %} {{ project.addr_postcode }}{% endif %}{% endif %}
+        {{ site_address|linebreaksbr }}
       </div>
     </div>
   </div>
@@ -105,12 +104,12 @@ body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#1a1a1a; ba
   <div class="row row-2col" style="border-top:none;">
     <div class="cell">
       <div class="cell-label">Site Contact:</div>
-      <div class="cell-value">{% if project.addr_fao %}{{ project.addr_fao }}{% elif report and report.site_contact %}{{ report.site_contact }}{% else %}&nbsp;{% endif %}</div>
+      <div class="cell-value">{{ site_contact|default:"&nbsp;" }}</div>
       <div class="cell-blank"></div>
     </div>
     <div class="cell">
       <div class="cell-label">Contact Number:</div>
-      <div class="cell-value">{% if project.addr_phone %}{{ project.addr_phone }}{% elif report and report.contact_number %}{{ report.contact_number }}{% else %}&nbsp;{% endif %}</div>
+      <div class="cell-value">{{ contact_number|default:"&nbsp;" }}</div>
       <div class="cell-blank"></div>
     </div>
   </div>
@@ -123,15 +122,20 @@ body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#1a1a1a; ba
     </div>
     <div class="cell">
       <div class="cell-label">Installation Date:</div>
-      <div class="cell-value">{% if project.installation_date %}{{ project.installation_date|date:"d.m.y" }}{% elif project.installation_month %}{{ project.installation_month }}{% else %}&nbsp;{% endif %}</div>
+      <div class="cell-value">{{ inst_date|default:"&nbsp;" }}</div>
     </div>
   </div>
 
   <!-- FITTING CREW -->
-  <div class="row row-1col" style="border-top:none;">
+  <div class="row row-2col" style="border-top:none;">
     <div class="cell">
       <div class="cell-label">Fitting Crew:</div>
-      <div class="cell-value">{% if report and report.fitting_crew %}{{ report.fitting_crew }}{% else %}&nbsp;{% endif %}</div>
+      <div class="cell-value">{{ fitting_crew|default:"&nbsp;" }}</div>
+      <div class="cell-blank"></div>
+    </div>
+    <div class="cell">
+      <div class="cell-label">Mobile:</div>
+      <div class="cell-value">{{ fitting_crew_phone|default:"&nbsp;" }}</div>
       <div class="cell-blank"></div>
     </div>
   </div>
@@ -140,7 +144,7 @@ body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#1a1a1a; ba
 
   <!-- SCHEDULE OF WORKS -->
   <div class="sec">Schedule of Works: <span class="sec-note">Please note any alterations to original schedule.</span></div>
-  <div class="sched-content">{% if report and report.job_tasks %}{{ report.job_tasks }}{% endif %}</div>
+  <div class="sched-content">{{ job_tasks }}</div>
 
   <!-- SITE CLEARED -->
   <div class="yn-row">
@@ -175,8 +179,8 @@ body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#1a1a1a; ba
   <div class="sig-grid">
     <div class="sig-cell"><div class="sig-line-text">Signed: …………………………………………………</div></div>
     <div class="sig-cell"><div class="sig-line-text">Print: …………………………………………………</div></div>
-    <div class="sig-cell" style="border-top:1pt solid #bbb;"><div class="sig-line-text">Position: …………………………………………………</div></div>
-    <div class="sig-cell" style="border-top:1pt solid #bbb;"><div class="sig-line-text">Date: …………………………………………………</div></div>
+    <div class="sig-cell"><div class="sig-line-text">Position: …………………………………………………</div></div>
+    <div class="sig-cell"><div class="sig-line-text">Date: …………………………………………………</div></div>
   </div>
 
   <div class="gap"></div>
@@ -199,37 +203,11 @@ body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#1a1a1a; ba
   <div class="sig-grid" style="border-top:none;">
     <div class="sig-cell"><div class="sig-line-text">Signed: …………………………………………………</div></div>
     <div class="sig-cell"><div class="sig-line-text">Print: …………………………………………………</div></div>
-    <div class="sig-cell" style="border-top:1pt solid #bbb;"><div class="sig-line-text">Position: …………………………………………………</div></div>
-    <div class="sig-cell" style="border-top:1pt solid #bbb;"><div class="sig-line-text">Date: …………………………………………………</div></div>
+    <div class="sig-cell"><div class="sig-line-text">Position: …………………………………………………</div></div>
+    <div class="sig-cell"><div class="sig-line-text">Date: …………………………………………………</div></div>
   </div>
 
 </div>
 
-<script>
-function sendToOutlook(){
-  const subject = encodeURIComponent('Satisfaction Note — {{ project.customer|escapejs }} / {{ project.location|escapejs }}');
-  const body = encodeURIComponent(
-`CLIENT / JOB SATISFACTION NOTE
-================================
-Client:            {{ project.customer }}
-Site Address:      {{ project.location }}{% if project.addr_line1 %}, {{ project.addr_line1 }}{% endif %}{% if project.addr_city %}, {{ project.addr_city }}{% if project.addr_postcode %} {{ project.addr_postcode }}{% endif %}{% endif %}
-Site Contact:      {% if project.addr_fao %}{{ project.addr_fao }}{% endif %}
-Contact Number:    {% if project.addr_phone %}{{ project.addr_phone }}{% endif %}
-Job Number:        {{ project.sales_order|default:"" }}
-Installation Date: {% if project.installation_date %}{{ project.installation_date|date:"d.m.y" }}{% elif project.installation_month %}{{ project.installation_month }}{% endif %}
-Fitting Crew:      {% if report and report.fitting_crew %}{{ report.fitting_crew }}{% endif %}
-
-SCHEDULE OF WORKS:
-{% if report and report.job_tasks %}{{ report.job_tasks }}{% else %}(see attached){% endif %}
-
-Please print, complete on site and return signed.
-`);
-  {% if customer_profile and customer_profile.email %}const to='{{ customer_profile.email }}';{% else %}const to='';{% endif %}
-  const link = document.createElement('a');
-  link.href = `ms-outlook:compose?to=${to}&subject=${subject}&body=${body}`;
-  link.click();
-  setTimeout(()=>{ window.location.href=`mailto:${to}?subject=${subject}&body=${body}`; }, 300);
-}
-</script>
 </body>
 </html>

@@ -55,9 +55,13 @@
             <label class="form-label">Contact Number</label>
             <input class="form-input" type="text" name="contact_number" value="{{ report.contact_number }}" placeholder="Phone number">
           </div>
-          <div style="grid-column:1/-1;">
+          <div>
             <label class="form-label">Fitting Crew</label>
-            <input class="form-input" type="text" name="fitting_crew" value="{{ report.fitting_crew }}" placeholder="Names and numbers of crew members">
+            <input class="form-input" type="text" name="fitting_crew" value="{{ report.fitting_crew }}" placeholder="Names of crew members">
+          </div>
+          <div>
+            <label class="form-label">Crew Mobile</label>
+            <input class="form-input" type="text" name="fitting_crew_phone" value="{{ report.fitting_crew_phone }}" placeholder="Mobile number(s)">
           </div>
         </div>
         <label class="form-label">Schedule of Works / Job Tasks</label>
