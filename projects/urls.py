@@ -67,6 +67,7 @@ urlpatterns = [
     path('stock/<int:pk>/toggle-active/', views.product_toggle_active, name='product_toggle_active'),
     path('project/<int:pk>/picking-from-costing/',      views.picking_from_costing,      name='picking_from_costing'),
     path('project/<int:pk>/picking-from-costing/save/',  views.picking_from_costing_save, name='picking_from_costing_save'),
+    path('project/<int:pk>/cost/extras/',        views.cost_extras_save,       name='cost_extras_save'),
     path('project/<int:pk>/cost/wall-fixings/',       views.cost_wall_fixings_save,   name='cost_wall_fixings_save'),
     path('project/<int:pk>/cost/accessory-override/', views.cost_accessory_override, name='cost_accessory_override'),
     path('project/<int:pk>/cost/accessory-toggle/', views.cost_accessory_toggle, name='cost_accessory_toggle'),

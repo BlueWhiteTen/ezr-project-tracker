@@ -1701,6 +1701,19 @@ def picking_item_qty(request, pk):
 
 # ── Picking list generation from costing ─────────────────────────────────────
 
+BACK_TO_BACK_KIT = {
+    'M8X50':  1,  # M8x50 bolt per fixing point
+    'M8NUT':  1,  # M8 nut per fixing point
+}
+# approx £0.10 each combined
+MOBILE_BASE_KIT = {
+    'FIX-MOBF/PLATE':  1,
+    'FIX-MOBF/BUFFER': 1,
+    'M8X35HEXHD':      1,
+    'M8NYLOCK':        1,
+    'TEKS5.5X25MM':    1,
+}
+
 SM_FOOT_FIXINGS = {
     'SMFOOT':           1,
     'M6PENNYWASHER':    1,
@@ -1716,7 +1729,7 @@ WALL_FIXING_KIT = {
     'FIX10X3CSK':       1,
 }
 
-def generate_picking_reference(lines, selected_accessories=None, wall_fixings=0):
+def generate_picking_reference(lines, selected_accessories=None, wall_fixings=0, back_to_back=0, mobile_bases=0):
     from collections import defaultdict
     items = defaultdict(float)
     selected_accessories = selected_accessories or []
@@ -1782,6 +1795,20 @@ def generate_picking_reference(lines, selected_accessories=None, wall_fixings=0)
 
         elif line.line_type == 'stock' and line.product:
             items[line.product.code] += qty
+    # Back-to-back fixings
+    if back_to_back:
+        for code, qty_per in BACK_TO_BACK_KIT.items():
+            items[code] += back_to_back * qty_per
+
+    # Mobile base sets — add kit, subtract SM foot fixings for those uprights
+    if mobile_bases:
+        for code, qty_per in MOBILE_BASE_KIT.items():
+            items[code] += mobile_bases * qty_per
+        # Each mobile base set replaces 1 SM foot + fixings
+        for code in SM_FOOT_FIXINGS:
+            if items[code] > 0:
+                items[code] = max(0, items[code] - mobile_bases * SM_FOOT_FIXINGS[code])
+
     # Accessories
     for acc in selected_accessories:
         code = acc.code if hasattr(acc, 'code') else acc.get('code','')
@@ -1974,7 +2001,7 @@ def project_cost(request, pk):
         {'code': acc.code, 'uprights': overrides_map.get(acc.id) if overrides_map.get(acc.id) is not None else total_uprights}
         for acc in cost.accessories.all()
     ]
-    picking_ref = generate_picking_reference(list(lines), acc_with_uprights, cost.wall_fixings)
+    picking_ref = generate_picking_reference(list(lines), acc_with_uprights, cost.wall_fixings, cost.back_to_back_fixings, cost.mobile_base_sets)
     # Enrich with product descriptions
     picking_ref_enriched = []
     for code, qty in sorted(picking_ref.items()):
@@ -2494,7 +2521,7 @@ def picking_from_costing(request, pk):
         {'code': acc.code, 'uprights': uprights_count}
         for acc in cost.accessories.all()
     ]
-    ref = generate_picking_reference(list(lines), acc_with_uprights, cost.wall_fixings)
+    ref = generate_picking_reference(list(lines), acc_with_uprights, cost.wall_fixings, cost.back_to_back_fixings, cost.mobile_base_sets)
 
     # Add NS/extras lines from costing as NS picking items
     # Note: inhang/outhang are handled by generate_picking_reference into stock codes
@@ -2786,3 +2813,17 @@ def fitting_crew_api(request):
         FittingCrew.objects.filter(pk=data.get('id')).delete()
         return JsonResponse({'ok': True})
     return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@login_required
+@require_POST
+def cost_extras_save(request, pk):
+    """Save back-to-back fixings and mobile base sets counts."""
+    cost = get_object_or_404(ProjectCost, project__pk=pk)
+    data = json.loads(request.body)
+    if 'back_to_back' in data:
+        cost.back_to_back_fixings = max(0, int(data['back_to_back'] or 0))
+    if 'mobile_bases' in data:
+        cost.mobile_base_sets = max(0, int(data['mobile_bases'] or 0))
+    cost.save()
+    return JsonResponse({'ok': True})

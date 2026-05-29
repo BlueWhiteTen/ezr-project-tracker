@@ -465,7 +465,9 @@ class AccessoryOverride(models.Model):
 
 class ProjectCost(models.Model):
     project     = models.OneToOneField(Project, on_delete=models.CASCADE, related_name='cost')
-    wall_fixings = models.PositiveIntegerField(default=0)
+    wall_fixings         = models.PositiveIntegerField(default=0)
+    back_to_back_fixings = models.PositiveIntegerField(default=0)
+    mobile_base_sets     = models.PositiveIntegerField(default=0)
     markup      = models.DecimalField(max_digits=6, decimal_places=2, default=50)
     labour      = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     delivery    = models.DecimalField(max_digits=10, decimal_places=2, default=0)
