@@ -59,6 +59,8 @@
   /* When no conversation selected, show sidebar instead */
   .inbox-wrap.show-sidebar .inbox-sidebar { display: flex; }
   .inbox-wrap.show-sidebar .chat-area { display: none; }
+  /* Always show mobile bar when chat is visible */
+  .chat-area { position: relative; }
 
   /* Compact chat head with back button */
   .chat-head { padding: .6rem .85rem; }
@@ -145,7 +147,7 @@
   {% if active_user %}
   <div class="chat-area">
     <!-- Mobile: conversation selector bar -->
-    <div class="mobile-convo-bar" style="display:none;">
+    <div class="mobile-convo-bar" style="display:none;" id="mobile-convo-bar">
       <button class="chat-back-btn" onclick="showMobileSidebar()" title="All conversations">←</button>
       <select class="mobile-convo-select" onchange="goToConvo(this.value)">
         <option value="">— Select conversation —</option>
@@ -181,6 +183,16 @@
     </div>
   </div>
   {% else %}
+  <!-- Show mobile nav bar even in empty chat -->
+  <div class="mobile-convo-bar" style="display:none;">
+    <select class="mobile-convo-select" onchange="goToConvo(this.value)">
+      <option value="">— Select conversation —</option>
+      {% for c in conversations %}
+      <option value="{{ c.user.pk }}">{{ c.user.get_full_name|default:c.user.username }}{% if c.unread %} ({{ c.unread }}){% endif %}</option>
+      {% endfor %}
+    </select>
+    <button class="new-msg-btn" onclick="openNewMsg()">+ New</button>
+  </div>
   <div class="empty-chat">
     <span style="font-size:2.5rem;">✉</span>
     <h3>Select a conversation</h3>
