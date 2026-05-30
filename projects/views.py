@@ -67,7 +67,7 @@ def dashboard(request):
     query           = request.GET.get('q', '')
     status          = request.GET.get('status', '')
     tl              = request.GET.get('tl', '')
-    sort            = request.GET.get('sort', '-created_at')
+    sort            = request.GET.get('sort', '-sales_order')
     stat_filter     = request.GET.get('sf', '')
     assigned_filter = request.GET.get('assigned', '')
 
@@ -117,7 +117,7 @@ def dashboard(request):
                'delivery_date','-delivery_date','installation_date','-installation_date',
                '-created_at','created_at']
     if sort not in allowed:
-        sort = '-created_at'
+        sort = '-sales_order'
 
     if not isinstance(projects, list):
         if sort in ('installation_date', '-installation_date'):
@@ -131,6 +131,20 @@ def dashboard(request):
                     return (0, p.delivery_date)
                 return (1, None)
             projects = sorted(proj_list, key=inst_sort_key, reverse=reverse)
+        elif sort in ('sales_order', '-sales_order'):
+            reverse = sort.startswith('-')
+            proj_list = list(projects)
+            def so_sort_key(p):
+                if p.sales_order:
+                    try:
+                        return (0, -int(p.sales_order) if reverse else int(p.sales_order), '')
+                    except ValueError:
+                        return (1, 0, p.sales_order)
+                return (2, 0, p.customer or '')
+            projects = sorted(proj_list, key=lambda p: so_sort_key(p))
+            if reverse:
+                # Already handled by negating the int above
+                pass
         else:
             projects = list(projects.order_by(sort))
 
