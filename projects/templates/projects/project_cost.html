@@ -83,10 +83,60 @@
   </div>
   <div style="display:flex;gap:.6rem;">
     <button class="btn btn-ghost" onclick="saveAndPrint()">🖨 Print</button>
-    <a href="{% url 'customer_quote' project.pk %}" target="_blank" class="btn btn-ghost">📄 Quote</a>
+    <div style="position:relative;display:inline-block;" id="doc-dd">
+      <button type="button" class="btn btn-ghost" onclick="var m=document.getElementById('doc-menu');m.style.display=m.style.display==='block'?'none':'block';event.stopPropagation();">📄 Documents ▾</button>
+      <div id="doc-menu" style="display:none;position:absolute;top:100%;left:0;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);box-shadow:var(--shadow-md);z-index:50;min-width:190px;margin-top:2px;" class="doc-menu">
+        <a href="{% url 'customer_quote_option' project.pk cost.pk %}" target="_blank" style="display:block;padding:.55rem .9rem;text-decoration:none;color:var(--txt);font-size:.85rem;border-bottom:1px solid var(--bdr);">📄 Quote{% if cost.label %} — {{ cost.label }}{% endif %}</a>
+        {% with accepted=project.accepted_cost %}
+        {% if accepted %}
+        <a id="proforma-menu-item" href="{% url 'proforma_invoice_option' project.pk accepted.pk %}" target="_blank" style="display:block;padding:.55rem .9rem;text-decoration:none;color:var(--txt);font-size:.85rem;">🧾 Pro-Forma Invoice</a>
+        {% else %}
+        <span id="proforma-menu-item" style="display:block;padding:.55rem .9rem;color:var(--mut);font-size:.85rem;">🧾 Pro-Forma (approve an option first)</span>
+        {% endif %}
+        {% endwith %}
+      </div>
+    </div>
+    <script>
+      document.querySelector('.doc-menu') && (window.__docMenuInit || (window.__docMenuInit=1,
+        document.addEventListener('click',e=>{const dd=document.getElementById('doc-dd');const m=document.getElementById('doc-menu');if(dd&&!dd.contains(e.target))m.style.display='none';}),
+        document.getElementById('doc-menu').classList.contains('show')));
+    </script>
     <button class="btn btn-primary" onclick="generatePickingList()" style="background:#0f766e;box-shadow:none;">📦 Generate Picking List</button>
+    <a href="{% url 'picking_list_view' project.pk %}" class="btn btn-ghost">→ Go to Picking List</a>
     <button class="btn btn-primary" onclick="saveHeader(false)" style="background:#7c3aed;">Save</button>
   </div>
+</div>
+
+<!-- Option tabs -->
+<div style="display:flex;align-items:center;gap:0;margin-bottom:1rem;border-bottom:2px solid var(--bdr);">
+  {% for c in all_costs %}
+  <a href="{% url 'project_cost_option' project.pk c.pk %}"
+    style="padding:.55rem 1.1rem;font-size:.875rem;font-weight:{% if c.pk == cost.pk %}600{% else %}400{% endif %};color:{% if c.pk == cost.pk %}var(--acc){% else %}var(--mut){% endif %};text-decoration:none;border-bottom:{% if c.pk == cost.pk %}2px solid var(--acc){% else %}2px solid transparent{% endif %};margin-bottom:-2px;display:flex;align-items:center;gap:.4rem;white-space:nowrap;">
+    {% if c.is_accepted %}<span style="color:#16a34a;font-size:.8rem;">✓</span>{% endif %}
+    <span class="tab-label-{{ c.pk }}">{{ c.label }}</span>
+  </a>
+  {% endfor %}
+  <form method="post" action="{% url 'cost_option_add' project.pk %}" style="display:inline;">
+    {% csrf_token %}
+    <button type="submit" style="padding:.55rem .9rem;font-size:.85rem;color:var(--mut);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;" title="Add new option">+ Add Option</button>
+  </form>
+</div>
+
+<!-- Accepted checkbox -->
+<div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:1rem;">
+  <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.875rem;font-weight:500;">
+    <input type="checkbox" id="accepted-checkbox" {% if cost.is_accepted %}checked{% endif %} onchange="toggleAccepted()" style="width:16px;height:16px;accent-color:#16a34a;">
+    <span style="color:{% if cost.is_accepted %}#16a34a{% else %}var(--mut){% endif %};" id="accepted-label">
+      {% if cost.is_accepted %}✓ Approved option{% else %}Mark as approved option{% endif %}
+    </span>
+  </label>
+  {% if all_costs|length > 1 %}
+  <form method="post" action="{% url 'cost_option_delete' project.pk cost.pk %}" onsubmit="return confirm('Delete {{ cost.label }}? This cannot be undone.');" style="display:inline;">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--red);font-size:.78rem;">🗑 Delete {{ cost.label }}</button>
+  </form>
+  {% endif %}
+  <button class="btn btn-ghost btn-sm" style="font-size:.78rem;" onclick="renameOption({{ cost.pk }}, '{{ cost.label|escapejs }}')">✏ Rename</button>
 </div>
 
 <div class="cost-grid">
@@ -193,11 +243,11 @@
           <span style="font-size:.78rem;color:var(--mut);">M8x50 bolt + M8 nut per fixing (~£0.10 each)</span>
         </div>
         <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
-          <label style="font-size:.88rem;color:var(--txt2);min-width:210px;">Mobile base upright sets:</label>
+          <label style="font-size:.88rem;color:var(--txt2);min-width:210px;">Mobile base upright fixing sets:</label>
           <input type="number" id="mob-base-input" value="{{ cost.mobile_base_sets }}" min="0" step="1"
             class="form-input" style="width:80px;padding:3px 7px;font-size:.82rem;"
             onblur="saveExtras()">
-          <span style="font-size:.78rem;color:var(--mut);">Adds plate+buffer+bolt+nyloc+tek. Subtracts same qty of SM foot fixings.</span>
+          <span style="font-size:.78rem;color:var(--mut);">Adds mobile base fixing kit per upright. Subtracts equivalent SM foot fixings.</span>
         </div>
       </div>
       <div style="font-size:.74rem;color:var(--mut);padding-top:.4rem;margin-top:.1rem;">Costs are calculated per upright and included in the buying total.</div>
@@ -208,6 +258,14 @@
   <div class="cost-card">
     <div class="cost-card-head">Add Line</div>
     <div class="cost-card-body">
+      <!-- Product line toggle -->
+      <div style="display:flex;gap:6px;margin-bottom:1rem;border-bottom:2px solid var(--bdr);padding-bottom:.75rem;">
+        <button class="prod-toggle active" id="pt-trimline" onclick="showProduct('trimline')" style="flex:1;padding:8px;border:1px solid var(--acc-bdr);background:var(--acc-bg);color:var(--acc);border-radius:var(--rad);font-weight:700;cursor:pointer;">Trimline</button>
+        <button class="prod-toggle" id="pt-longspan" onclick="showProduct('longspan')" style="flex:1;padding:8px;border:1px solid var(--bdr);background:none;color:var(--mut);border-radius:var(--rad);font-weight:700;cursor:pointer;">Longspan</button>
+      </div>
+
+      <!-- TRIMLINE tabs -->
+      <div id="trimline-tabs">
       <div class="add-tabs">
         <button class="add-tab active" onclick="showTab('frame',this)">🏗 Frame</button>
         <button class="add-tab" onclick="showTab('tfcv',this)">📐 TFCV Shelf</button>
@@ -222,6 +280,22 @@
         <div style="width:100%;height:0;flex-basis:100%;"></div>
         <button class="add-tab" onclick="showTab('stock',this)">📦 Stock Item</button>
         <button class="add-tab" onclick="showTab('ns',this)">✏ Non-Stock</button>
+      </div>
+      </div>
+
+      <!-- LONGSPAN tabs -->
+      <div id="longspan-tabs" style="display:none;">
+      <div class="add-tabs">
+        <button class="add-tab active" onclick="showTab('ls_frame',this)">🏗 LS Frame</button>
+        <button class="add-tab" onclick="showTab('ls_shelf',this)">📐 LS Shelf Level</button>
+        <button class="add-tab" onclick="showTab('ls_trolley',this)">🛒 LS Trolley</button>
+        <button class="add-tab" onclick="showTab('stock',this)">📦 Stock Item</button>
+        <button class="add-tab" onclick="showTab('ns',this)">✏ Non-Stock</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.8rem;">
+        <span style="font-size:.78rem;color:var(--mut);font-weight:600;">Galvanised uprights</span>
+        <input type="hidden" id="ls-system" value="galv">
+      </div>
       </div>
 
       <!-- ═══ FRAME (multi-row) ═══ -->
@@ -356,10 +430,20 @@
       <div class="add-panel" id="panel-misc">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
           <div style="border:1px solid var(--bdr);border-radius:var(--rad);padding:.75rem;">
-            <div style="font-size:.78rem;font-weight:600;color:var(--mut);margin-bottom:.5rem;">Mesh Panel (120x48") — £25</div>
-            <div style="display:flex;gap:.5rem;align-items:center;">
-              <input class="form-input" type="number" id="mesh-qty" value="1" min="1" style="width:70px;">
-              <button class="btn btn-primary btn-sm" onclick="addMisc('mesh_panel','mesh-qty')">Add</button>
+            <div style="font-size:.78rem;font-weight:600;color:var(--mut);margin-bottom:.5rem;">Mesh Panel — <span id="mesh-price-label">£25</span></div>
+            <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+              <select class="form-input" id="mesh-size" style="flex:1;min-width:120px;" onchange="updateMeshPrice()">
+                <option value="MP120X48">120x48" (MP120X48)</option>
+                <option value="MP108X48">108x48" (MP108X48)</option>
+                <option value="MP96X48">96x48" (MP96X48)</option>
+                <option value="MP84X48">84x48" (MP84X48)</option>
+                <option value="MP72X48">72x48" (MP72X48)</option>
+              </select>
+              <input class="form-input" type="number" id="mesh-qty" value="1" min="1" style="width:60px;" placeholder="Qty">
+            </div>
+            <div style="display:flex;gap:.5rem;align-items:center;margin-top:.4rem;">
+              <input class="form-input" type="text" id="mesh-cut" placeholder="Cut to (e.g. 900x600mm) — optional" style="flex:1;font-size:.78rem;">
+              <button class="btn btn-primary btn-sm" onclick="addMeshPanel()">Add</button>
             </div>
           </div>
           <div style="border:1px solid var(--bdr);border-radius:var(--rad);padding:.75rem;">
@@ -396,6 +480,51 @@
           {% endfor %}
         </div>
       </div>
+
+      <!-- ═══ LS FRAME (multi-row) ═══ -->
+      <div class="add-panel" id="panel-ls_frame">
+        <div id="ls_frame-rows"></div>
+        <div style="display:flex;align-items:center;gap:1rem;margin-top:.5rem;">
+          <button class="btn btn-ghost btn-sm" onclick="addLsRow('ls_frame')">+ Add row</button>
+          <span style="font-size:.8rem;color:var(--mut);" id="ls_frame-preview"></span>
+        </div>
+        <div style="margin-top:.75rem;">
+          <button class="btn btn-primary" onclick="submitLs('ls_frame')" style="background:#7c3aed;">Add to costing</button>
+        </div>
+      </div>
+
+      <!-- ═══ LS SHELF LEVEL (multi-row) ═══ -->
+      <div class="add-panel" id="panel-ls_shelf">
+        <div id="ls_shelf-rows"></div>
+        <div style="display:flex;align-items:center;gap:1rem;margin-top:.5rem;">
+          <button class="btn btn-ghost btn-sm" onclick="addLsRow('ls_shelf')">+ Add row</button>
+          <span style="font-size:.8rem;color:var(--mut);" id="ls_shelf-preview"></span>
+        </div>
+        <div style="margin-top:.75rem;">
+          <button class="btn btn-primary" onclick="submitLs('ls_shelf')" style="background:#059669;">Add to costing</button>
+        </div>
+      </div>
+
+      <!-- ═══ LS TROLLEY ═══ -->
+      <div class="add-panel" id="panel-ls_trolley">
+        <div style="display:flex;align-items:flex-end;gap:.75rem;flex-wrap:wrap;">
+          <div>
+            <label class="form-label" style="font-size:.72rem;">Frame depth</label>
+            <select class="form-input" id="ls_trolley-depth" style="width:120px;">
+              <option value="600">600</option>
+              <option value="900">900</option>
+              <option value="1000">1000</option>
+              <option value="1200">1200</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label" style="font-size:.72rem;">How many trolleys</label>
+            <input class="form-input" type="number" id="ls_trolley-qty" value="1" min="1" style="width:110px;">
+          </div>
+          <button class="btn btn-primary" onclick="submitLsTrolley()" style="background:#0891b2;">Add to costing</button>
+        </div>
+        <p style="font-size:.75rem;color:var(--mut);margin-top:.5rem;">Castor bracket assembly, based on 2 frames per trolley.</p>
+      </div>
     </div>
   </div>
 </div>
@@ -422,23 +551,10 @@
         <span class="sum-value sum-total" id="sell-price">£{{ sell_price }}</span>
       </div>
       <div class="sum-row"><span class="sum-label">Margin</span><span class="sum-value" id="margin-pct" style="color:var(--grn);">{{ margin }}%</span></div>
+      <div class="sum-row" style="border-top:1px solid var(--bdr);margin-top:.5rem;padding-top:.6rem;"><span class="sum-label">Est. Weight</span><span class="sum-value" style="color:var(--txt2);">{{ total_weight }} kg</span></div>
     </div>
   </div>
 
-  <div class="cost-card" style="margin-bottom:1rem;">
-    <div class="cost-card-head">Material Prices (per sq ft)</div>
-    <div class="cost-card-body">
-      <div class="mat-setting">
-        <label>Chipboard</label>
-        <span>£</span><input type="number" class="mat-input" id="mat-chipboard" value="{{ chipboard_price }}" step="0.01" min="0">
-      </div>
-      <div class="mat-setting">
-        <label>Melamine</label>
-        <span>£</span><input type="number" class="mat-input" id="mat-melamine" value="{{ melamine_price }}" step="0.01" min="0">
-      </div>
-      <button class="btn btn-ghost btn-sm" style="margin-top:.75rem;width:100%;" onclick="saveMaterialPrices()">Update Material Prices</button>
-    </div>
-  </div>
 
   {% if picking_ref %}
   <div class="cost-card" style="margin-bottom:1rem;">
@@ -509,8 +625,61 @@
 <script>
 const CSRF = '{{ csrf_token }}';
 const PROJ_PK = {{ project.pk }};
+const COST_PK = {{ cost.pk }};
+
+// ── Option tab management ──────────────────────────────────────────────────────
+async function toggleAccepted(){
+  const cb = document.getElementById('accepted-checkbox');
+  const label = document.getElementById('accepted-label');
+  const r = await fetch(`/project/${PROJ_PK}/cost/${COST_PK}/accept/`, {
+    method: 'POST', headers: {'X-CSRFToken': CSRF}
+  });
+  const d = await r.json();
+  if(d.ok){
+    cb.checked = d.is_accepted;
+    label.textContent = d.is_accepted ? '✓ Approved option' : 'Mark as approved option';
+    label.style.color = d.is_accepted ? '#16a34a' : 'var(--mut)';
+    // Update the proforma menu item live — no page reload needed
+    const pf = document.getElementById('proforma-menu-item');
+    if(pf){
+      if(d.is_accepted && d.proforma_url){
+        const a = document.createElement('a');
+        a.id = 'proforma-menu-item';
+        a.href = d.proforma_url;
+        a.target = '_blank';
+        a.style.cssText = 'display:block;padding:.55rem .9rem;text-decoration:none;color:var(--txt);font-size:.85rem;';
+        a.textContent = '🧾 Pro-Forma Invoice';
+        pf.replaceWith(a);
+      } else if(!d.is_accepted){
+        const span = document.createElement('span');
+        span.id = 'proforma-menu-item';
+        span.style.cssText = 'display:block;padding:.55rem .9rem;color:var(--mut);font-size:.85rem;';
+        span.textContent = '🧾 Pro-Forma (approve an option first)';
+        pf.replaceWith(span);
+      }
+    }
+  } else {
+    cb.checked = !cb.checked;
+    alert(d.error || 'Failed');
+  }
+}
+
+async function renameOption(costPk, currentLabel){
+  const newLabel = prompt('Rename this option:', currentLabel);
+  if(!newLabel || newLabel.trim() === currentLabel) return;
+  const r = await fetch(`/project/${PROJ_PK}/cost/${costPk}/rename/`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+    body: JSON.stringify({label: newLabel.trim()})
+  });
+  const d = await r.json();
+  if(d.ok){
+    document.querySelector(`.tab-label-${costPk}`).textContent = d.label;
+  }
+}
 const CHIPBOARD = {{ chipboard_price }};
 const MELAMINE  = {{ melamine_price }};
+const CHIP18    = {{ chipboard_18mm_price }};
 
 // ── Pricing tables ────────────────────────────────────────────────────────────
 const POSTS  = {48:5.55,60:6.81,72:8.18,84:9.45,96:10.91,108:12.25,120:13.61,144:16.32};
@@ -524,19 +693,95 @@ const SM_PRICE = 3.50;
 function framePrice(h,d){ return 2*POSTS[h] + H_N[h]*TPCS[d]; }
 function shelfPrice(type,w,d,mel){
   const sqft=(parseFloat(w)*parseFloat(d))/144;
-  const mat=mel ? parseFloat(document.getElementById('mat-melamine').value||MELAMINE)
-                : parseFloat(document.getElementById('mat-chipboard').value||CHIPBOARD);
+  let mat;
+  if(mel){ mat = MELAMINE; }
+  else if(parseFloat(d) >= 27){ mat = CHIP18; }
+  else { mat = CHIPBOARD; }
   if(type==='tfcv'){ const cp=TFCV_C[w]||0; return sqft*mat+cp; }
   else { const bp=TWB_P[w]||0; return sqft*mat+bp; }
 }
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
+function showProduct(line){
+  sessionStorage.setItem('cost-product-{{ project.pk }}', line);
+  const isLs = line === 'longspan';
+  document.getElementById('trimline-tabs').style.display = isLs ? 'none':'block';
+  document.getElementById('longspan-tabs').style.display = isLs ? 'block':'none';
+  document.getElementById('pt-trimline').className = 'prod-toggle' + (isLs?'':' active');
+  document.getElementById('pt-longspan').className = 'prod-toggle' + (isLs?' active':'');
+  document.getElementById('pt-trimline').style.cssText = isLs
+    ? 'flex:1;padding:8px;border:1px solid var(--bdr);background:none;color:var(--mut);border-radius:var(--rad);font-weight:700;cursor:pointer;'
+    : 'flex:1;padding:8px;border:1px solid var(--acc-bdr);background:var(--acc-bg);color:var(--acc);border-radius:var(--rad);font-weight:700;cursor:pointer;';
+  document.getElementById('pt-longspan').style.cssText = isLs
+    ? 'flex:1;padding:8px;border:1px solid var(--acc-bdr);background:var(--acc-bg);color:var(--acc);border-radius:var(--rad);font-weight:700;cursor:pointer;'
+    : 'flex:1;padding:8px;border:1px solid var(--bdr);background:none;color:var(--mut);border-radius:var(--rad);font-weight:700;cursor:pointer;';
+  // Activate first tab of the chosen product
+  document.querySelectorAll('.add-panel').forEach(p=>p.classList.remove('active'));
+  const firstTab = (isLs ? document.querySelector('#longspan-tabs .add-tab') : document.querySelector('#trimline-tabs .add-tab'));
+  document.querySelectorAll('.add-tab').forEach(b=>b.classList.remove('active'));
+  if(firstTab){ firstTab.classList.add('active'); const m = firstTab.getAttribute('onclick').match(/showTab\('([^']+)'/); if(m) document.getElementById(`panel-${m[1]}`).classList.add('active'); }
+}
+
+// ── Longspan multi-row ──
+const LS_HEIGHTS = ['2000','2500','3000','3500','4000','4500','5000'];
+const LS_FRAME_DEPTHS = ['600','900','1000','1200'];
+const LS_WIDTHS = ['950','1150','1500','1800','1850','2250','2400','2700'];
+const LS_SHELF_DEPTHS = ['600','900','1000','1200'];
+function lsOpts(arr){ return arr.map(v=>`<option value="${v}">${v}</option>`).join(''); }
+function addLsRow(type){
+  const wrap = document.getElementById(`${type}-rows`);
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem;';
+  if(type === 'ls_frame'){
+    row.innerHTML = `
+      <select class="form-input ls-h" style="width:110px;">${lsOpts(LS_HEIGHTS)}</select>
+      <span style="color:var(--mut);">×</span>
+      <select class="form-input ls-d" style="width:100px;">${lsOpts(LS_FRAME_DEPTHS)}</select>
+      <input class="form-input ls-q" type="number" placeholder="Qty" min="0" style="width:80px;">
+      <button class="btn btn-ghost btn-sm" onclick="this.parentElement.remove()">✕</button>`;
+  } else {
+    row.innerHTML = `
+      <select class="form-input ls-w" style="width:110px;">${lsOpts(LS_WIDTHS)}</select>
+      <span style="color:var(--mut);">×</span>
+      <select class="form-input ls-d" style="width:100px;">${lsOpts(LS_SHELF_DEPTHS)}</select>
+      <input class="form-input ls-q" type="number" placeholder="Qty" min="0" style="width:80px;">
+      <button class="btn btn-ghost btn-sm" onclick="this.parentElement.remove()">✕</button>`;
+  }
+  wrap.appendChild(row);
+}
+async function submitLs(type){
+  const rows = [];
+  document.querySelectorAll(`#${type}-rows > div`).forEach(r=>{
+    const q = parseFloat(r.querySelector('.ls-q').value)||0;
+    if(q<=0) return;
+    if(type==='ls_frame'){
+      rows.push({height:r.querySelector('.ls-h').value, depth:r.querySelector('.ls-d').value, quantity:q});
+    } else {
+      rows.push({width:r.querySelector('.ls-w').value, depth:r.querySelector('.ls-d').value, quantity:q});
+    }
+  });
+  if(!rows.length){ alert('Add at least one row with a quantity'); return; }
+  const payload = {line_type:type, rows};
+  if(type==='ls_frame') payload.system = document.getElementById('ls-system').value;
+  await postLine(payload);
+}
+async function submitLsTrolley(){
+  const depth = document.getElementById('ls_trolley-depth').value;
+  const qty = parseFloat(document.getElementById('ls_trolley-qty').value)||0;
+  if(qty<=0){ alert('Enter how many trolleys'); return; }
+  await postLine({line_type:'ls_trolley', depth, quantity:qty});
+}
+
 function showTab(name, btn){
   document.querySelectorAll('.add-tab').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.add-panel').forEach(p=>p.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById(`panel-${name}`).classList.add('active');
-  sessionStorage.setItem('cost-tab-{{ project.pk }}', name);
+  if(name.startsWith('ls_')){
+    sessionStorage.setItem('cost-ls-tab-{{ project.pk }}', name);
+  } else {
+    sessionStorage.setItem('cost-tab-{{ project.pk }}', name);
+  }
 }
 document.addEventListener('DOMContentLoaded', function(){
   const saved = sessionStorage.getItem('cost-tab-{{ project.pk }}');
@@ -550,6 +795,18 @@ document.addEventListener('DOMContentLoaded', function(){
   initMultiRows('beams', 5);
   initMultiRows('inhang', 5);
   initMultiRows('outhang', 5);
+  addLsRow('ls_frame'); addLsRow('ls_frame');
+  addLsRow('ls_shelf'); addLsRow('ls_shelf');
+  // Restore product line (trimline/longspan) after reload
+  const savedProduct = sessionStorage.getItem('cost-product-{{ project.pk }}');
+  if(savedProduct === 'longspan'){
+    showProduct('longspan');
+    const savedLsTab = sessionStorage.getItem('cost-ls-tab-{{ project.pk }}');
+    if(savedLsTab){
+      const btn = document.querySelector(`#longspan-tabs .add-tab[onclick="showTab('${savedLsTab}',this)"]`);
+      if(btn) showTab(savedLsTab, btn);
+    }
+  }
 });
 
 // ── Multi-row system ──────────────────────────────────────────────────────────
@@ -691,7 +948,7 @@ async function submitMulti(type){
     payload.line_type='out_hang_multi';
     payload.rows=rows.map(r=>({length:r.length,quantity:r.quantity}));
   }
-  await fetch(`/project/${PROJ_PK}/cost/add-line/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify(payload)});
+  await fetch(`/project/${PROJ_PK}/cost/add-line/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({...payload, cost_pk: COST_PK})});
   location.reload();
 }
 
@@ -736,9 +993,13 @@ async function addNS(){
 const IH_RAILS={12:4.0,15:4.2,18:4.35,21:4.65,24:4.85,27:5.0,30:5.3,36:6.5};
 function inHangPrice(w,d){ const feet=d==36?2:1; return 2*IH_RAILS[d]+feet*1.5; }
 function previewInHang(){
-  const d=parseInt(document.getElementById('ih-depth').value);
-  const w=document.getElementById('ih-width').value;
-  document.getElementById('ih-preview').textContent=`Unit cost: £${inHangPrice(w,d).toFixed(2)} per set`;
+  const depthEl=document.getElementById('ih-depth');
+  const widthEl=document.getElementById('ih-width');
+  const previewEl=document.getElementById('ih-preview');
+  if(!depthEl||!widthEl||!previewEl) return;
+  const d=parseInt(depthEl.value);
+  const w=widthEl.value;
+  previewEl.textContent=`Unit cost: £${inHangPrice(w,d).toFixed(2)} per set`;
 }
 async function addInHang(){
   const w=document.getElementById('ih-width').value;
@@ -755,6 +1016,19 @@ async function addWipe(){
   const depth=document.getElementById('wp-depth').value;
   const qty=parseFloat(document.getElementById('wp-qty').value)||1;
   await postLine({line_type:'wipe_board',depth,quantity:qty});
+}
+const MESH_PRICES={'MP120X48':25,'MP108X48':23,'MP96X48':21,'MP84X48':19,'MP72X48':17};
+function updateMeshPrice(){
+  const size=document.getElementById('mesh-size')?.value;
+  const lbl=document.getElementById('mesh-price-label');
+  if(lbl) lbl.textContent='£'+(MESH_PRICES[size]||25);
+}
+async function addMeshPanel(){
+  const size=document.getElementById('mesh-size').value;
+  const qty=parseFloat(document.getElementById('mesh-qty').value)||1;
+  const cut=document.getElementById('mesh-cut').value.trim();
+  await postLine({line_type:'mesh_panel', mesh_size:size, quantity:qty, cut_to:cut||null});
+  document.getElementById('mesh-cut').value='';
 }
 async function addMisc(type,qtyId){
   const qty=parseFloat(document.getElementById(qtyId).value)||1;
@@ -783,7 +1057,7 @@ async function addSimpleExtra(key, label){
 async function saveWallFixings(val){
   await fetch(`/project/${PROJ_PK}/cost/wall-fixings/`, {
     method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-    body: JSON.stringify({wall_fixings: parseInt(val)||0})
+    body: JSON.stringify({wall_fixings: parseInt(val)||0, cost_pk: COST_PK})
   });
   location.reload();
 }
@@ -794,6 +1068,7 @@ async function saveExtras(){
     body: JSON.stringify({
       back_to_back: parseInt(document.getElementById('btb-input').value)||0,
       mobile_bases: parseInt(document.getElementById('mob-base-input').value)||0,
+      cost_pk: COST_PK,
     })
   });
   location.reload();
@@ -808,12 +1083,12 @@ async function accAllToggle(accId, checked){
     // Clear override in DB
     await fetch(`/project/${PROJ_PK}/cost/accessory-override/`, {
       method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-      body: JSON.stringify({accessory_id: accId, override_qty: null})
+      body: JSON.stringify({accessory_id: accId, override_qty: null, cost_pk: COST_PK})
     });
   }
   const r = await fetch(`/project/${PROJ_PK}/cost/accessory-toggle/`, {
     method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-    body: JSON.stringify({accessory_id: accId, checked, override_qty: null})
+    body: JSON.stringify({accessory_id: accId, checked, override_qty: null, cost_pk: COST_PK})
   });
   const d = await r.json();
   const totalEl = document.getElementById(`acc-total-${accId}`);
@@ -828,21 +1103,22 @@ async function accAllToggle(accId, checked){
 }
 
 async function accCustomQty(accId, val){
-  // Custom qty box — uncheck the "all uprights" checkbox
   const cb = document.getElementById(`acc-${accId}`);
+  const hasQty = val !== '' && parseInt(val) > 0;
+  // Uncheck the visual "all uprights" box (custom qty replaces it) but keep accessory selected
   if(cb) cb.checked = false;
-  // Remove from accessories (uncheck) then set override
+  // Mark accessory as selected if a positive qty, else deselect
   await fetch(`/project/${PROJ_PK}/cost/accessory-toggle/`, {
     method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-    body: JSON.stringify({accessory_id: accId, checked: val !== '' && parseInt(val) > 0, override_qty: null})
+    body: JSON.stringify({accessory_id: accId, checked: hasQty, override_qty: hasQty ? parseInt(val) : null, cost_pk: COST_PK})
   });
   const r = await fetch(`/project/${PROJ_PK}/cost/accessory-override/`, {
     method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-    body: JSON.stringify({accessory_id: accId, override_qty: val === '' ? null : parseInt(val)})
+    body: JSON.stringify({accessory_id: accId, override_qty: hasQty ? parseInt(val) : null, cost_pk: COST_PK})
   });
   const d = await r.json();
   const totalEl = document.getElementById(`acc-total-${accId}`);
-  if(val !== '' && parseInt(val) > 0){
+  if(hasQty){
     totalEl.textContent = '£' + d.total_cost.toFixed(2);
     totalEl.style.color = 'var(--acc)';
   } else {
@@ -883,20 +1159,18 @@ async function deleteLine(pk){
 function recalcFromDOM(){
   let buying=0;
   document.querySelectorAll('[id^="total-"]').forEach(el=>{ buying+=parseFloat(el.textContent.replace('£',''))||0; });
-  // Add checked accessories
-  document.querySelectorAll('[id^="acc-"]').forEach(cb=>{
-    if(cb.type==='checkbox' && cb.checked){
-      const accId=cb.id.replace('acc-','');
-      const tot=document.getElementById(`acc-total-${accId}`);
-      if(tot) buying+=parseFloat(tot.textContent.replace('£',''))||0;
+  // Add accessory totals — count any accessory showing a £ value
+  // (covers both "all uprights" checked AND custom override qty where checkbox is unchecked)
+  document.querySelectorAll('[id^="acc-total-"]').forEach(tot=>{
+    const txt = tot.textContent.trim();
+    if(txt.startsWith('£')){
+      buying += parseFloat(txt.replace('£',''))||0;
     }
   });
   recalcWith(buying);
 }
 function recalc(){
-  let buying=0;
-  document.querySelectorAll('[id^="total-"]').forEach(el=>{ buying+=parseFloat(el.textContent.replace('£',''))||0; });
-  recalcWith(buying);
+  recalcFromDOM();
 }
 function recalcWith(buying){
   const markup=parseFloat(document.getElementById('markup-pct').value)||0;
@@ -904,7 +1178,8 @@ function recalcWith(buying){
   const delivery=parseFloat(document.getElementById('delivery-val').value)||0;
   const mup=buying*markup/100;
   const sell=buying+mup+labour+delivery;
-  const margin=sell>0?mup/sell*100:0;
+  const goodsSell=buying+mup;
+  const margin=goodsSell>0?mup/goodsSell*100:0;
   document.getElementById('buying-total').textContent='£'+buying.toFixed(2);
   document.getElementById('markup-amount').textContent='£'+mup.toFixed(2);
   document.getElementById('sell-price').textContent='£'+sell.toFixed(2);
@@ -922,17 +1197,13 @@ async function saveHeader(silent=false){
     labour:document.getElementById('labour-val').value,
     delivery:document.getElementById('delivery-val').value,
     notes:document.getElementById('cost-notes').value,
+    cost_pk:COST_PK,
   })});
   if(!silent){
     const btn=document.querySelector('.cost-hdr .btn-primary');
     const orig=btn.textContent; btn.textContent='✓ Saved';
     setTimeout(()=>btn.textContent=orig,1500);
   }
-}
-async function saveMaterialPrices(){
-  const data={chipboard:document.getElementById('mat-chipboard').value,melamine:document.getElementById('mat-melamine').value};
-  await fetch('/settings/material-prices/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify(data)});
-  location.reload();
 }
 
 // ── Product search (stock tab) ────────────────────────────────────────────────
@@ -1015,6 +1286,12 @@ function renderGPL(items){
     </tr></thead><tbody>`;
 
   items.forEach((item, idx) => {
+    if(item.type === 'message'){
+      html += `<tr style="border-bottom:.5px solid var(--bdr);background:var(--surf2);">
+        <td colspan="5" style="padding:.35rem .5rem .35rem 2rem;font-size:.78rem;color:var(--mut);font-style:italic;">ℹ ${item.description}</td>
+      </tr>`;
+      return;
+    }
     const isStock = item.type === 'stock';
     const notFound = isStock && !item.found;
     const lowStock = isStock && item.in_stock !== null && item.in_stock < item.quantity;

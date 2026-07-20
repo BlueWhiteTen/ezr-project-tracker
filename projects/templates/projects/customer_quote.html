@@ -1,171 +1,334 @@
 {% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Quote — {{ project.customer }}</title>
+<meta charset="utf-8">
+<title>Quotation — {{ project.project_name }}</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:Arial,Helvetica,sans-serif; font-size:10.5pt; color:#1a1a1a; background:#f5f5f5; }
-  .page { max-width:780px; margin:0 auto; background:#fff; padding:2cm 2.2cm; }
-
-  /* Header */
-  .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.8rem; padding-bottom:1.2rem; border-bottom:2pt solid #1a1a1a; }
-  .logo-area { display:flex; align-items:center; gap:.9rem; }
-  .logo-area img { height:48px; width:auto; }
-  .co-name { font-size:17pt; font-weight:700; letter-spacing:-.02em; color:#1a1a1a; }
-  .co-sub  { font-size:8pt; color:#888; margin-top:2pt; }
-  .doc-block { text-align:right; }
-  .doc-title { font-size:24pt; font-weight:700; color:#1a1a1a; letter-spacing:.02em; }
-  .doc-meta  { font-size:8.5pt; color:#666; margin-top:4pt; line-height:1.7; }
-
-  /* Two-col info */
-  .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin-bottom:1.5rem; }
-  .info-box { background:#f9fafb; border:1pt solid #e5e7eb; border-left:3pt solid #e85d04; border-radius:0 5pt 5pt 0; padding:.8rem 1rem; }
-  .info-box-title { font-size:7pt; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#888; margin-bottom:.4rem; }
-  .info-name { font-size:12pt; font-weight:700; line-height:1.3; }
-  .info-sub  { font-size:9pt; color:#555; margin-top:3pt; line-height:1.5; }
-
-  /* Section */
-  .sec-title { font-size:7.5pt; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#1a1a1a; margin-bottom:.5rem; padding-bottom:.3rem; border-bottom:1.5pt solid #1a1a1a; }
-
-  /* Items table */
-  .items-table { width:100%; border-collapse:collapse; margin-bottom:1.5rem; font-size:9.5pt; }
-  .items-table th { text-align:left; padding:.45rem .7rem; font-size:7pt; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#1a1a1a; border-bottom:2pt solid #1a1a1a; }
-  .items-table th.r { text-align:right; }
-  .items-table td { padding:.4rem .7rem; border-bottom:.5pt solid #f0f0f0; vertical-align:middle; }
-  .items-table td.r { text-align:right; color:#555; }
-  .items-table tr:nth-child(even) td { background:#fafafa; }
-  .type-chip { font-size:6.5pt; font-weight:700; padding:1pt 5pt; border-radius:3pt; text-transform:uppercase; white-space:nowrap; }
-  .lt-frame    { background:#ede9fe; color:#6d28d9; }
-  .lt-shelf    { background:#d1fae5; color:#065f46; }
-  .lt-stock    { background:#fff7ed; color:#9a3412; }
-  .lt-ns       { background:#f3f4f6; color:#374151; }
-  .lt-inhang   { background:#fef3c7; color:#92400e; }
-  .lt-outhang  { background:#fde8c8; color:#9a3412; }
-  .lt-wipe     { background:#e0f2fe; color:#0369a1; }
-  .lt-mesh     { background:#f0fdf4; color:#166534; }
-  .lt-loadsign { background:#fdf4ff; color:#7e22ce; }
-  .lt-toptie   { background:#f1f5f9; color:#475569; }
-  .lt-beams    { background:#e0f2fe; color:#075985; }
-  .lt-extras   { background:#fdf4ff; color:#6b21a8; }
-
-  /* Pricing summary */
-  .price-section { display:flex; justify-content:flex-end; margin-bottom:1.5rem; }
-  .price-box { width:300pt; border:1pt solid #e5e7eb; border-radius:5pt; overflow:hidden; }
-  .price-row { display:flex; justify-content:space-between; padding:.5rem 1rem; font-size:10pt; border-bottom:.5pt solid #f0f0f0; }
-  .price-row:last-child { border-bottom:none; }
-  .price-total { background:#1a1a1a; color:#fff; font-size:12pt; font-weight:700; }
-  .price-vat { background:#f9fafb; }
-  .price-vat span { font-size:9pt; color:#888; }
-
-  /* Footer */
-  .validity { background:#f9fafb; border:1pt solid #e5e7eb; border-left:3pt solid #e85d04; border-radius:0 4pt 4pt 0; padding:.6rem 1rem; font-size:8.5pt; color:#444; margin-bottom:1.5rem; }
-  .footer { padding-top:.8rem; border-top:1pt solid #e5e7eb; font-size:8pt; color:#aaa; display:flex; justify-content:space-between; }
-
-  /* Screen only */
-  .no-print { background:#f9fafb; border-bottom:1pt solid #e5e7eb; padding:.75rem 2.2cm; display:flex; gap:.75rem; align-items:center; }
-  .no-print button { padding:8px 18px; background:#1a1a1a; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:.9rem; font-weight:600; }
-  .no-print a { font-size:.85rem; color:#888; text-decoration:none; }
-  .no-print a:hover { color:#1a1a1a; }
-  @media print {
-    body { background:#fff; }
-    .no-print { display:none !important; }
-    .page { padding:1.2cm 1.5cm; }
-    @page { margin:0; size:A4 portrait; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:Arial,Helvetica,sans-serif;color:#222;background:#f5f5f3;font-size:14px;line-height:1.5;}
+  .toolbar{background:#fff;border-bottom:1px solid #ddd;padding:.8rem 1.5rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:10;}
+  .btn{background:#d4700a;color:#fff;border:none;border-radius:6px;padding:.55rem 1.2rem;font-size:.85rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;}
+  .btn-ghost{background:#fff;color:#333;border:1px solid #ccc;}
+  .page{max-width:800px;margin:1.5rem auto;background:#fff;padding:3rem 3.2rem;box-shadow:0 2px 12px rgba(0,0,0,.08);}
+  .qhead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem;}
+  .qhead .logo img{height:70px;}
+  .qhead .title{text-align:center;font-weight:700;font-size:1.1rem;padding-top:1.5rem;}
+  .qhead .proj{text-align:right;font-weight:700;font-size:.95rem;padding-top:.3rem;}
+  .addr{margin-bottom:1.2rem;line-height:1.45;}
+  .addr .date{margin-bottom:1rem;}
+  .field{border:1px dashed transparent;border-radius:4px;}
+  .editing .field{border-color:#d4700a;background:#fff8f0;padding:2px 5px;}
+  textarea.efield,input.efield{width:100%;border:1px solid #d4700a;border-radius:4px;padding:6px 8px;font-family:Arial;font-size:14px;background:#fff8f0;resize:vertical;}
+  .price-row{display:flex;justify-content:space-between;align-items:center;margin:.5rem 0;font-weight:700;}
+  .price-row .lbl{font-weight:400;}
+  .terms{white-space:pre-wrap;margin:1rem 0;color:#333;}
+  .sig{margin-top:1.5rem;break-inside:avoid;page-break-inside:avoid;}
+  .footer{border-top:1px solid #ccc;margin-top:2rem;padding-top:.6rem;text-align:center;font-size:.7rem;color:#666;line-height:1.5;break-inside:avoid;page-break-inside:avoid;}
+  .edit-only{display:none;}
+  .editing .edit-only{display:block;}
+  .editing .view-only{display:none;}
+  h3.re{font-weight:700;margin:1rem 0 .6rem;}
+  @media print{
+    .toolbar{display:none;}
+    body{background:#fff;}
+    .page{box-shadow:none;margin:0;max-width:100%;padding:1cm 1.2cm 0 1.2cm;}
+    .field{border-color:transparent !important;background:transparent !important;}
+    .footer{
+      position:fixed;
+      bottom:0;
+      left:0;
+      right:0;
+      margin:0;
+      padding:.5rem 1.2cm;
+      border-top:1px solid #ccc;
+      background:#fff;
+    }
+    .footer-spacer{display:block;height:2.5cm;}
+    .photos-page{break-before:page;page-break-before:always;}
+    .photos-page img{break-inside:avoid;page-break-inside:avoid;}
+    @page { margin:0.5cm; size:auto; }
   }
 </style>
 </head>
-<body>
+<body class="{% if not print_mode %}{% endif %}">
 
-<div class="no-print">
-  <button onclick="window.print()">🖨 Print / Save PDF</button>
-  <a href="{% url 'project_cost' project.pk %}">← Back to costing</a>
+{% if not print_mode %}
+<div class="toolbar">
+  <a href="{% url 'project_cost' project.pk %}" class="btn btn-ghost">← Back to Costing</a>
+  <button class="btn" onclick="toggleEdit()" id="edit-btn">✏ Edit Quote</button>
+  <button class="btn" onclick="saveQuote(false)" id="save-btn" style="display:none;">💾 Save</button>
+  <button class="btn btn-ghost" id="refresh-btn" onclick="refreshPrice()" title="Pull the latest sell price from Costing and update the price field">🔄 Refresh Price from Costing</button>
+  <a href="?print=1" class="btn btn-ghost" target="_blank">🖨 Print</a>
+  <a href="{% url 'quote_pdf_option' project.pk cost.pk %}" class="btn btn-ghost">⬇ Download PDF</a>
+  <span style="font-size:.78rem;color:#888;">Auto-filled from customer, drawing & costing — edit any field, then Save.</span>
 </div>
+{% endif %}
 
-<div class="page">
+<form method="post" id="quote-form">
+{% csrf_token %}
+<div class="page" id="quote-page">
 
-  <!-- Header -->
-  <div class="header">
-    <div class="logo-area">
+  <div class="qhead">
+    <div style="flex:1;">
+      <div class="addr">
+        <div class="date view-only">{{ quote_date }}</div>
+        <input class="efield edit-only" name="quote_date" value="{{ quote_date }}" style="margin-bottom:.6rem;max-width:240px;">
+        <div class="view-only" style="white-space:pre-line;">{{ address_block }}</div>
+        <textarea class="efield edit-only" name="address_block" rows="6" placeholder="Contact name&#10;Company&#10;Address…" style="max-width:340px;">{{ address_block }}</textarea>
+        {% if not address_block %}<div class="view-only" style="color:#c00;">⚠ No customer profile found for "{{ project.customer }}" — add their address in Customers, or type it here in Edit mode.</div>{% endif %}
+      </div>
+    </div>
+    <div class="logo" style="text-align:right;">
       <img src="{% static 'logo.png' %}" alt="EZR Shelving">
-      <div>
-        <div class="co-name">EZR Shelving</div>
-        <div class="co-sub">Storage &amp; Shelving Solutions</div>
-      </div>
-    </div>
-    <div class="doc-block">
-      <div class="doc-title">QUOTATION</div>
-      <div class="doc-meta">
-        Date: {{ today|date:"d F Y" }}<br>
-        {% if project.sales_order %}Ref: {{ project.sales_order }}<br>{% endif %}
-        Valid for 30 days
-      </div>
+      <div class="proj view-only" style="white-space:pre-line;">{{ header_ref }}</div>
+      <textarea class="efield edit-only" name="header_ref" rows="2" style="max-width:240px;text-align:right;">{{ header_ref }}</textarea>
     </div>
   </div>
 
-  <!-- Customer + Project info -->
-  <div class="info-grid">
-    <div class="info-box">
-      <div class="info-box-title">Prepared For</div>
-      <div class="info-name">{{ project.customer }}</div>
-      <div class="info-sub">
-        {{ project.location }}
-        {% if project.addr_line1 %}<br>{{ project.addr_line1 }}{% if project.addr_line2 %}, {{ project.addr_line2 }}{% endif %}{% endif %}
-        {% if project.addr_city %}<br>{{ project.addr_city }}{% if project.addr_postcode %} {{ project.addr_postcode }}{% endif %}{% endif %}
-        {% if project.addr_fao %}<br>FAO: {{ project.addr_fao }}{% endif %}
-      </div>
-    </div>
-    <div class="info-box">
-      <div class="info-box-title">Project Details</div>
-      <div class="info-sub" style="line-height:1.8;">
-        {% if project.delivery_date %}<strong>Delivery:</strong> {{ project.delivery_date|date:"d M Y" }}<br>{% endif %}
-        {% if project.installation_date %}<strong>Installation:</strong> {{ project.installation_date|date:"d M Y" }}<br>{% endif %}
-        {% if project.description %}<br>{{ project.description }}{% endif %}
-      </div>
-    </div>
+  <div style="text-align:center;font-weight:700;font-size:1.05rem;margin-bottom:1.2rem;">Quotation</div>
+
+  <div class="view-only">{{ greeting }}</div>
+  <input class="efield edit-only" name="greeting" value="{{ greeting }}" style="max-width:300px;">
+
+  <div class="view-only field" style="margin-top:1rem;">{{ thank_you_line }}</div>
+  <textarea class="efield edit-only" name="thank_you" rows="2" style="margin-top:1rem;">{{ thank_you_line }}</textarea>
+
+  <!-- Supply line (auto-defaults from costing: supply only / supply & deliver / supply, deliver & install) -->
+  <div class="view-only field" style="margin-top:1rem;">{{ supply_line }}</div>
+  <textarea class="efield edit-only" name="supply_line" rows="3" style="margin-top:1rem;">{{ supply_line }}</textarea>
+
+  <!-- Intro (optional extra) -->
+  <div class="view-only field" style="margin-top:1rem;margin-bottom:1rem;">{{ quote.intro|linebreaksbr }}</div>
+  <textarea class="efield edit-only" name="intro" rows="2" placeholder="Optional extra intro text…" style="margin-top:1rem;margin-bottom:1rem;">{{ quote.intro }}</textarea>
+
+  <!-- Additional information 1 (repurposed from 'capacity') -->
+  {% if quote.capacity %}<div class="view-only field" style="margin-bottom:1rem;white-space:pre-wrap;">{{ quote.capacity }}</div>{% endif %}
+  <textarea class="efield edit-only" name="capacity" rows="4" placeholder="Additional project information (e.g. bay breakdown, quantities…)" style="margin-bottom:1rem;">{{ quote.capacity }}</textarea>
+
+  <!-- Additional information 2 (repurposed from 'bay_breakdown') -->
+  {% if quote.bay_breakdown %}<div class="view-only field" style="margin-bottom:1rem;white-space:pre-wrap;">{{ quote.bay_breakdown }}</div>{% endif %}
+  <textarea class="efield edit-only" name="bay_breakdown" rows="4" placeholder="Additional project information (e.g. spec notes, installation details…)" style="margin-bottom:1rem;">{{ quote.bay_breakdown }}</textarea>
+
+  <!-- Prices -->
+  <div class="price-row">
+    <span class="lbl view-only">{{ quote.main_price_label }}</span>
+    <input class="efield edit-only lbl" name="main_price_label" value="{{ quote.main_price_label }}" style="max-width:60%;">
+    <span class="view-only" id="main-price-display">£{{ quote.main_price|floatformat:2 }}</span>
+    <input class="efield edit-only" name="main_price" type="number" step="0.01" value="{{ quote.main_price|floatformat:2 }}" style="max-width:140px;text-align:right;">
   </div>
 
-  <!-- Line items -->
-  {% if display_lines %}
-  <div style="margin-bottom:1.5rem;">
-    <div class="sec-title">Scope of Supply</div>
-    <table class="items-table">
-      <thead><tr>
-        <th style="width:15%;">Type</th>
-        <th>Item</th>
-        <th class="r" style="width:10%;">Qty</th>
-      </tr></thead>
-      <tbody>
-      {% for line in display_lines %}
-      <tr>
-        <td><span class="type-chip lt-{{ line.line_type }}">{{ line.type_label }}</span></td>
-        <td>{{ line.description }}</td>
-        <td class="r">{{ line.quantity }}</td>
-      </tr>
+  <div class="price-row">
+    <span class="lbl view-only">{% if quote.extra_label %}{{ quote.extra_label }}{% endif %}</span>
+    <input class="efield edit-only lbl" name="extra_label" value="{{ quote.extra_label }}" placeholder="Additional cost to… (optional)" style="max-width:60%;">
+    <span class="view-only">{% if quote.extra_price is not None %}£{{ quote.extra_price|floatformat:2 }}{% endif %}</span>
+    <input class="efield edit-only" name="extra_price" type="number" step="0.01" value="{{ quote.extra_price|floatformat:2 }}" placeholder="0.00" style="max-width:140px;text-align:right;">
+  </div>
+
+  <!-- Lead time / payment -->
+  <p style="margin-top:1rem;"><strong>Delivery lead time:</strong>
+    <span class="view-only">{{ quote.lead_time }}</span>
+    <input class="efield edit-only" name="lead_time" value="{{ quote.lead_time }}">
+  </p>
+  <p style="margin-top:.5rem;"><strong>Payment Terms:</strong>
+    <span class="view-only">{{ quote.payment_terms }}</span>
+    <input class="efield edit-only" name="payment_terms" value="{{ quote.payment_terms }}">
+  </p>
+
+  <!-- Terms -->
+  <div class="terms view-only">{{ quote.terms_text }}</div>
+  <textarea class="efield edit-only" name="terms_text" rows="8" style="margin-top:1rem;">{{ quote.terms_text }}</textarea>
+
+  <div style="break-inside:avoid;page-break-inside:avoid;">
+  <div class="view-only" style="margin-top:1.2rem;">{{ closing }}</div>
+  <textarea class="efield edit-only" name="closing" rows="2" style="margin-top:1.2rem;">{{ closing }}</textarea>
+
+  <div class="sig">
+    <p>Yours sincerely,</p>
+    <p class="view-only">{{ signature }}</p>
+    <input class="efield edit-only" name="signature_name" value="{{ signature }}" style="max-width:240px;">
+  </div>
+  </div>
+
+  <div class="footer-spacer"></div>
+  <div class="footer">
+    Unit 8c Witan Park, Avenue Two Station Lane, Witney, OX28 4FH &nbsp; T: 01993 779494 &nbsp; F: 01993 704111<br>
+    E: sales@ezrshelving.com | www.ezrshelving.com<br>
+    E-Z-Rect Ltd trading as EZR Shelving. Registered in England &amp; Wales. Company no. 2874065
+  </div>
+
+  <!-- Add Photos box (edit mode only) -->
+  <div class="edit-only" style="margin-top:1.5rem;border-top:2px dashed #d4700a;padding-top:1rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;">
+      <div style="font-weight:700;">Add Photos</div>
+      <label style="font-size:.8rem;">Columns:
+        <select name="photo_columns" style="margin-left:.3rem;padding:3px 6px;border:1px solid #ccc;border-radius:5px;">
+          <option value="1" {% if quote.photo_columns == 1 %}selected{% endif %}>1</option>
+          <option value="2" {% if quote.photo_columns == 2 %}selected{% endif %}>2</option>
+        </select>
+      </label>
+    </div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+      <label class="btn" style="background:#185fa5;color:#fff;cursor:pointer;display:inline-block;">
+        📷 Upload photo<input type="file" accept="image/*" multiple onchange="uploadAttached(this)" style="display:none;">
+      </label>
+      <button type="button" class="btn btn-ghost" onclick="openLibrary()">🗂 Add from library</button>
+    </div>
+    <div id="attached-edit" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.7rem;margin-top:.8rem;">
+      {% for ph in attached_photos %}
+      <div class="att-card" data-pk="{{ ph.pk }}" style="border:1px solid #ddd;border-radius:8px;padding:.4rem;background:#fff;">
+        <img src="{% url 'quote_attached_photo_file' ph.pk %}" style="width:100%;height:90px;object-fit:cover;border-radius:4px;cursor:zoom-in;" onclick="enlargeAtt(this.src)">
+        <div style="display:flex;gap:3px;margin-top:.35rem;align-items:center;">
+          <select onchange="setSize({{ ph.pk }}, this.value)" style="flex:1;font-size:.72rem;padding:2px;border:1px solid #ccc;border-radius:4px;">
+            <option value="small" {% if ph.size == 'small' %}selected{% endif %}>Small</option>
+            <option value="medium" {% if ph.size == 'medium' %}selected{% endif %}>Medium</option>
+            <option value="large" {% if ph.size == 'large' %}selected{% endif %}>Large</option>
+          </select>
+          <button type="button" onclick="moveAtt({{ ph.pk }},-1)" title="Up" style="border:1px solid #ccc;background:#fff;border-radius:4px;cursor:pointer;padding:2px 5px;">↑</button>
+          <button type="button" onclick="moveAtt({{ ph.pk }},1)" title="Down" style="border:1px solid #ccc;background:#fff;border-radius:4px;cursor:pointer;padding:2px 5px;">↓</button>
+          <button type="button" onclick="delAtt({{ ph.pk }})" title="Delete" style="border:1px solid #f5c2c2;background:#fef2f2;color:#dc2626;border-radius:4px;cursor:pointer;padding:2px 5px;">✕</button>
+        </div>
+      </div>
       {% endfor %}
-      </tbody>
-    </table>
+    </div>
+  </div>
+
+  <!-- Library picker modal -->
+  <div id="lib-modal" class="edit-only" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:2rem;">
+    <div style="background:#fff;border-radius:12px;max-width:760px;width:100%;max-height:80vh;overflow:auto;padding:1.3rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <div style="font-weight:700;font-size:1.05rem;">Photo Library</div>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="closeLibrary()">✕ Close</button>
+      </div>
+      {% if library_photos %}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.7rem;">
+        {% for lp in library_photos %}
+        <div style="border:1px solid #ddd;border-radius:8px;overflow:hidden;cursor:pointer;" onclick="addFromLibrary({{ lp.pk }})" title="Click to add">
+          <img src="{% url 'quote_photo_file' lp.pk %}" style="width:100%;height:100px;object-fit:cover;display:block;">
+          <div style="padding:.4rem .5rem;font-size:.75rem;">{{ lp.title|default:"(no description)" }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p style="color:#888;">No photos in the library. Add some under "Quote Photos" in the menu.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Photos rendered on the quote (screen + print) -->
+  {% if attached_photos %}
+  <div class="view-only photos-page" style="margin-top:1.5rem;">
+    <div style="display:grid;grid-template-columns:repeat({{ quote.photo_columns }}, 1fr);gap:1rem;align-items:start;">
+      {% for ph in attached_photos %}
+      <div style="text-align:center;{% if ph.size == 'small' %}max-width:55%;margin:0 auto;{% elif ph.size == 'large' %}grid-column:1 / -1;{% endif %}">
+        <img src="{% url 'quote_attached_photo_file' ph.pk %}" style="width:100%;border-radius:6px;border:1px solid #ddd;">
+      </div>
+      {% endfor %}
+    </div>
   </div>
   {% endif %}
 
-  <!-- Pricing -->
-  <div class="price-section">
-    <div class="price-box">
-      {% if labour %}<div class="price-row"><span style="color:#555;">Labour &amp; Installation</span><span>Included</span></div>{% endif %}
-      {% if delivery %}<div class="price-row"><span style="color:#555;">Delivery</span><span>Included</span></div>{% endif %}
-      <div class="price-row price-total"><span>Total (exc. VAT)</span><span>£{{ sell_price|floatformat:2 }}</span></div>
-      <div class="price-row price-vat"><span>VAT @ 20%</span><span>£{% widthratio sell_price 5 1 %}</span></div>
-    </div>
-  </div>
-
-  <div class="validity">✓ This quotation is valid for 30 days from {{ today|date:"d F Y" }}. All prices exclude VAT unless otherwise stated.</div>
-
-  <div class="footer">
-    <span>EZR Shelving Ltd · www.ezrshelving.com</span>
-    <span>Thank you for your business</span>
-  </div>
-
 </div>
+<input type="hidden" name="action" id="action-field" value="save">
+</form>
+
+{% if print_mode %}
+<script>window.onload = ()=>window.print();</script>
+{% endif %}
+
+<script>
+let editing = false;
+function toggleEdit(){
+  editing = !editing;
+  document.getElementById('quote-page').classList.toggle('editing', editing);
+  document.getElementById('edit-btn').style.display = editing ? 'none':'inline-block';
+  document.getElementById('save-btn').style.display = editing ? 'inline-block':'none';
+}
+function saveQuote(){
+  document.getElementById('action-field').value = 'save';
+  document.getElementById('quote-form').submit();
+}
+async function refreshPrice(){
+  const btn = document.getElementById('refresh-btn');
+  btn.disabled = true;
+  btn.textContent = 'Refreshing…';
+  try {
+    const r = await fetch('{% url "quote_refresh_price" project.pk %}', {
+      method: 'POST',
+      headers: {'X-CSRFToken': '{{ csrf_token }}'},
+    });
+    const d = await r.json();
+    if(d.ok){
+      const formatted = '£' + d.sell_price.toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2});
+      const priceDisplay = document.getElementById('main-price-display');
+      if(priceDisplay) priceDisplay.textContent = formatted;
+      const inp = document.querySelector('input[name="main_price"]');
+      if(inp) inp.value = d.sell_price.toFixed(2);
+      // Also update the price label if it changed
+      if(d.price_label){
+        const labelView = document.querySelector('.price-row .lbl.view-only');
+        if(labelView) labelView.textContent = d.price_label;
+        const labelInp = document.querySelector('input[name="main_price_label"]');
+        if(labelInp) labelInp.value = d.price_label;
+      }
+      btn.textContent = '✓ Updated to ' + formatted;
+      setTimeout(()=>{ btn.textContent = '🔄 Refresh Price from Costing'; btn.disabled = false; }, 2500);
+    } else {
+      alert(d.error || 'Could not refresh price.');
+      btn.textContent = '🔄 Refresh Price from Costing';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    alert('Network error — please try again.');
+    btn.textContent = '🔄 Refresh Price from Costing';
+    btn.disabled = false;
+  }
+}
+
+const QCSRF = '{{ csrf_token }}';
+const QPROJ = {{ project.pk }};
+async function uploadAttached(inp){
+  for(const f of inp.files){
+    const fd = new FormData(); fd.append('file', f);
+    await fetch(`/project/${QPROJ}/quote/attach-photo/`, {method:'POST',headers:{'X-CSRFToken':QCSRF},body:fd});
+  }
+  location.reload();
+}
+async function setSize(pk, size){
+  await fetch(`/quote/attached-photo/${pk}/update/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':QCSRF},body:JSON.stringify({size})});
+  // reflect immediately on the rendered quote without full reload
+  location.reload();
+}
+async function delAtt(pk){
+  if(!confirm('Remove this photo?')) return;
+  await fetch(`/quote/attached-photo/${pk}/delete/`,{method:'POST',headers:{'X-CSRFToken':QCSRF}});
+  location.reload();
+}
+async function moveAtt(pk, dir){
+  // Reorder by swapping sort_order with neighbour
+  const cards = [...document.querySelectorAll('#attached-edit .att-card')];
+  const idx = cards.findIndex(c=>c.dataset.pk==pk);
+  const target = idx + dir;
+  if(target < 0 || target >= cards.length) return;
+  const a = cards[idx].dataset.pk, b = cards[target].dataset.pk;
+  await fetch(`/quote/attached-photo/${a}/update/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':QCSRF},body:JSON.stringify({sort_order:target})});
+  await fetch(`/quote/attached-photo/${b}/update/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':QCSRF},body:JSON.stringify({sort_order:idx})});
+  location.reload();
+}
+function enlargeAtt(src){
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:2rem;';
+  ov.onclick=()=>ov.remove();
+  ov.innerHTML=`<img src="${src}" style="max-width:95%;max-height:95%;object-fit:contain;border-radius:8px;">`;
+  document.body.appendChild(ov);
+}
+function openLibrary(){ const m=document.getElementById('lib-modal'); m.style.display='flex'; }
+function closeLibrary(){ document.getElementById('lib-modal').style.display='none'; }
+async function addFromLibrary(libId){
+  const fd=new FormData(); fd.append('library_id', libId);
+  await fetch(`/project/${QPROJ}/quote/attach-photo/`,{method:'POST',headers:{'X-CSRFToken':QCSRF},body:fd});
+  location.reload();
+}
+</script>
 </body>
 </html>

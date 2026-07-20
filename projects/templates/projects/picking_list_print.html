@@ -25,14 +25,14 @@
   td:last-child { text-align:center; }
   .tick-box { width:14pt; height:10pt; border:.75pt solid #888; display:inline-block; }
   .code { font-family:monospace; font-weight:700; font-size:8pt; color:#000; }
-  .msg-row td { background:#ececec !important; font-weight:700; font-size:8.5pt; padding:2.5pt 4pt; }
+  .msg-row td { background:#fff3cd !important; color:#7a5c00 !important; font-style:italic; font-size:9pt; padding:4pt 6pt; }
   .ns-code { font-size:7.5pt; color:#555; font-style:italic; }
   .customer-notes { margin-top:14pt; border-top:1.5pt solid #d4700a; padding-top:8pt; }
   .customer-notes .lbl { font-size:7.5pt; text-transform:uppercase; letter-spacing:.07em; color:#d4700a; font-weight:700; margin-bottom:4pt; }
   .customer-notes .txt { font-size:9pt; white-space:pre-wrap; color:#000; }
   @media print {
     body { padding:0; }
-    @page { margin:1.2cm; size:A4 portrait; }
+    @page { margin:0.4cm; size:A4 portrait; }
   }
 </style>
 </head>
@@ -49,6 +49,7 @@
     <div class="meta-item"><label>Delivery Date</label><span>{% if project.delivery_date %}{{ project.delivery_date|date:"d M Y" }}{% else %}TBC{% endif %}</span></div>
     <div class="meta-item"><label>Assigned To</label><span>{% if project.assigned_to %}{{ project.assigned_to.get_full_name|default:project.assigned_to.username }}{% else %}—{% endif %}</span></div>
     <div class="meta-item"><label>Status</label><span>{{ pl.get_status_display }}</span></div>
+    <div class="meta-item"><label>Est. Weight (stock items)</label><span>{{ auto_weight }} kg</span></div>
   </div>
 </div>
 
@@ -65,7 +66,7 @@
   {% for item in items %}
     {% if item.item_type == 'message' %}
     <tr class="msg-row">
-      <td colspan="4">📝 {{ item.message }}</td>
+      <td colspan="4">📝 {{ item.ns_description }}</td>
     </tr>
     {% elif item.item_type == 'ns' %}
     <tr>

@@ -6,12 +6,12 @@
 .pg-title span{font-size:.95rem;font-weight:400;color:var(--mut);margin-left:.5rem;}
 /* Stats */
 .stats{display:grid;grid-template-columns:repeat(7,1fr);gap:.85rem;margin-bottom:1.4rem;}
-.stat{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1rem 1.1rem;box-shadow:var(--shadow);}
+.stat{background:var(--surf);border:1px solid var(--bdr);border-left:5px solid var(--blue);border-radius:var(--rad-lg);padding:1.1rem 1.2rem;box-shadow:var(--shadow);}
 .stat-link{text-decoration:none;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .1s;display:block;}
-.stat-link:hover{border-color:var(--acc);box-shadow:var(--shadow-md);transform:translateY(-1px);}
-.stat-active{border-color:var(--acc);background:var(--acc-bg);box-shadow:0 0 0 3px var(--acc-bg);}
-.stat-l{font-size:.72rem;font-weight:500;color:var(--mut);margin-bottom:.4rem;letter-spacing:.01em;}
-.stat-v{font-size:1.6rem;font-weight:600;color:var(--txt);font-family:var(--fm);}
+.stat-link:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
+.stat-active{border-left-color:var(--acc);background:var(--acc-bg);}
+.stat-l{font-size:.72rem;font-weight:600;color:var(--mut);margin-bottom:.45rem;letter-spacing:.04em;text-transform:uppercase;}
+.stat-v{font-size:1.7rem;font-weight:700;color:var(--blue);font-family:var(--f);line-height:1;}
 /* Filters */
 .filters{display:flex;gap:.65rem;margin-bottom:1.1rem;flex-wrap:wrap;align-items:center;}
 .f-search{flex:1;min-width:200px;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);color:var(--txt);font-family:var(--f);font-size:.875rem;outline:none;padding:0 1rem;height:36px;line-height:36px;box-shadow:var(--shadow);transition:border-color .15s,box-shadow .15s;}
@@ -21,14 +21,16 @@
 /* Table */
 .tbl-wrap{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);}
 table{width:100%;border-collapse:collapse;}
+.container:has(table.dash-table){max-width:1640px;}
 thead{background:var(--surf2);border-bottom:1px solid var(--bdr);}
 th{text-align:left;padding:.75rem 1rem;font-size:.75rem;font-weight:600;color:var(--mut);white-space:nowrap;letter-spacing:.03em;text-transform:uppercase;}
 th a{color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;}
 th a:hover{color:var(--txt2);}
 th.sorted a{color:var(--acc);}
 td{padding:.45rem 1rem;font-size:.85rem;border-top:1px solid var(--bdr);vertical-align:middle;color:var(--txt2);}
-tr:hover td{background:var(--surf2);}
-.pname{font-weight:600;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.9rem;}
+tbody tr:nth-child(even) td{background:var(--surf2);}
+tbody tr:hover td{background:var(--surf3) !important;}
+.pname{font-weight:600;color:var(--txt);font-size:.9rem;display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .psub{color:var(--mut);font-size:.78rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .so-tag{font-family:var(--fm);font-size:.78rem;color:var(--acc);background:var(--acc-bg);padding:2px 8px;border-radius:5px;border:1px solid var(--acc-bdr);white-space:nowrap;}
 .ck-wrap{display:flex;align-items:center;gap:5px;margin-top:4px;}
@@ -82,7 +84,12 @@ tr:hover td{background:var(--surf2);}
 
 {% block content %}
 <div class="pg-hdr">
-  <h1 class="pg-title">Projects <span>{{ projects|length }} shown</span></h1>
+  {% if request.GET.q %}
+  <h1 class="pg-title">Search results <span>{{ projects|length }} of {{ total_matching }} for "{{ request.GET.q }}"</span></h1>
+  <a href="{% url 'dashboard' %}" class="btn btn-ghost btn-sm">✕ Clear search</a>
+  {% else %}
+  <h1 class="pg-title">Projects <span>{{ projects|length }} of {{ total_matching }} shown</span></h1>
+  {% endif %}
   <button class="btn btn-primary" onclick="openNewPanel()">+ New Project</button>
 </div>
 
@@ -92,27 +99,27 @@ tr:hover td{background:var(--surf2);}
     <div class="stat-l">Total</div>
     <div class="stat-v">{{ counts.total }}</div>
   </a>
-  <a href="?sf=overdue" class="stat stat-link {% if stat_filter == 'overdue' %}stat-active{% endif %}">
+  <a href="?sf=overdue" class="stat stat-link {% if stat_filter == 'overdue' %}stat-active{% endif %}" style="border-left-color:var(--red)">
     <div class="stat-l">⚠ Overdue</div>
     <div class="stat-v" style="color:var(--red)">{{ counts.overdue }}</div>
   </a>
-  <a href="?sf=sfp{% if query %}&q={{ query }}{% endif %}" class="stat stat-link {% if stat_filter == 'sfp' %}stat-active{% endif %}">
+  <a href="?sf=sfp{% if query %}&q={{ query }}{% endif %}" class="stat stat-link {% if stat_filter == 'sfp' %}stat-active{% endif %}" style="border-left-color:var(--amb)">
     <div class="stat-l">Processed</div>
     <div class="stat-v" style="color:var(--amb)">{{ counts.sfp }}</div>
   </a>
-  <a href="?sf=del_to_book{% if query %}&q={{ query }}{% endif %}" class="stat stat-link {% if stat_filter == 'del_to_book' %}stat-active{% endif %}">
+  <a href="?sf=del_to_book{% if query %}&q={{ query }}{% endif %}" class="stat stat-link {% if stat_filter == 'del_to_book' %}stat-active{% endif %}" style="border-left-color:var(--acc)">
     <div class="stat-l">Deliveries to Book</div>
     <div class="stat-v" style="color:var(--acc)">{{ counts.del_to_book }}</div>
   </a>
-  <a href="?sf=inst_to_book{% if query %}&q={{ query }}{% endif %}" class="stat stat-link {% if stat_filter == 'inst_to_book' %}stat-active{% endif %}">
+  <a href="?sf=inst_to_book{% if query %}&q={{ query }}{% endif %}" class="stat stat-link {% if stat_filter == 'inst_to_book' %}stat-active{% endif %}" style="border-left-color:var(--acc)">
     <div class="stat-l">Installs to Book</div>
     <div class="stat-v" style="color:var(--acc)">{{ counts.inst_to_book }}</div>
   </a>
-  <a href="?sf=rams_to_send{% if query %}&q={{ query }}{% endif %}" class="stat stat-link {% if stat_filter == 'rams_to_send' %}stat-active{% endif %}">
+  <a href="?sf=rams_to_send{% if query %}&q={{ query }}{% endif %}" class="stat stat-link {% if stat_filter == 'rams_to_send' %}stat-active{% endif %}" style="border-left-color:var(--red)">
     <div class="stat-l">RAMS to Send</div>
     <div class="stat-v" style="color:var(--red)">{{ counts.rams_to_send }}</div>
   </a>
-  <a href="?sf=completed{% if query %}&q={{ query }}{% endif %}" class="stat stat-link {% if stat_filter == 'completed' %}stat-active{% endif %}">
+  <a href="?sf=completed{% if query %}&q={{ query }}{% endif %}" class="stat stat-link {% if stat_filter == 'completed' %}stat-active{% endif %}" style="border-left-color:var(--grn)">
     <div class="stat-l">Completed</div>
     <div class="stat-v" style="color:var(--grn)">{{ counts.completed }}</div>
   </a>
@@ -146,40 +153,52 @@ tr:hover td{background:var(--surf2);}
 <!-- Table -->
 <div class="tbl-wrap">
 {% if projects %}
-<table>
+<table class="dash-table">
   <thead><tr>
     <th style="width:36px;padding-left:1rem;"><input type="checkbox" id="sel-all" onchange="toggleAll(this)" title="Select all"></th>
-    <th {% if sort == 'sales_order' or sort == '-sales_order' %}class="sorted"{% endif %}>
+    <th {% if sort == 'project_number' or sort == '-project_number' %}class="sorted"{% endif %} style="width:70px;padding-left:.6rem;padding-right:.4rem;">
+      <a href="?q={{ query }}&status={{ selected_status }}&tl={{ tl }}&sort={% if sort == 'project_number' %}-project_number{% else %}project_number{% endif %}">Ref. No. {% if sort == 'project_number' %}↑{% elif sort == '-project_number' %}↓{% else %}↕{% endif %}</a>
+    </th>
+    <th {% if sort == 'created_at' or sort == '-created_at' %}class="sorted"{% endif %} style="width:9%;padding-left:.4rem;padding-right:.4rem;">
+      <a href="?q={{ query }}&status={{ selected_status }}&tl={{ tl }}&sort={% if sort == 'created_at' %}-created_at{% else %}created_at{% endif %}">Created {% if sort == 'created_at' %}↑{% elif sort == '-created_at' %}↓{% else %}↕{% endif %}</a>
+    </th>
+    <th {% if sort == 'sales_order' or sort == '-sales_order' %}class="sorted"{% endif %} style="width:70px;padding-left:.4rem;padding-right:.4rem;">
       <a href="?q={{ query }}&status={{ selected_status }}&tl={{ tl }}&sort={% if sort == 'sales_order' %}-sales_order{% else %}sales_order{% endif %}">SO# {% if sort == 'sales_order' %}↑{% elif sort == '-sales_order' %}↓{% else %}↕{% endif %}</a>
     </th>
     <th {% if sort == 'customer' or sort == '-customer' %}class="sorted"{% endif %} style="width:24%">
       <a href="?q={{ query }}&status={{ selected_status }}&tl={{ tl }}&sort={% if sort == 'customer' %}-customer{% else %}customer{% endif %}">Project {% if sort == 'customer' %}↑{% elif sort == '-customer' %}↓{% else %}↕{% endif %}</a>
     </th>
-    <th {% if sort == 'status' or sort == '-status' %}class="sorted"{% endif %}>
+    <th {% if sort == 'status' or sort == '-status' %}class="sorted"{% endif %} style="width:8%">
       <a href="?q={{ query }}&status={{ selected_status }}&tl={{ tl }}&sort={% if sort == 'status' %}-status{% else %}status{% endif %}">Status {% if sort == 'status' %}↑{% elif sort == '-status' %}↓{% else %}↕{% endif %}</a>
     </th>
-    <th {% if sort == 'delivery_date' or sort == '-delivery_date' %}class="sorted"{% endif %}>
+    <th {% if sort == 'delivery_date' or sort == '-delivery_date' %}class="sorted"{% endif %} style="width:12%">
       <a href="?q={{ query }}&status={{ selected_status }}&tl={{ tl }}&sort={% if sort == 'delivery_date' %}-delivery_date{% else %}delivery_date{% endif %}">Delivery {% if sort == 'delivery_date' %}↑{% elif sort == '-delivery_date' %}↓{% else %}↕{% endif %}</a>
     </th>
-    <th {% if sort == 'installation_date' or sort == '-installation_date' %}class="sorted"{% endif %}>
+    <th {% if sort == 'installation_date' or sort == '-installation_date' %}class="sorted"{% endif %} style="width:13%">
       <a href="?q={{ query }}&status={{ selected_status }}&tl={{ tl }}&sort={% if sort == 'installation_date' %}-installation_date{% else %}installation_date{% endif %}">Installation {% if sort == 'installation_date' %}↑{% elif sort == '-installation_date' %}↓{% else %}↕{% endif %}</a>
     </th>
-    <th>RAMS</th>
-    <th style="text-align:center">Priority</th>
-    <th></th>
+    <th style="width:6%;">RAMS</th>
+    <th style="text-align:center;width:5%;">Priority</th>
+    <th style="text-align:right;padding-right:1rem;"></th>
   </tr></thead>
   <tbody>
   {% for p in projects %}
   {% with tl_val=p.get_traffic_light %}
   <tr>
     <td style="width:36px;padding-left:1rem;"><input type="checkbox" class="row-sel-cb" value="{{ p.pk }}" onchange="updateBulkBar()"></td>
-    <td>{% if p.sales_order %}<span class="so-tag">{{ p.sales_order }}</span>{% else %}<span style="color:var(--mut2)">—</span>{% endif %}</td>
-    <td>
+    <td style="padding-left:.6rem;padding-right:.4rem;">
+      {% if p.project_number %}
+        <span style="{% if p.is_order %}font-weight:700;color:var(--txt);{% else %}font-weight:400;color:var(--mut);{% endif %}" title="{% if p.is_order %}Order No.{% else %}Enquiry No.{% endif %}">{{ p.project_number }}</span>
+      {% else %}<span style="color:var(--mut2)">—</span>{% endif %}
+    </td>
+    <td style="font-size:.8rem;color:var(--mut);white-space:nowrap;padding-left:.4rem;padding-right:.4rem;">{{ p.created_at|date:"d M Y" }}</td>
+    <td style="padding-left:.4rem;padding-right:.4rem;">{% if p.sales_order %}<span class="so-tag">{{ p.sales_order }}</span>{% else %}<span style="color:var(--mut2)">—</span>{% endif %}</td>
+    <td style="max-width:0;">
       <a href="{% url 'project_edit' p.pk %}" class="pname" style="text-decoration:none;">
         {% if p.is_overdue %}<span style="background:var(--red-bg);color:var(--red);font-size:.65rem;font-weight:600;padding:1px 6px;border-radius:4px;margin-right:4px;border:1px solid rgba(220,38,38,.2);">OVERDUE</span>{% endif %}
         {{ p.project_name }}
       </a>
-      {% if p.description %}<div class="psub">{{ p.description }}</div>{% endif %}
+      {% if p.description %}<div class="psub" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ p.description }}</div>{% endif %}
     </td>
     <td>
       <select class="inline-status-sel badge badge-{{ p.status }}" data-pk="{{ p.pk }}" data-current="{{ p.status }}" onchange="quickStatus(this)">
@@ -190,25 +209,28 @@ tr:hover td{background:var(--surf2);}
     </td>
     <td>
       {% if p.delivery_required %}
-        <div style="font-size:.875rem;color:var(--txt2)">{{ p.delivery_date|date:"d M Y"|default:"TBC" }}</div>
-        <div class="ck-wrap">
-          <span class="ck-box {% if p.delivery_booked %}ck-box-yes{% else %}ck-box-no{% endif %}">{% if p.delivery_booked %}✓{% endif %}</span>
-          <span class="ck-lbl {% if p.delivery_booked %}ck-lbl-yes{% else %}ck-lbl-no{% endif %}">{% if p.delivery_booked %}Booked{% else %}Not booked{% endif %}</span>
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:nowrap;">
+          <span style="font-size:.875rem;color:var(--txt2);white-space:nowrap;">{{ p.delivery_date|date:"d M Y"|default:"TBC" }}</span>
+          <span class="ck-wrap" style="margin:0;">
+            <span class="ck-box {% if p.delivery_booked %}ck-box-yes{% else %}ck-box-no{% endif %}">{% if p.delivery_booked %}✓{% endif %}</span>
+            <span class="ck-lbl {% if p.delivery_booked %}ck-lbl-yes{% else %}ck-lbl-no{% endif %}">{% if p.delivery_booked %}Booked{% else %}Not booked{% endif %}</span>
+          </span>
         </div>
       {% else %}<span style="color:var(--mut2)">N/A</span>{% endif %}
     </td>
     <td>
       {% if p.installation_required %}
-        {% if p.installation_same_as_delivery %}
-          <div style="font-size:.875rem;color:var(--txt2)">{{ p.delivery_date|date:"d M Y"|default:"TBC" }} <span style="font-size:.72rem;color:var(--acc)">(= delivery)</span></div>
-        {% elif p.installation_date_type == 'exact' %}
-          <div style="font-size:.875rem;color:var(--txt2)">{{ p.installation_date|date:"d M Y"|default:"TBC" }}</div>
-        {% elif p.installation_month %}
-          <div style="font-size:.875rem;color:var(--txt2)">{{ p.installation_month }}{% if p.installation_month_part %} ({{ p.get_installation_month_part_display }}){% endif %}</div>
-        {% else %}<div style="color:var(--mut2)">TBC</div>{% endif %}
-        <div class="ck-wrap">
-          <span class="ck-box {% if p.installation_booked %}ck-box-yes{% else %}ck-box-no{% endif %}">{% if p.installation_booked %}✓{% endif %}</span>
-          <span class="ck-lbl {% if p.installation_booked %}ck-lbl-yes{% else %}ck-lbl-no{% endif %}">{% if p.installation_booked %}Booked{% else %}Not booked{% endif %}</span>
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:nowrap;">
+          <span style="font-size:.875rem;color:var(--txt2);white-space:nowrap;">
+          {% if p.installation_same_as_delivery %}{{ p.delivery_date|date:"d M Y"|default:"TBC" }} <span style="font-size:.72rem;color:var(--acc)">(=delivery)</span>
+          {% elif p.installation_date_type == 'exact' %}{{ p.installation_date|date:"d M Y"|default:"TBC" }}
+          {% elif p.installation_month %}{{ p.installation_month }}{% if p.installation_month_part %} ({{ p.get_installation_month_part_display }}){% endif %}
+          {% else %}TBC{% endif %}
+          </span>
+          <span class="ck-wrap" style="margin:0;">
+            <span class="ck-box {% if p.installation_booked %}ck-box-yes{% else %}ck-box-no{% endif %}">{% if p.installation_booked %}✓{% endif %}</span>
+            <span class="ck-lbl {% if p.installation_booked %}ck-lbl-yes{% else %}ck-lbl-no{% endif %}">{% if p.installation_booked %}Booked{% else %}Not booked{% endif %}</span>
+          </span>
         </div>
       {% else %}<span style="color:var(--mut2)">N/A</span>{% endif %}
     </td>
@@ -232,7 +254,7 @@ tr:hover td{background:var(--surf2);}
       {% elif tl_val == 'red'    %}<span class="tl tl-red"    title="≤15 days">!!!</span>
       {% else %}<span class="tl tl-tbc" title="No date">—</span>{% endif %}
     </td>
-    <td style="white-space:nowrap;vertical-align:middle;">
+    <td style="white-space:nowrap;vertical-align:middle;text-align:right;padding-right:1rem;">
       {% if p.assigned_to %}
       {% with name=p.assigned_to.get_full_name|default:p.assigned_to.username %}
       {% with parts=name.split %}
@@ -246,6 +268,17 @@ tr:hover td{background:var(--surf2);}
   {% endfor %}
   </tbody>
 </table>
+{% if page_obj.paginator.num_pages > 1 %}
+<div style="display:flex;justify-content:center;align-items:center;gap:.6rem;padding:1.2rem 0;">
+  {% if page_obj.has_previous %}
+    <a href="?q={{ query }}&status={{ selected_status }}&tl={{ tl }}&sf={{ stat_filter }}&assigned={{ assigned_filter }}&sort={{ sort }}&page={{ page_obj.previous_page_number }}" class="btn btn-ghost btn-sm">← Previous</a>
+  {% endif %}
+  <span style="font-size:.85rem;color:var(--mut);">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+    <a href="?q={{ query }}&status={{ selected_status }}&tl={{ tl }}&sf={{ stat_filter }}&assigned={{ assigned_filter }}&sort={{ sort }}&page={{ page_obj.next_page_number }}" class="btn btn-ghost btn-sm">Next →</a>
+  {% endif %}
+</div>
+{% endif %}
 {% else %}
 <div class="empty">
   <h3>No projects found</h3>
@@ -327,14 +360,20 @@ async function quickStatus(sel){
   const pk = sel.dataset.pk;
   const newStatus = sel.value;
   const old_status = sel.dataset.current;
+  if(newStatus === 'completed'){
+    if(!confirm('Mark this project as Completed?\n\nThis is normally a permanent action — only an administrator can reverse it.')){
+      sel.value = old_status;
+      return;
+    }
+  }
   const r = await fetch(`/project/${pk}/status/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},body:JSON.stringify({status:newStatus})});
   const d = await r.json();
   if(d.ok){
     sel.dataset.current = newStatus;
-    // Update badge class
     sel.className = `inline-status-sel badge badge-${newStatus}`;
   } else {
-    sel.value = old_status; // revert
+    alert(d.error || 'Could not update status.');
+    sel.value = old_status;
   }
 }
 

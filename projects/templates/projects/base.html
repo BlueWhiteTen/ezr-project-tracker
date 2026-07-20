@@ -6,10 +6,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}EZR Project Tracker{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f5f5f3;--surf:#fff;--surf2:#f9f8f6;--surf3:#f0ede8;--bdr:#e8e4de;--bdr2:#d4cfc7;--acc:#d4700a;--acc-dark:#b35c00;--acc-light:#f08030;--acc-bg:#fff4eb;--acc-bdr:#f5c89a;--grn:#16a34a;--grn-bg:#f0fdf4;--amb:#d97706;--amb-bg:#fffbeb;--red:#dc2626;--red-bg:#fef2f2;--txt:#1a1a1a;--txt2:#3d3d3d;--mut:#7a7570;--mut2:#a8a29e;--f:'Outfit',system-ui,sans-serif;--fm:'DM Mono',monospace;--rad:8px;--rad-lg:12px;--shadow:0 1px 3px rgba(0,0,0,.08);--shadow-md:0 4px 6px rgba(0,0,0,.07);}
-[data-theme="dark"]{--bg:#141210;--surf:#1e1b18;--surf2:#272320;--surf3:#312d29;--bdr:#3a3530;--bdr2:#4a4540;--acc:#f08030;--acc-dark:#d4700a;--acc-light:#ffaa60;--acc-bg:rgba(240,128,48,.12);--acc-bdr:rgba(240,128,48,.3);--grn:#22c55e;--grn-bg:rgba(34,197,94,.1);--amb:#f59e0b;--amb-bg:rgba(245,158,11,.1);--red:#ef4444;--red-bg:rgba(239,68,68,.1);--txt:#f0ede8;--txt2:#d4cfc7;--mut:#857e78;--mut2:#605a54;--shadow:0 1px 3px rgba(0,0,0,.4);--shadow-md:0 4px 6px rgba(0,0,0,.5);}
+:root{--bg:#faf9f7;--surf:#fff;--surf2:#faf9f7;--surf3:#f0ede8;--bdr:#eee9e2;--bdr2:#ddd6cc;--acc:#d4700a;--acc-dark:#b35c00;--acc-light:#f08030;--acc-bg:#fff4eb;--acc-bdr:#f5c89a;--blue:#185fa5;--blue-light:#378add;--blue-bg:#e6f1fb;--blue-bdr:#b5d4f4;--grn:#16a34a;--grn-bg:#f0fdf4;--amb:#d97706;--amb-bg:#fffbeb;--red:#dc2626;--red-bg:#fef2f2;--txt:#1a1a1a;--txt2:#3d3d3d;--mut:#9a948c;--mut2:#b5afa6;--f:'Manrope',system-ui,sans-serif;--fm:'DM Mono',monospace;--rad:10px;--rad-lg:16px;--shadow:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 12px rgba(0,0,0,.07);}
+[data-theme="dark"]{--bg:#141210;--surf:#1e1b18;--surf2:#272320;--surf3:#312d29;--bdr:#3a3530;--bdr2:#4a4540;--acc:#f08030;--acc-dark:#d4700a;--acc-light:#ffaa60;--acc-bg:rgba(240,128,48,.12);--acc-bdr:rgba(240,128,48,.3);--blue:#378add;--blue-light:#5aa0e8;--blue-bg:rgba(55,138,221,.14);--blue-bdr:rgba(55,138,221,.35);--grn:#22c55e;--grn-bg:rgba(34,197,94,.1);--amb:#f59e0b;--amb-bg:rgba(245,158,11,.1);--red:#ef4444;--red-bg:rgba(239,68,68,.1);--txt:#f5f2ec;--txt2:#ddd6cc;--mut:#b8b2a8;--mut2:#928b82;--shadow:0 1px 3px rgba(0,0,0,.4);--shadow-md:0 4px 12px rgba(0,0,0,.5);}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:var(--f);background:var(--bg);color:var(--txt);min-height:100vh;font-size:14px;line-height:1.5;}
 a{color:inherit;text-decoration:none;}
@@ -30,19 +30,21 @@ a{color:inherit;text-decoration:none;}
 .nav-badge{position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:.55rem;font-weight:700;min-width:16px;height:16px;border-radius:99px;display:flex;align-items:center;justify-content:center;padding:0 3px;}
 .nav-logout{font-size:.88rem;color:rgba(255,255,255,.7);padding:8px 14px;border-radius:var(--rad);border:1px solid rgba(255,255,255,.2);transition:all .15s;}
 .nav-logout:hover{color:#fff;background:rgba(255,255,255,.12);}
-.nav-so-wrap{position:relative;flex:0 0 190px;}
-.nav-so-input{width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:var(--rad);color:#fff;padding:8px 12px;font-family:var(--f);font-size:.88rem;outline:none;}
+.nav-so-wrap{position:relative;flex:0 0 280px;}
+.nav-so-input{width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:var(--rad);color:#fff;padding:8px 36px 8px 12px;font-family:var(--f);font-size:.88rem;outline:none;}
 .nav-so-input::placeholder{color:rgba(255,255,255,.45);}
-.nav-so-results{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);box-shadow:var(--shadow-md);z-index:300;display:none;}
+.nav-so-results{position:absolute;top:calc(100% + 4px);left:0;width:380px;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);box-shadow:var(--shadow-md);z-index:300;display:none;}
 .nav-so-item{padding:8px 10px;font-size:.82rem;cursor:pointer;border-bottom:.5px solid var(--bdr);color:var(--txt2);}
 .nav-so-item:hover{background:var(--acc-bg);}
 
 /* LEFT SIDEBAR - fixed, starts below nav */
-.left-sidebar{position:fixed;top:78px;left:0;width:180px;height:calc(100vh - 78px);background:#1a1a1a;border-right:1px solid #333;z-index:999;display:flex;flex-direction:column;}
+.left-sidebar{position:fixed;top:78px;left:0;width:180px;height:calc(100vh - 78px);background:#1a1a1a;border-right:1px solid #333;z-index:999;display:flex;flex-direction:column;overflow-y:auto;}
 .left-sidebar a{display:block;padding:.75rem 1.2rem;color:#ccc;font-size:.875rem;font-weight:500;text-decoration:none;border-left:3px solid transparent;}
 .left-sidebar a:hover{background:rgba(255,255,255,.08);color:#fff;}
 .left-sidebar a.sb-active{background:rgba(212,112,10,.25);color:#f08030;border-left-color:#f08030;}
-.left-sidebar .sb-section{flex:1;overflow-y:auto;padding:.5rem 0;}
+.left-sidebar .sb-section{padding:.5rem 0;}
+.left-sidebar .sb-section:first-of-type{flex:0 0 auto;}
+.left-sidebar .sb-spacer{flex:1;}
 .left-sidebar .sb-bottom{padding:.75rem;border-top:1px solid #333;}
 .left-sidebar .sb-bottom button{width:100%;background:#d4700a;color:#fff;border:none;border-radius:var(--rad);padding:8px;font-family:var(--f);font-size:.82rem;font-weight:600;cursor:pointer;}
 
@@ -54,7 +56,7 @@ a{color:inherit;text-decoration:none;}
 /* REST OF STYLES */
 .msg{padding:.65rem 1rem;border-radius:var(--rad);font-size:.85rem;margin-bottom:1rem;background:var(--grn-bg);color:var(--grn);border:1px solid rgba(22,163,74,.2);}
 .msg.error{background:var(--red-bg);color:var(--red);border-color:rgba(220,38,38,.2);}
-.btn{display:inline-flex;align-items:center;gap:.35rem;padding:.5rem 1.1rem;border-radius:var(--rad);font-family:var(--f);font-size:.875rem;font-weight:500;cursor:pointer;border:none;transition:all .15s;}
+.btn{display:inline-flex;align-items:center;gap:.35rem;padding:.55rem 1.3rem;border-radius:22px;font-family:var(--f);font-size:.875rem;font-weight:600;cursor:pointer;border:none;transition:all .15s;}
 .btn-primary{background:var(--acc);color:#fff;}.btn-primary:hover{background:var(--acc-dark);}
 .btn-ghost{background:var(--surf);color:var(--txt2);border:1px solid var(--bdr);}.btn-ghost:hover{border-color:var(--bdr2);background:var(--surf2);}
 .btn-danger{background:var(--red-bg);color:var(--red);border:1px solid rgba(220,38,38,.2);}.btn-danger:hover{background:var(--red);color:#fff;}
@@ -194,23 +196,27 @@ select.form-input{cursor:pointer;}
     <button class="nav-mobile-menu" id="mobile-menu-btn" onclick="toggleMobileMenu()"
       style="display:none;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:var(--rad);width:42px;height:42px;color:#fff;font-size:1.2rem;cursor:pointer;align-items:center;justify-content:center;">☰</button>
     <div class="nav-logo">
-      <a href="{% url 'dashboard' %}"><img src="{% static 'logo.png' %}" alt="EZR Shelving"></a>
+      <a href="{% url 'home' %}"><img src="{% static 'logo.png' %}" alt="EZR Shelving"></a>
     </div>
   </div>
   {% if user.is_authenticated %}
   <div class="nav-links">
+    <a href="{% url 'home' %}" class="nav-btn {% if request.resolver_match.url_name == 'home' %}active-nav{% endif %}">Home Page</a>
     <a href="{% url 'dashboard' %}" class="nav-btn {% if request.resolver_match.url_name == 'dashboard' %}active-nav{% endif %}">Dashboard</a>
     <a href="{% url 'calendar_view' %}" class="nav-btn {% if request.resolver_match.url_name == 'calendar_view' %}active-nav{% endif %}">Calendar</a>
     <a href="{% url 'week_view' %}" class="nav-btn {% if request.resolver_match.url_name == 'week_view' %}active-nav{% endif %}">Next 2 Weeks</a>
     <a href="{% url 'board_view' %}" class="nav-btn {% if request.resolver_match.url_name == 'board_view' %}active-nav{% endif %}">Board</a>
   </div>
   <div class="nav-so-wrap">
-    <input type="text" id="nav-so-input" class="nav-so-input" placeholder="Search SO#..." autocomplete="off">
+    <input type="text" id="nav-so-input" class="nav-so-input" placeholder="Search projects…" autocomplete="off" value="{{ request.GET.q|default:'' }}">
+    <button onclick="var q=document.getElementById('nav-so-input').value.trim();if(q)window.location='/dashboard/?q='+encodeURIComponent(q);" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);border:none;border-radius:var(--rad);color:#fff;padding:4px 10px;cursor:pointer;font-size:.8rem;" title="Search">⏎</button>
     <div class="nav-so-results" id="nav-so-results"></div>
   </div>
   <div class="nav-right">
-    <a href="{% url 'team_chat' %}" class="nav-icon {% if request.resolver_match.url_name == 'team_chat' %}active-nav{% endif %}" style="width:auto;padding:0 14px;font-size:.88rem;">Chat</a>
-    <a href="{% url 'inbox' %}" class="nav-icon" title="Messages">&#9993;<span class="nav-badge" id="msg-badge" style="display:none"></span></a>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <a href="{% url 'team_chat' %}" class="nav-icon {% if request.resolver_match.url_name == 'team_chat' %}active-nav{% endif %}" style="width:auto;padding:0 10px;font-size:.72rem;font-weight:600;height:20px;border-radius:3px 3px 0 0;letter-spacing:.02em;">EZR Chat</a>
+      <a href="{% url 'inbox' %}" class="nav-icon" style="width:auto;padding:0 10px;font-size:.72rem;font-weight:600;height:20px;border-radius:0 0 3px 3px;letter-spacing:.02em;">Private Chat <span class="nav-badge" id="msg-badge" style="display:none;position:static;margin-left:3px;"></span></a>
+    </div>
     <a href="{% url 'notifications' %}" class="nav-icon" title="Notifications">&#128276;<span class="nav-badge" id="notif-badge" style="display:none"></span></a>
     <a href="{% url 'staff_profile' user.pk %}" class="nav-user" style="text-decoration:none;"><strong>{{ user.get_full_name|default:user.username }}</strong></a>
     <a href="{% url 'logout' %}" class="nav-logout">Log out</a>
@@ -228,14 +234,23 @@ select.form-input{cursor:pointer;}
   </div>
   <div class="sb-section">
     <a href="{% url 'customer_list' %}" class="{% if request.resolver_match.url_name == 'customer_list' or request.resolver_match.url_name == 'customer_detail' %}sb-active{% endif %}">Customers</a>
+    <a href="{% url 'supplier_list' %}" class="{% if request.resolver_match.url_name == 'supplier_list' or request.resolver_match.url_name == 'supplier_detail' %}sb-active{% endif %}">Suppliers</a>
+    <a href="{% url 'po_list' %}" class="{% if 'po_' in request.resolver_match.url_name or request.resolver_match.url_name == 'po_list' %}sb-active{% endif %}" style="padding-left:1.8rem;font-size:.82rem;border-left:3px solid transparent;{% if 'po_' in request.resolver_match.url_name %}border-left-color:var(--acc);background:var(--acc-bg);color:var(--acc);{% endif %}">└ Purchase Orders</a>
     <a href="{% url 'stock_list' %}" class="{% if request.resolver_match.url_name == 'stock_list' %}sb-active{% endif %}">Stock</a>
-    <a href="{% url 'template_list' %}" class="{% if 'template' in request.resolver_match.url_name %}sb-active{% endif %}" style="padding-left:1.8rem;font-size:.82rem;border-left:3px solid transparent;{% if 'template' in request.resolver_match.url_name %}border-left-color:var(--acc);background:var(--acc-bg);color:var(--acc);{% endif %}">└ Templates</a>
-    <a href="{% url 'leave_overview' %}" class="{% if request.resolver_match.url_name == 'leave_overview' %}sb-active{% endif %}">Leave</a>
-    <a href="{% url 'staff_directory' %}" class="{% if request.resolver_match.url_name == 'staff_directory' or request.resolver_match.url_name == 'staff_profile' %}sb-active{% endif %}">Staff</a>
+    <a href="{% url 'template_list' %}" class="{% if 'template' in request.resolver_match.url_name %}sb-active{% endif %}" style="padding-left:1.8rem;font-size:.82rem;border-left:3px solid transparent;{% if 'template' in request.resolver_match.url_name %}border-left-color:var(--acc);background:var(--acc-bg);color:var(--acc);{% endif %}">└ Picking List Templates</a>
+    <a href="{% url 'fitting_notes_list' %}" class="{% if 'fitting_note' in request.resolver_match.url_name %}sb-active{% endif %}">Fitting Notes</a>
+    <a href="{% url 'photo_library' %}" class="{% if 'photo_library' in request.resolver_match.url_name %}sb-active{% endif %}">Photo Library</a>
   </div>
+  <div class="sb-section">
+    <a href="{% url 'staff_directory' %}" class="{% if request.resolver_match.url_name == 'staff_directory' or request.resolver_match.url_name == 'staff_profile' %}sb-active{% endif %}">Staff</a>
+    <a href="{% url 'leave_overview' %}" class="{% if request.resolver_match.url_name == 'leave_overview' %}sb-active{% endif %}" style="padding-left:1.8rem;font-size:.82rem;border-left:3px solid transparent;{% if request.resolver_match.url_name == 'leave_overview' %}border-left-color:var(--acc);background:var(--acc-bg);color:var(--acc);{% endif %}">└ Leave</a>
+  </div>
+  <div class="sb-spacer"></div>
   <div class="sb-bottom">
+    <a href="{% url 'price_list' %}" class="{% if request.resolver_match.url_name == 'price_list' %}sb-active{% endif %}" style="display:block;padding:.6rem .85rem;margin-bottom:.4rem;border-radius:var(--rad);font-size:.875rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">💷 Price List</a>
     <a href="{% url 'monthly_summary' %}" class="{% if request.resolver_match.url_name == 'monthly_summary' %}sb-active{% endif %}" style="display:block;padding:.6rem .85rem;margin-bottom:.4rem;border-radius:var(--rad);font-size:.875rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">📊 Summary</a>
     <a href="{% url 'activity_log' %}" class="{% if request.resolver_match.url_name == 'activity_log' %}sb-active{% endif %}" style="display:block;padding:.6rem .85rem;margin-bottom:.4rem;border-radius:var(--rad);font-size:.875rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">Activity Log</a>
+    <a href="{% url 'daily_accounts_report' %}" class="{% if request.resolver_match.url_name == 'daily_accounts_report' %}sb-active{% endif %}" style="display:block;padding:.6rem .85rem;margin-bottom:.4rem;border-radius:var(--rad);font-size:.875rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">Daily Accounts Report</a>
     <button id="theme-btn" onclick="toggleTheme()">Dark mode</button>
   </div>
 </div>
@@ -279,6 +294,13 @@ function toggleTheme(){
 var soInput = document.getElementById('nav-so-input');
 var soResults = document.getElementById('nav-so-results');
 if(soInput){
+  soInput.addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      var q = this.value.trim();
+      if(q) window.location = '/dashboard/?q=' + encodeURIComponent(q);
+    }
+  });
   soInput.addEventListener('input', function(){
     var q = this.value.trim();
     if(q.length < 1){ soResults.style.display='none'; return; }
@@ -287,8 +309,12 @@ if(soInput){
       .then(function(items){
         if(!items.length){ soResults.style.display='none'; return; }
         soResults.innerHTML = items.map(function(p){
-          return '<div class="nav-so-item" onclick="window.location=\'/project/'+p.id+'/edit/\'"><strong>'+p.sales_order+'</strong> — '+p.project_name+'<div style="font-size:.72rem;color:var(--mut)">'+p.customer+'</div></div>';
+          var ref = p.project_number ? 'Ref ' + p.project_number : (p.sales_order ? 'SO ' + p.sales_order : '');
+          return '<div class="nav-so-item" onclick="window.location=\'/project/'+p.id+'/edit/\'"><strong>'+p.project_name+'</strong>'+(ref?' <span style="font-size:.75rem;color:var(--mut)">'+ref+'</span>':'')+'<div style="font-size:.72rem;color:var(--mut)">'+p.customer+'</div></div>';
         }).join('');
+        // Add "See all results" footer
+        var q2 = soInput.value.trim();
+        soResults.innerHTML += '<div class="nav-so-item" onclick="window.location=\'/dashboard/?q='+encodeURIComponent(q2)+'\'" style="text-align:center;color:var(--acc);font-size:.8rem;border-top:1px solid var(--bdr);padding:.5rem;">See all results for "'+q2+'" →</div>';
         soResults.style.display = 'block';
       });
   });
@@ -310,7 +336,13 @@ async function pollCounts(){
 pollCounts();
 setInterval(pollCounts, 30000);
 </script>
+{% load project_extras %}
 {% block extra_js %}{% endblock %}
+<script>
+// Global user colour map — used by chat polling JS
+window.USER_COLOURS = {% user_colour_map %};
+window.userColour = function(id){ return USER_COLOURS[id] || '#6b7280'; };
+</script>
 <script>
 // ── Reminder polling (checks every 60 seconds) ────────────────────────────────
 {% if user.is_authenticated %}
@@ -349,5 +381,42 @@ function toggleMobileMenu(){
   overlay.classList.toggle('active');
 }
 </script>
+
+{% if project_pk %}
+<div id="presence-banner" style="display:none;position:sticky;top:0;z-index:200;background:#fff8ed;border-bottom:2px solid #f59e0b;padding:.6rem 1.2rem;font-size:.875rem;color:#92400e;align-items:center;gap:.6rem;">
+  <span style="font-size:1rem;">👥</span>
+  <span id="presence-banner-text"></span>
+</div>
+<script>
+(function(){
+  const PROJECT_PK = {{ project_pk }};
+  const CSRF = '{{ csrf_token }}';
+  const banner = document.getElementById('presence-banner');
+  const bannerText = document.getElementById('presence-banner-text');
+
+  async function heartbeat(){
+    try {
+      const r = await fetch(`/project/${PROJECT_PK}/presence/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': CSRF},
+      });
+      if(!r.ok) return;
+      const d = await r.json();
+      if(d.others && d.others.length){
+        const names = d.others.map(o => o.name).join(', ');
+        const plural = d.others.length > 1;
+        bannerText.textContent = `${names} ${plural ? 'are' : 'is'} also viewing this project — coordinate before saving changes.`;
+        banner.style.display = 'flex';
+      } else {
+        banner.style.display = 'none';
+      }
+    } catch(e) { /* network blip — ignore */ }
+  }
+
+  heartbeat();
+  setInterval(heartbeat, 15000);
+})();
+</script>
+{% endif %}
 </body>
 </html>

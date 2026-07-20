@@ -2,7 +2,8 @@
 {% load project_extras %}
 {% block title %}Team Chat — Project Tracker{% endblock %}
 {% block extra_style %}
-.chat-page{display:flex;flex-direction:column;height:calc(100vh - 140px);background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);}
+.container{padding:1rem 1rem 0 1rem!important;overflow:hidden;}
+.chat-page{display:flex;flex-direction:column;height:calc(100vh - 96px);background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);}
 .chat-head{padding:1rem 1.3rem;border-bottom:1px solid var(--bdr);background:var(--surf2);display:flex;align-items:center;gap:.75rem;flex-shrink:0;}
 .chat-head-icon{width:36px;height:36px;border-radius:50%;background:#d4700a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1rem;}
 .chat-head-title{font-size:.95rem;font-weight:600;}
@@ -34,11 +35,6 @@
 {% endblock %}
 
 {% block content %}
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;">
-  <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">Team Chat</h1>
-  <span style="font-size:.82rem;color:var(--mut);">{{ messages_qs|length }} messages loaded</span>
-</div>
-
 <div class="chat-page">
   <div class="chat-head">
     <div class="chat-head-icon">💬</div>
@@ -88,14 +84,19 @@
 const CSRF = '{{ csrf_token }}';
 const ME_ID = {{ request.user.pk }};
 const AV_COLOURS = ['#d4700a','#2563eb','#16a34a','#9333ea','#dc2626','#0891b2','#ca8a04','#be185d'];
-const ME_COLOUR = AV_COLOURS[ME_ID % 8];
-const ALL_USERS = [{% for u in all_users %}{"id":{{ u.pk }},"name":"{{ u.get_full_name|default:u.username }}","initials":"{% with n=u.get_full_name|default:u.username %}{% with p=n.split %}{{ p.0|slice:'1'|upper }}{% if p|length > 1 %}{{ p|last|slice:':1'|upper }}{% endif %}{% endwith %}{% endwith %}"}{% if not forloop.last %},{% endif %}{% endfor %}];
+const ME_COLOUR = window.userColour ? window.userColour(ME_ID) : AV_COLOURS[ME_ID % 8];
+const ALL_USERS = [{% for u in all_users %}{"id":{{ u.pk }},"name":"{{ u.get_full_name|default:u.username }}","initials":"{% with n=u.get_full_name|default:u.username %}{% with p=n.split %}{{ p.0|slice:":1"|upper }}{% if p|length > 1 %}{{ p|last|slice:":1"|upper }}{% endif %}{% endwith %}{% endwith %}"}{% if not forloop.last %},{% endif %}{% endfor %}];
 
-// Scroll to bottom on load
-window.addEventListener('load', ()=>{
+// Scroll to bottom on load — multiple attempts since layout may not be ready
+function scrollToBottom(){
   const box = document.getElementById('chat-messages');
-  if(box) box.scrollTop = box.scrollHeight;
-});
+  if(box){ box.scrollTop = box.scrollHeight; }
+}
+scrollToBottom();
+document.addEventListener('DOMContentLoaded', scrollToBottom);
+window.addEventListener('load', scrollToBottom);
+setTimeout(scrollToBottom, 100);
+setTimeout(scrollToBottom, 400);
 
 async function sendTeamMsg(){
   const inp = document.getElementById('chat-input');
@@ -110,8 +111,9 @@ async function sendTeamMsg(){
     headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
     body:JSON.stringify({text})
   });
+  if(!r.ok){ inp.value = text; return; }
   const d = await r.json();
-  if(d.error) return;
+  if(!d.id){ inp.value = text; return; }
 
   const box = document.getElementById('chat-messages');
   const noMsg = box.querySelector('div[style*="text-align:center"]');
@@ -131,6 +133,41 @@ async function sendTeamMsg(){
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
 }
+
+// Live-poll for new team chat messages every few seconds, so messages from
+// other people appear without needing a manual page refresh.
+let LAST_TEAM_MSG_ID = {{ latest_msg_pk }};
+async function pollTeamChat(){
+  try{
+    const r = await fetch(`/chat/poll/?after=${LAST_TEAM_MSG_ID}`);
+    if(!r.ok) return;
+    const d = await r.json();
+    if(!d.messages.length) return;
+    const box = document.getElementById('chat-messages');
+    const noMsg = box.querySelector('div[style*="text-align:center"]');
+    for(const m of d.messages){
+      LAST_TEAM_MSG_ID = m.id;
+      if(m.is_me) continue;  // our own sends are already appended at send-time
+      if(noMsg) noMsg.remove();
+      const colour = window.userColour ? window.userColour(m.user_id) : AV_COLOURS[m.user_id % 8];
+      const div = document.createElement('div');
+      div.className = 'chat-msg';
+      div.id = `msg-${m.id}`;
+      div.innerHTML = `
+        <div class="chat-msg-av" style="background:${colour};">${m.initials}</div>
+        <div class="chat-msg-body">
+          <div class="chat-msg-header">
+            <span class="chat-msg-name">${m.user}</span>
+            <span class="chat-msg-time">${m.timestamp}</span>
+          </div>
+          <div class="chat-msg-text">${m.text}</div>
+        </div>`;
+      box.appendChild(div);
+    }
+    box.scrollTop = box.scrollHeight;
+  }catch(e){ /* network blip — just try again next interval */ }
+}
+setInterval(pollTeamChat, 3000);
 
 document.getElementById('chat-input').addEventListener('keydown', e=>{
   const dd = document.getElementById('mention-dd');

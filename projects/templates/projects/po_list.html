@@ -1,0 +1,161 @@
+{% extends 'projects/base.html' %}
+{% block title %}Purchase Orders — Project Tracker{% endblock %}
+{% block extra_style %}
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.3rem;flex-wrap:wrap;gap:1rem;}
+.filter-row{display:flex;gap:.6rem;margin-bottom:1.3rem;flex-wrap:wrap;}
+.po-table{width:100%;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);border-collapse:collapse;}
+.po-table th{background:var(--surf2);padding:.7rem 1rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);text-align:left;border-bottom:1px solid var(--bdr);}
+.po-table td{padding:.75rem 1rem;font-size:.875rem;border-bottom:.5px solid var(--bdr);vertical-align:middle;}
+.po-table tr:last-child td{border-bottom:none;}
+.po-table tr:hover td{background:var(--surf2);}
+.po-num{font-weight:700;color:var(--acc);text-decoration:none;}
+.recv-btn{background:#0f766e;color:#fff;border:none;border-radius:var(--rad);padding:5px 12px;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;}
+.recv-btn:hover{background:#0d655e;}
+.recv-done{color:#16a34a;font-weight:600;font-size:.8rem;white-space:nowrap;}
+@media(max-width:768px){.po-table thead{display:none;}.po-table td{display:block;border:none;padding:.3rem 1rem;}.po-table tr{display:block;border-bottom:1px solid var(--bdr);padding:.6rem 0;}}
+{% endblock %}
+{% block content %}
+<div class="page-hdr">
+  <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">Purchase Orders</h1>
+  <button class="btn btn-primary" onclick="openNewPO()">+ New PO</button>
+</div>
+
+<form method="get" class="filter-row">
+  <input class="form-input" name="q" value="{{ query }}" placeholder="Search PO number or supplier…" style="max-width:300px;">
+  <select class="form-input" name="status" style="max-width:180px;" onchange="this.form.submit()">
+    <option value="">All statuses</option>
+    {% for val, label in status_choices %}
+    <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn btn-ghost btn-sm" type="submit">Search</button>
+  {% if query or status_filter %}<a href="{% url 'po_list' %}" class="btn btn-ghost btn-sm">Clear</a>{% endif %}
+</form>
+
+<table class="po-table">
+  <thead>
+    <tr><th>PO #</th><th>Supplier</th><th>Order Date</th><th>Required</th><th>Expected</th><th>Total</th><th>Status</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for po in pos %}
+    <tr id="po-row-{{ po.pk }}">
+      <td><a href="{% url 'po_detail' po.pk %}" class="po-num">{{ po.po_number }}</a></td>
+      <td>{{ po.supplier.name }}</td>
+      <td>{% if po.order_date %}{{ po.order_date|date:"d M Y" }}{% else %}—{% endif %}</td>
+      <td>{% if po.expected_date %}{{ po.expected_date|date:"d M Y" }}{% else %}—{% endif %}</td>
+      <td>{% if po.acknowledged_date %}{{ po.acknowledged_date|date:"d M Y" }}{% else %}<span style="color:var(--mut2);">—</span>{% endif %}</td>
+      <td style="font-weight:600;">£{{ po.total|floatformat:2 }}</td>
+      <td><span class="badge badge-{{ po.status }}">{{ po.get_status_display }}</span></td>
+      <td style="text-align:right;">
+        {% if po.received %}
+        <span class="recv-done">✓ Received</span>
+        {% else %}
+        <button class="recv-btn" onclick="markReceived({{ po.pk }})">Mark Received</button>
+        {% endif %}
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="7" style="text-align:center;padding:3rem;color:var(--mut);">No purchase orders yet — click + New PO to create one</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- New PO Modal -->
+<div class="nc-overlay" id="np-overlay" onclick="closeNewPO()" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:none;"></div>
+<div class="np-modal" id="np-modal" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:460px;max-width:95vw;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);z-index:201;box-shadow:var(--shadow-md);display:none;">
+  <div style="padding:1rem 1.3rem;border-bottom:1px solid var(--bdr);font-weight:600;background:var(--surf2);border-radius:var(--rad-lg) var(--rad-lg) 0 0;">New Purchase Order</div>
+  <div style="padding:1.3rem;">
+    <p style="font-size:.78rem;color:var(--mut);margin-bottom:1rem;">Find a supplier by any of the three options below:</p>
+
+    <div class="form-group" style="margin-bottom:.9rem;">
+      <label class="form-label">1 · Type to filter</label>
+      <input class="form-input" id="np-search" placeholder="Start typing a supplier name…" oninput="filterSuppliers(this.value)" autocomplete="off">
+    </div>
+
+    <div class="form-group" style="margin-bottom:.9rem;">
+      <label class="form-label">2 · Matching suppliers</label>
+      <select class="form-input" id="np-supplier" onchange="onSupplierPick(this.value)">
+        <option value="">— Select supplier —</option>
+      </select>
+    </div>
+
+    <div class="form-group" style="margin-bottom:.5rem;">
+      <label class="form-label">3 · Account number</label>
+      <input class="form-input" id="np-account" placeholder="e.g. TRIM001" oninput="findByAccount(this.value)" autocomplete="off">
+    </div>
+
+    <div id="np-selected" style="font-size:.82rem;color:var(--acc);font-weight:600;display:none;margin-top:.5rem;"></div>
+    <div id="np-error" style="color:var(--red);font-size:.82rem;display:none;margin-top:.5rem;"></div>
+  </div>
+  <div style="padding:.85rem 1.3rem;border-top:1px solid var(--bdr);display:flex;gap:.5rem;justify-content:flex-end;">
+    <button onclick="closeNewPO()" class="btn btn-ghost btn-sm">Cancel</button>
+    <button onclick="submitNewPO()" class="btn btn-primary btn-sm">Create</button>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+let SUPPLIERS = [];
+let selectedSupplierId = '';
+
+async function openNewPO(){
+  document.getElementById('np-overlay').style.display='block';
+  document.getElementById('np-modal').style.display='block';
+  await loadSuppliers();
+}
+function closeNewPO(){
+  document.getElementById('np-overlay').style.display='none';
+  document.getElementById('np-modal').style.display='none';
+  selectedSupplierId='';
+}
+async function loadSuppliers(){
+  const r = await fetch('/api/suppliers/');
+  const d = await r.json();
+  SUPPLIERS = d.suppliers;
+  renderSupplierDropdown(SUPPLIERS);
+}
+function renderSupplierDropdown(list){
+  const sel = document.getElementById('np-supplier');
+  sel.innerHTML = '<option value="">— Select supplier —</option>' +
+    list.map(s=>`<option value="${s.id}">${s.name}${s.account_number ? ' ('+s.account_number+')' : ''}</option>`).join('');
+}
+function setSelected(id){
+  selectedSupplierId = String(id || '');
+  const s = SUPPLIERS.find(x=>String(x.id)===selectedSupplierId);
+  const el = document.getElementById('np-selected');
+  if(s){ el.textContent = `Selected: ${s.name} (${s.account_number||'no a/c'})`; el.style.display='block'; }
+  else { el.style.display='none'; }
+}
+function onSupplierPick(val){
+  setSelected(val);
+}
+function filterSuppliers(q){
+  q = q.toLowerCase().trim();
+  const filtered = q ? SUPPLIERS.filter(s=>s.name.toLowerCase().startsWith(q)) : SUPPLIERS;
+  renderSupplierDropdown(filtered);
+  if(filtered.length === 1){ document.getElementById('np-supplier').value = filtered[0].id; setSelected(filtered[0].id); }
+  else { setSelected(''); }
+}
+function findByAccount(q){
+  q = q.toUpperCase().trim();
+  if(!q){ return; }
+  const s = SUPPLIERS.find(x=>(x.account_number||'').toUpperCase() === q);
+  if(s){ document.getElementById('np-supplier').value = s.id; setSelected(s.id); }
+}
+async function submitNewPO(){
+  const err = document.getElementById('np-error');
+  if(!selectedSupplierId){ err.textContent='Please select a supplier'; err.style.display='block'; return; }
+  const r = await fetch('/purchase-orders/new/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({supplier_id:selectedSupplierId})});
+  const d = await r.json();
+  if(d.ok) window.location = `/purchase-orders/${d.pk}/`;
+}
+async function markReceived(pk){
+  if(!confirm('Mark this PO as received? This will add the ordered quantities to stock.')) return;
+  const r = await fetch(`/purchase-orders/${pk}/receive/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+  const d = await r.json();
+  if(d.ok){ location.reload(); } else { alert(d.error || 'Failed'); }
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeNewPO();});
+</script>
+{% endblock %}

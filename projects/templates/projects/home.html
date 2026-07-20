@@ -1,0 +1,278 @@
+{% extends 'projects/base.html' %}
+{% load project_extras %}
+{% block title %}Home — Project Tracker{% endblock %}
+{% block extra_style %}
+.home-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;}
+.home-tile{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow);padding:1.4rem;display:flex;flex-direction:column;min-height:260px;transition:box-shadow .15s,transform .15s;}
+.home-tile:hover{box-shadow:var(--shadow-md);}
+.home-tile-link{text-decoration:none;color:inherit;}
+.home-tile.tile-action{align-items:center;justify-content:center;text-align:center;cursor:pointer;}
+.home-tile-title{font-size:1.05rem;font-weight:700;color:var(--txt);display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;}
+.home-tile-sub{font-size:.8rem;color:var(--mut);margin-top:-.6rem;margin-bottom:1rem;}
+.home-badge{background:var(--red);color:#fff;font-size:.7rem;font-weight:700;padding:1px 8px;border-radius:99px;margin-left:auto;}
+.home-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.6rem;overflow-y:auto;flex:1;}
+.home-row{display:block;padding:.5rem .6rem;border-radius:8px;background:var(--surf2);text-decoration:none;color:var(--txt);font-size:.85rem;transition:background .12s;}
+.home-row:hover{background:var(--surf3);}
+.home-row-meta{color:var(--mut);font-size:.74rem;margin-top:2px;}
+.home-empty{color:var(--mut2);font-size:.85rem;font-style:italic;padding:1rem 0;text-align:center;}
+.tile-action .big-icon{font-size:2.6rem;margin-bottom:.6rem;}
+.tile-dashboard{background:linear-gradient(135deg,var(--acc-bg),var(--surf));border-color:var(--acc-bdr);}
+.tile-new{background:linear-gradient(135deg,var(--blue-bg),var(--surf));border-color:var(--blue-bdr);}
+@media (max-width:1100px){.home-grid{grid-template-columns:repeat(2,1fr);}}
+@media (max-width:700px){.home-grid{grid-template-columns:1fr;}}
+{% endblock %}
+{% block content %}
+<h1 style="font-size:1.6rem;font-weight:700;margin-bottom:1.2rem;">Welcome back{% if request.user.first_name %}, {{ request.user.first_name }}{% endif %}</h1>
+
+<div class="home-grid">
+
+  <!-- Dashboard -->
+  <a href="{% url 'dashboard' %}" class="home-tile-link" style="grid-column:span 2;">
+    <div class="home-tile tile-dashboard tile-action" style="min-height:200px;">
+      <div class="big-icon">📊</div>
+      <div class="home-tile-title" style="margin-bottom:0;">Dashboard</div>
+      <div class="home-tile-sub" style="margin-top:.4rem;">All projects, statuses and dates</div>
+    </div>
+  </a>
+
+  <!-- New Project -->
+  <a href="{% url 'project_create' %}" class="home-tile-link">
+    <div class="home-tile tile-new tile-action" style="min-height:200px;">
+      <div class="big-icon">+</div>
+      <div class="home-tile-title" style="margin-bottom:0;">New Project</div>
+    </div>
+  </a>
+
+  <!-- My reminders -->
+  <div class="home-tile">
+    <div class="home-tile-title">⏰ Reminders{% if my_reminders %}<span class="home-badge">{{ my_reminders|length }}</span>{% endif %}</div>
+    {% if my_reminders %}
+    <ul class="home-list" style="flex:none;max-height:260px;overflow-y:auto;">
+      {% now "U" as now_ts %}
+      {% for r in my_reminders %}
+      <li id="reminder-row-{{ r.pk }}" style="display:flex;align-items:flex-start;gap:.5rem;">
+        <a href="{% url 'project_edit' r.project.pk %}" class="home-row" style="flex:1;{% if r.sent %}color:var(--acc);font-weight:500;{% else %}opacity:.85;{% endif %}">
+          {{ r.message }}
+          <div class="home-row-meta">
+            {% if r.sent %}⚠ Due {% endif %}{{ r.remind_at|date:"d M, H:i" }} · {{ r.project.project_name }}
+          </div>
+        </a>
+        <button onclick="dismissReminder({{ r.pk }})" title="Dismiss" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:.9rem;padding:.35rem .3rem;line-height:1;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--mut)'">✕</button>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="home-empty">No reminders — you're all caught up.</div>
+    {% endif %}
+  </div>
+
+  <!-- Messages -->
+  <a href="{% url 'inbox' %}" class="home-tile-link">
+    <div class="home-tile">
+      <div class="home-tile-title">💬 Messages{% if unread_messages %}<span class="home-badge">{{ unread_messages }}</span>{% endif %}</div>
+      {% if unread_messages %}
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:.95rem;color:var(--txt2);">
+          You have {{ unread_messages }} unread message{{ unread_messages|pluralize }}
+        </div>
+      {% else %}
+        <div class="home-empty" style="flex:1;display:flex;align-items:center;justify-content:center;">No unread messages</div>
+      {% endif %}
+    </div>
+  </a>
+
+  <!-- Your assigned projects — double height -->
+  <div class="home-tile" style="grid-row:span 2;">
+    <div class="home-tile-title">📁 Your Projects</div>
+    <ul class="home-list" style="overflow-y:auto;flex:1;">
+      {% for p in my_projects %}
+      <li><a href="{% url 'project_edit' p.pk %}" class="home-row">{{ p.project_name }}
+        <div class="home-row-meta">{{ p.get_status_display }}{% if p.project_number %} · Ref {{ p.project_number }}{% endif %}</div></a></li>
+      {% empty %}<div class="home-empty">No active projects assigned to you.</div>{% endfor %}
+    </ul>
+  </div>
+
+  <!-- Who's off -->
+  <a href="{% url 'leave_overview' %}" class="home-tile-link">
+    <div class="home-tile">
+      <div class="home-tile-title">🌴 Who's Off (Next 7 Days)</div>
+      <ul class="home-list">
+        {% for l in leave_week %}
+        <li class="home-row" style="cursor:default;display:flex;align-items:center;gap:.5rem;">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ l.user.pk|avatar_colour }};flex-shrink:0;"></span>
+          {{ l.user.get_full_name|default:l.user.username }}
+          <div class="home-row-meta">{{ l.date|date:"D d M" }}{% if l.half_day != 'full' %} · {{ l.get_half_day_display }}{% endif %}</div></li>
+        {% empty %}<div class="home-empty">Nobody's off this week.</div>{% endfor %}
+      </ul>
+    </div>
+  </a>
+
+  <!-- Photo Library slideshow -->
+  <a href="{% url 'photo_library' %}" class="home-tile-link">
+    <div class="home-tile" style="padding:0;overflow:hidden;position:relative;min-height:260px;">
+      {% if slideshow_photos %}
+      <div id="slideshow" style="position:relative;width:100%;height:100%;min-height:260px;">
+        {% for p in slideshow_photos %}
+        <img src="{% url 'report_photo_file' p.pk %}" class="slide-img {% if forloop.first %}active{% endif %}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:{% if forloop.first %}1{% else %}0{% endif %};transition:opacity 1s;">
+        {% endfor %}
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:.8rem 1rem .6rem;background:linear-gradient(to top,rgba(0,0,0,.7),transparent);">
+          <div style="color:#fff;font-weight:700;font-size:.95rem;">📷 Photo Library</div>
+          <div style="color:rgba(255,255,255,.85);font-size:.75rem;">{{ slideshow_photos|length }} recent install photo{{ slideshow_photos|length|pluralize }}</div>
+        </div>
+      </div>
+      {% else %}
+      <div style="display:flex;align-items:center;justify-content:center;height:260px;flex-direction:column;color:var(--mut);">
+        <div class="home-tile-title" style="margin-bottom:.3rem;">📷 Photo Library</div>
+        <div class="home-empty">No installation photos yet.</div>
+      </div>
+      {% endif %}
+    </div>
+  </a>
+
+  <!-- EZR Chat tile -->
+  <div class="home-tile" style="grid-column:span 2;min-height:320px;">
+    <div class="home-tile-title" style="margin-bottom:.6rem;">
+      💬 EZR Chat
+      <a href="{% url 'team_chat' %}" style="margin-left:auto;font-size:.75rem;color:var(--acc);font-weight:400;text-decoration:none;">View all →</a>
+    </div>
+    <div id="home-chat-messages" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;padding-bottom:.5rem;min-height:0;">
+      {% for m in recent_team_messages %}
+      <div style="display:flex;align-items:flex-start;gap:.5rem;">
+        <div style="width:26px;height:26px;border-radius:50%;background:{{ m.user.pk|avatar_colour }};display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;color:#fff;flex-shrink:0;">
+          {% with n=m.user.get_full_name|default:m.user.username %}{% with p=n.split %}{{ p.0|slice:":1"|upper }}{% if p|length > 1 %}{{ p|last|slice:":1"|upper }}{% endif %}{% endwith %}{% endwith %}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:.75rem;color:var(--mut);margin-bottom:1px;">
+            <strong style="color:var(--txt);">{{ m.user.get_full_name|default:m.user.username }}</strong>
+            · {{ m.timestamp|date:"d M, H:i" }}
+          </div>
+          <div style="font-size:.84rem;color:var(--txt2);word-break:break-word;">{{ m.text }}</div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="home-empty">No messages yet.</div>
+      {% endfor %}
+    </div>
+    <div style="display:flex;gap:.5rem;margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--bdr);">
+      <input type="text" id="home-chat-input" class="form-input" placeholder="Message EZR Chat… (Enter to send)" style="flex:1;font-size:.84rem;padding:.45rem .7rem;" autocomplete="off">
+      <button class="btn btn-primary btn-sm" onclick="homeChat.send()" style="flex-shrink:0;">Send</button>
+    </div>
+  </div>
+
+  <!-- Latest project updates — alongside chat, same row -->
+  <div class="home-tile" style="overflow-y:auto;">
+    <div class="home-tile-title">🕓 Latest Updates</div>
+    <ul class="home-list" style="flex:1;overflow-y:auto;">
+      {% for p in latest_updates %}
+      <li><a href="{% url 'project_edit' p.pk %}" class="home-row">{{ p.project_name }}
+        <div class="home-row-meta">{{ p.get_status_display }} · {{ p.updated_at|date:"d M, H:i" }}</div></a></li>
+      {% empty %}<div class="home-empty">No projects yet.</div>{% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+// ── Home EZR Chat ─────────────────────────────────────────────────────────────
+const homeChat = (function(){
+  const CSRF = '{{ csrf_token }}';
+  const ME_ID = {{ request.user.pk }};
+  let lastId = {{ last_team_msg_id }};
+  const box = document.getElementById('home-chat-messages');
+  const input = document.getElementById('home-chat-input');
+
+  function scrollBottom(){ if(box) box.scrollTop = box.scrollHeight; }
+
+  function addBubble(m, prepend){
+    const colour = window.userColour ? window.userColour(m.user_id || m.userId) : '#6b7280';
+    const name = m.user || '';
+    const initials = name.split(' ').filter(Boolean).map((w,i,a)=>i===0||i===a.length-1?w[0]:'').join('').toUpperCase().slice(0,2);
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:flex-start;gap:.5rem;';
+    div.innerHTML = `<div style="width:26px;height:26px;border-radius:50%;background:${colour};display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;color:#fff;flex-shrink:0;">${initials}</div><div style="flex:1;min-width:0;"><div style="font-size:.75rem;color:var(--mut);margin-bottom:1px;"><strong style="color:var(--txt);">${name}</strong> · ${m.timestamp}</div><div style="font-size:.84rem;color:var(--txt2);word-break:break-word;">${m.text}</div></div>`;
+    if(box) box.appendChild(div);
+  }
+
+  async function poll(){
+    try{
+      const r = await fetch(`/chat/poll/?after=${lastId}`);
+      if(!r.ok) return;
+      const d = await r.json();
+      if(d.messages && d.messages.length){
+        // Remove empty state if present
+        const empty = box && box.querySelector('.home-empty');
+        if(empty) empty.remove();
+        d.messages.forEach(m => { addBubble(m); lastId = m.id; });
+        scrollBottom();
+      }
+    }catch(e){}
+  }
+
+  async function send(){
+    const text = input && input.value.trim();
+    if(!text) return;
+    input.value = '';
+    try{
+      const r = await fetch('/chat/', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+        body:JSON.stringify({text})
+      });
+      const d = await r.json();
+      if(d.id){
+        const empty = box && box.querySelector('.home-empty');
+        if(empty) empty.remove();
+        addBubble({
+          user: d.user, user_id: ME_ID,
+          text: d.text, timestamp: d.timestamp, id: d.id
+        });
+        lastId = d.id;
+        scrollBottom();
+      }
+    }catch(e){ input.value = text; }
+  }
+
+  if(input) input.addEventListener('keydown', e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();} });
+  scrollBottom();
+  setInterval(poll, 15000);
+  return {send};
+})();
+(function(){
+  const slides = document.querySelectorAll('#slideshow .slide-img');
+  if(slides.length < 2) return;
+  let idx = 0;
+  setInterval(()=>{
+    slides[idx].style.opacity = 0;
+    idx = (idx + 1) % slides.length;
+    slides[idx].style.opacity = 1;
+  }, 4000);
+})();
+
+async function dismissReminder(pk){
+  const row = document.getElementById('reminder-row-' + pk);
+  if(row) row.style.opacity = '.4';
+  const r = await fetch(`/reminder/${pk}/dismiss/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken': '{{ csrf_token }}'},
+  });
+  const d = await r.json();
+  if(d.ok && row){
+    row.style.transition = 'opacity .2s';
+    row.style.opacity = '0';
+    setTimeout(()=>{
+      row.remove();
+      // If no rows left, show the empty state
+      const list = document.querySelector('.home-list');
+      if(list && !list.querySelector('li')){
+        list.closest('.home-tile').querySelector('.home-list').style.display = 'none';
+        const empty = document.createElement('div');
+        empty.className = 'home-empty';
+        empty.textContent = "No reminders — you're all caught up.";
+        list.closest('.home-tile').appendChild(empty);
+      }
+    }, 200);
+  } else if(!d.ok) {
+    if(row) row.style.opacity = '1';
+  }
+}
+</script>
+{% endblock %}

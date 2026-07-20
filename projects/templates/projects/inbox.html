@@ -2,7 +2,8 @@
 {% load project_extras %}
 {% block title %}Messages — Project Tracker{% endblock %}
 {% block extra_style %}
-.inbox-wrap{display:grid;grid-template-columns:280px 1fr;gap:0;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);min-height:calc(100vh - 160px);}
+.container{padding:1rem 1rem 0 1rem!important;overflow:hidden;}
+.inbox-wrap{display:grid;grid-template-columns:280px 1fr;gap:0;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);height:calc(100vh - 96px);min-height:0;}
 .inbox-sidebar{border-right:1px solid var(--bdr);display:flex;flex-direction:column;}
 .sidebar-head{padding:1rem 1.1rem;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;background:var(--surf2);}
 .sidebar-title{font-size:.95rem;font-weight:600;}
@@ -14,7 +15,7 @@
 .convo-name{font-weight:500;font-size:.875rem;}
 .convo-preview{font-size:.75rem;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;}
 .convo-unread{background:#ef4444;color:#fff;font-size:.62rem;font-weight:700;min-width:18px;height:18px;border-radius:99px;display:flex;align-items:center;justify-content:center;padding:0 4px;margin-left:auto;flex-shrink:0;}
-.chat-area{display:flex;flex-direction:column;}
+.chat-area{display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0;}
 .chat-head{padding:1rem 1.3rem;border-bottom:1px solid var(--bdr);background:var(--surf2);display:flex;align-items:center;gap:.75rem;flex-shrink:0;}
 .chat-av{width:36px;height:36px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;box-shadow:0 0 0 2.5px #fff,0 0 0 4px rgba(0,0,0,.12);}
 [data-theme="dark"] .chat-av{box-shadow:0 0 0 2.5px #1e1b18,0 0 0 4px rgba(255,255,255,.15);}
@@ -25,7 +26,7 @@
 .msg-them{align-self:flex-start;background:var(--surf2);color:var(--txt);border:1px solid var(--bdr);border-radius:12px 12px 12px 3px;}
 .msg-meta{font-size:.68rem;margin-top:3px;opacity:.65;}
 .msg-meta-me{text-align:right;}
-.chat-input-row{padding:.85rem 1.1rem;border-top:1px solid var(--bdr);display:flex;gap:.6rem;background:var(--surf2);flex-shrink:0;}
+.chat-input-row{padding:.6rem 1.1rem;border-top:1px solid var(--bdr);display:flex;gap:.6rem;background:var(--surf2);flex-shrink:0;}
 .chat-input{flex:1;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);color:var(--txt);padding:8px 12px;font-size:.875rem;outline:none;font-family:var(--f);}
 .chat-input:focus{border-color:var(--acc);}
 .chat-send{background:var(--acc);color:#fff;border:none;border-radius:var(--rad);padding:8px 16px;font-size:.85rem;font-weight:600;cursor:pointer;font-family:var(--f);}
@@ -44,7 +45,7 @@
 @media (max-width: 768px) {
   .inbox-wrap {
     grid-template-columns: 1fr;
-    min-height: calc(100vh - 78px);
+    height: calc(100vh - 76px);
     border-radius: 0;
     border-left: none;
     border-right: none;
@@ -52,15 +53,14 @@
     inset: 78px 0 0 0;
     z-index: 10;
   }
-  /* Hide sidebar by default on mobile — show chat */
-  .inbox-sidebar { display: none; }
-  .chat-area { display: flex; height: 100%; }
+  /* No active conversation: show sidebar (conversations list) */
+  .inbox-sidebar { display: flex; width: 100%; }
+  .chat-area { display: none; }
+  .empty-chat { display: none; }
 
-  /* When no conversation selected, show sidebar instead */
-  .inbox-wrap.show-sidebar .inbox-sidebar { display: flex; }
-  .inbox-wrap.show-sidebar .chat-area { display: none; }
-  /* Always show mobile bar when chat is visible */
-  .chat-area { position: relative; }
+  /* Active conversation: hide sidebar, show chat */
+  .inbox-wrap.has-active .inbox-sidebar { display: none; }
+  .inbox-wrap.has-active .chat-area { display: flex; height: 100%; }
 
   /* Compact chat head with back button */
   .chat-head { padding: .6rem .85rem; }
@@ -78,27 +78,6 @@
     margin-right: .25rem;
   }
 
-  /* Mobile conversation selector at top */
-  .mobile-convo-bar {
-    display: flex !important;
-    align-items: center;
-    gap: .5rem;
-    padding: .5rem .75rem;
-    background: var(--surf2);
-    border-bottom: 1px solid var(--bdr);
-    flex-shrink: 0;
-  }
-  .mobile-convo-select {
-    flex: 1;
-    background: var(--surf);
-    border: 1px solid var(--bdr);
-    border-radius: var(--rad);
-    color: var(--txt);
-    padding: 6px 10px;
-    font-size: .88rem;
-    font-family: var(--f);
-  }
-
   /* Messages area takes remaining height */
   .chat-messages { padding: .75rem; }
   .chat-input-row { padding: .6rem .75rem; }
@@ -111,16 +90,13 @@
 }
 @media (min-width: 769px) {
   .chat-back-btn { display: none !important; }
-  .mobile-convo-bar { display: none !important; }
+  .inbox-sidebar { display: flex; }
+  .chat-area { display: flex; }
 }
 {% endblock %}
 
 {% block content %}
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;">
-  <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;" class="inbox-page-title">Messages</h1>
-</div>
-
-<div class="inbox-wrap">
+<div class="inbox-wrap{% if active_user %} has-active{% endif %}">
   <!-- Sidebar -->
   <div class="inbox-sidebar">
     <div class="sidebar-head">
@@ -146,21 +122,8 @@
   <!-- Chat area -->
   {% if active_user %}
   <div class="chat-area">
-    <!-- Mobile: conversation selector bar -->
-    <div class="mobile-convo-bar" style="display:none;" id="mobile-convo-bar">
-      <button class="chat-back-btn" onclick="showMobileSidebar()" title="All conversations">←</button>
-      <select class="mobile-convo-select" onchange="goToConvo(this.value)">
-        <option value="">— Select conversation —</option>
-        {% for c in conversations %}
-        <option value="{{ c.user.pk }}" {% if active_user and active_user.pk == c.user.pk %}selected{% endif %}>
-          {{ c.user.get_full_name|default:c.user.username }}{% if c.unread %} ({{ c.unread }}){% endif %}
-        </option>
-        {% endfor %}
-      </select>
-      <button class="new-msg-btn" onclick="openNewMsg()">+</button>
-    </div>
     <div class="chat-head">
-      <button class="chat-back-btn" onclick="showMobileSidebar()" style="display:none;">←</button>
+      <button class="chat-back-btn" onclick="showMobileSidebar()">←</button>
       <div class="chat-av" style="background:{{ active_user.pk|avatar_colour }};">{% with n=active_user.get_full_name|default:active_user.username %}{% with p=n.split %}{{ p.0|slice:":1"|upper }}{% if p|length > 1 %}{{ p|last|slice:":1"|upper }}{% endif %}{% endwith %}{% endwith %}</div>
       <div class="chat-name">{{ active_user.get_full_name|default:active_user.username }}</div>
     </div>
@@ -183,16 +146,6 @@
     </div>
   </div>
   {% else %}
-  <!-- Show mobile nav bar even in empty chat -->
-  <div class="mobile-convo-bar" style="display:none;">
-    <select class="mobile-convo-select" onchange="goToConvo(this.value)">
-      <option value="">— Select conversation —</option>
-      {% for c in conversations %}
-      <option value="{{ c.user.pk }}">{{ c.user.get_full_name|default:c.user.username }}{% if c.unread %} ({{ c.unread }}){% endif %}</option>
-      {% endfor %}
-    </select>
-    <button class="new-msg-btn" onclick="openNewMsg()">+ New</button>
-  </div>
   <div class="empty-chat">
     <span style="font-size:2.5rem;">✉</span>
     <h3>Select a conversation</h3>
@@ -229,6 +182,8 @@
 function openNewMsg(){ document.getElementById('nm-overlay').classList.add('open'); document.getElementById('nm-modal').classList.add('open'); }
 function closeNewMsg(){ document.getElementById('nm-overlay').classList.remove('open'); document.getElementById('nm-modal').classList.remove('open'); }
 function startConvo(){ const uid=document.getElementById('nm-recipient').value; if(uid) window.location=`/messages/${uid}/`; }
+function goToConvo(uid){ if(uid) window.location=`/messages/${uid}/`; }
+function showMobileSidebar(){ window.location='/messages/'; }
 
 {% if active_user %}
 const ACTIVE_USER_ID = {{ active_user.pk }};
@@ -251,7 +206,7 @@ async function sendMsg(){
   div.style.cssText = 'display:flex;flex-direction:row-reverse;align-items:flex-end;gap:.5rem;';
   {% with n=request.user.get_full_name|default:request.user.username %}{% with p=n.split %}const myInitials = '{{ p.0|slice:":1"|upper }}{% if p|length > 1 %}{{ p|last|slice:":1"|upper }}{% endif %}'{% endwith %}{% endwith %};
   const AV_COLOURS = ['#d4700a','#2563eb','#16a34a','#9333ea','#dc2626','#0891b2','#ca8a04','#be185d'];
-  const myColour = AV_COLOURS[{{ request.user.pk }} % 8];
+  const myColour = window.userColour ? window.userColour({{ request.user.pk }}) : AV_COLOURS[{{ request.user.pk }} % 8];
   div.innerHTML = `<div class="chat-av" style="width:28px;height:28px;font-size:.58rem;flex-shrink:0;margin-bottom:4px;background:${myColour};">${myInitials}</div><div><div class="msg-bubble msg-me">${d.text}</div><div class="msg-meta msg-meta-me">${d.timestamp}</div></div>`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
@@ -259,11 +214,43 @@ async function sendMsg(){
 
 document.getElementById('chat-input').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); sendMsg(); } });
 
-// Scroll to bottom
-window.addEventListener('load', ()=>{
+// Scroll to bottom — multiple attempts since layout may not be ready
+function scrollToBottom(){
   const box = document.getElementById('chat-messages');
   if(box) box.scrollTop = box.scrollHeight;
-});
+}
+scrollToBottom();
+document.addEventListener('DOMContentLoaded', scrollToBottom);
+window.addEventListener('load', scrollToBottom);
+setTimeout(scrollToBottom, 100);
+setTimeout(scrollToBottom, 400);
+
+// Live-poll for new incoming messages every few seconds, so the other
+// person's replies show up without needing a manual page refresh.
+let LAST_MSG_ID = {{ messages_qs.last.pk|default:0 }};
+const AV_COLOURS_POLL = ['#d4700a','#2563eb','#16a34a','#9333ea','#dc2626','#0891b2','#ca8a04','#be185d'];
+async function pollConversation(){
+  try{
+    const r = await fetch(`/messages/${ACTIVE_USER_ID}/poll/?after=${LAST_MSG_ID}`);
+    if(!r.ok) return;
+    const d = await r.json();
+    if(!d.messages.length) return;
+    const box = document.getElementById('chat-messages');
+    for(const m of d.messages){
+      LAST_MSG_ID = m.id;
+      if(m.is_me) continue;  // our own sends are already appended at send-time
+      const parts = m.sender.split(' ');
+      const initials = parts.length > 1 ? (parts[0][0] + parts[parts.length-1][0]).toUpperCase() : parts[0][0].toUpperCase();
+      const colour = window.userColour ? window.userColour({{ active_user.pk }}) : AV_COLOURS_POLL[{{ active_user.pk }} % 8];
+      const div = document.createElement('div');
+      div.style.cssText = 'display:flex;align-items:flex-end;gap:.5rem;';
+      div.innerHTML = `<div class="chat-av" style="width:28px;height:28px;font-size:.58rem;flex-shrink:0;margin-bottom:4px;background:${colour};">${initials}</div><div><div class="msg-bubble msg-them">${m.text}</div><div class="msg-meta">${m.timestamp}</div></div>`;
+      box.appendChild(div);
+    }
+    box.scrollTop = box.scrollHeight;
+  }catch(e){ /* network blip — just try again next interval */ }
+}
+setInterval(pollConversation, 3000);
 {% endif %}
 </script>
 {% endblock %}

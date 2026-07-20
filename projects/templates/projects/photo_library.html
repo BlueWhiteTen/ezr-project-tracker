@@ -1,0 +1,58 @@
+{% extends 'projects/base.html' %}
+{% block title %}Photo Library — Project Tracker{% endblock %}
+{% block extra_style %}
+.lib-search{max-width:420px;margin-bottom:1.4rem;}
+.lib-search input{width:100%;border:1px solid var(--bdr);border-radius:var(--rad);padding:.6rem .9rem;font-family:var(--f);font-size:.9rem;background:var(--surf);color:var(--txt);}
+.folder-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1.2rem;}
+.folder-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);text-decoration:none;color:inherit;display:block;transition:box-shadow .15s,transform .15s;}
+.folder-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
+.folder-cover{position:relative;height:150px;background:var(--surf2);}
+.folder-cover img{width:100%;height:100%;object-fit:cover;display:block;}
+.folder-count{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.65);color:#fff;font-size:.72rem;font-weight:600;padding:2px 9px;border-radius:99px;}
+.folder-body{padding:.8rem .9rem;}
+.folder-name{font-weight:600;font-size:.92rem;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.folder-meta{font-size:.74rem;color:var(--mut);margin-top:2px;}
+.lib-empty{color:var(--mut2);font-size:.9rem;padding:2rem 0;text-align:center;}
+{% endblock %}
+{% block content %}
+<h1 style="font-size:1.5rem;font-weight:700;margin-bottom:.4rem;">📷 Photo Library</h1>
+<p style="color:var(--mut);font-size:.9rem;margin-bottom:1.2rem;">As-built photos from installation reports, one folder per project.</p>
+
+<a href="{% url 'quote_photos_list' %}" style="display:flex;align-items:center;gap:.8rem;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow);padding:.9rem 1.2rem;margin-bottom:1.4rem;text-decoration:none;color:inherit;transition:box-shadow .15s;max-width:420px;">
+  <div style="font-size:1.6rem;">🗂</div>
+  <div style="flex:1;">
+    <div style="font-weight:600;font-size:.95rem;">Quote Photos</div>
+    <div style="font-size:.78rem;color:var(--mut);">{{ quote_photo_count }} photo{{ quote_photo_count|pluralize }} in the quote library</div>
+  </div>
+  <div style="color:var(--mut2);">→</div>
+</a>
+
+<form class="lib-search" method="get">
+  <input type="text" name="q" value="{{ query }}" placeholder="Search by project, customer or location…" onchange="this.form.submit()">
+</form>
+
+{% if folders %}
+<div class="folder-grid">
+  {% for f in folders %}
+  <a href="{% url 'photo_library_project' f.project.pk %}" class="folder-card">
+    <div class="folder-cover">
+      <img src="{% url 'report_photo_file' f.cover.pk %}" alt="{{ f.project.project_name }}">
+      <span class="folder-count">{{ f.count }} photo{{ f.count|pluralize }}</span>
+    </div>
+    <div class="folder-body">
+      <div class="folder-name">{{ f.project.project_name }}</div>
+      <div class="folder-meta">{{ f.project.customer }}{% if f.project.location %} · {{ f.project.location }}{% endif %}</div>
+      <div class="folder-meta">
+        {% if f.project.project_number %}Ref {{ f.project.project_number }}{% if f.project.sales_order %} · SO {{ f.project.sales_order }}{% endif %}{% elif f.project.sales_order %}SO {{ f.project.sales_order }}{% endif %}
+      </div>
+      <div class="folder-meta">Uploaded {{ f.updated_at|date:"d M Y" }}</div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="lib-empty">
+  {% if query %}No projects found for "{{ query }}".{% else %}No installation photos uploaded yet.{% endif %}
+</div>
+{% endif %}
+{% endblock %}

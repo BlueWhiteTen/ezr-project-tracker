@@ -11,8 +11,10 @@
 .leg{display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--txt2);}
 .leg-dot{width:9px;height:9px;border-radius:50%;}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--bdr);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);}
+.container:has(.cal-grid){max-width:1760px;}
+.cal-event{min-width:0;}
 .cal-dow{background:var(--surf2);padding:.65rem;text-align:center;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);}
-.cal-day{background:var(--surf);min-height:110px;padding:.65rem .7rem;transition:background .12s;position:relative;vertical-align:top;}
+.cal-day{background:var(--surf);min-height:165px;padding:.65rem .7rem;transition:background .12s;position:relative;vertical-align:top;}
 .cal-day.has-events{cursor:pointer;}
 .cal-day.has-events:hover{background:var(--surf2);}
 .cal-day.other-month{background:var(--surf2);}
@@ -25,6 +27,8 @@
 .cal-event-leave{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;}
 [data-theme="dark"] .cal-event-leave{background:rgba(22,163,74,.1);color:#4ade80;border-color:rgba(74,222,128,.25);}
 .cal-event-inst{background:var(--grn-bg);color:var(--grn);border:1px solid rgba(22,163,74,.2);}
+.cal-event-both{background:#ede9fe;color:#7c3aed;border:1px solid #ddd6fe;}
+[data-theme="dark"] .cal-event-both{background:rgba(124,58,237,.15);color:#a78bfa;border-color:rgba(167,139,250,.3);}
 .cal-event-more{font-size:.68rem;color:var(--mut);padding:1px 4px;cursor:pointer;}
 /* Day popup */
 .dp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s;}
@@ -74,9 +78,9 @@
     <a href="?year={{ today.year }}&month={{ today.month }}" class="cal-nav-btn" style="font-size:.82rem;padding:6px 10px;">Today</a>
   </div>
   <div class="cal-legend">
-    <div class="leg"><div class="leg-dot" style="background:var(--acc)"></div>Delivery</div>
-    <div class="leg"><div class="leg-dot" style="background:var(--grn)"></div>Installation</div>
-    <div class="leg"><div class="leg-dot" style="background:#16a34a;opacity:.6"></div>Leave</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--acc)"></div>D — Delivery</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--grn)"></div>I — Installation</div>
+    <div class="leg"><div class="leg-dot" style="background:#7c3aed"></div>D + I — Both</div>
   </div>
 </div>
 
@@ -94,14 +98,12 @@
     onclick="openDay('{{ day.date|date:'Y-m-d' }}', '{{ day.date|date:'l, d F Y' }}')">
     <div class="cal-day-num">{{ day.date|date:"j" }}</div>
     <div class="cal-events">
-      {% for e in day.events|slice:":3" %}
-        <div class="cal-event {% if e.type == 'delivery' %}cal-event-del{% else %}cal-event-inst{% endif %}">
-          {{ e.name }}
+      {% for e in day.events %}
+        <div class="cal-event {% if e.type == 'delivery' %}cal-event-del{% elif e.type == 'both' %}cal-event-both{% else %}cal-event-inst{% endif %}" style="display:flex;justify-content:space-between;align-items:center;gap:4px;">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ e.customer|default:e.name }}{% if e.location %} — {{ e.location }}{% endif %}</span>
+          <strong style="flex-shrink:0;">{{ e.badge }}</strong>
         </div>
       {% endfor %}
-      {% if day.events|length > 3 %}
-        <div class="cal-event-more">+{{ day.events|length|add:"-3" }} more</div>
-      {% endif %}
     </div>
   </div>
   {% endfor %}
@@ -163,15 +165,23 @@ function openDay(dateStr, dateLabel){
   const body = document.getElementById('dp-body');
   let html = '';
   if(events.length){
-    html += events.map(e=>`
-      <div class="dp-item ${e.type==='leave'?'':''}" ${e.pk?`onclick="window.location='/project/${e.pk}/edit/'"`:''} style="${e.type==='leave'?'cursor:default;':''}">
-        <span class="dp-type ${e.type==='delivery'?'dp-type-del':e.type==='leave'?'dp-type-inst':'dp-type-inst'}" style="${e.type==='leave'?'background:var(--grn-bg);color:var(--grn);border-color:rgba(22,163,74,.2);':''}">${e.type==='delivery'?'Delivery':e.type==='leave'?'🏖 Leave':'Install'}</span>
+    html += events.map(e=>{
+      const typeLabel = e.type==='delivery'?'Delivery':e.type==='both'?'Delivery + Installation':e.type==='leave'?'🏖 Leave':'Installation';
+      const typeStyle = e.type==='delivery'
+        ? 'background:var(--acc-bg);color:var(--acc);border-color:var(--acc-bdr);'
+        : e.type==='both'
+          ? 'background:#ede9fe;color:#7c3aed;border-color:#ddd6fe;'
+          : 'background:var(--grn-bg);color:var(--grn);border-color:rgba(22,163,74,.2);';
+      return `
+      <div class="dp-item" ${e.pk?`onclick="window.location='/project/${e.pk}/edit/'"`:''}>
+        <span class="dp-type" style="${typeStyle}">${typeLabel}</span>
         <div>
           <div class="dp-name">${e.name}</div>
           <div class="dp-sub">${e.customer}${e.location?' · '+e.location:''}</div>
           <div class="dp-sub">${e.status_label}</div>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   } else {
     html += '<div class="dp-empty">No projects on this date</div>';
   }

@@ -23,6 +23,7 @@
   {% if tmpl.customer %}<span style="font-size:.85rem;color:var(--mut);">{{ tmpl.customer }}</span>{% endif %}
   <div style="display:flex;gap:.5rem;margin-left:auto;">
     <button class="btn btn-primary btn-sm" onclick="saveTemplateName()">Save Template</button>
+    <button class="btn btn-ghost btn-sm" onclick="saveAsNew()">Save as New</button>
     <button class="btn btn-danger btn-sm" onclick="deleteTemplate()">Delete Template</button>
   </div>
 </div>
@@ -42,12 +43,12 @@
         <td><span style="background:var(--acc-bg);color:var(--acc);border:1px solid var(--acc-bdr);border-radius:4px;padding:1px 6px;font-size:.72rem;font-weight:700;">NS</span></td>
         <td></td>
         <td>{{ item.ns_description }}</td>
-        <td style="text-align:right;font-weight:600;">{{ item.quantity|floatformat:0 }}</td>
+        <td style="text-align:right;"><input type="number" min="0" step="1" value="{{ item.quantity|floatformat:0 }}" data-pk="{{ item.pk }}" onchange="saveQty(this)" style="width:70px;text-align:right;border:1px solid var(--bdr);border-radius:5px;padding:3px 6px;background:var(--surf2);color:var(--txt);font-weight:600;"></td>
         {% else %}
         <td><span style="font-size:.7rem;color:var(--grn);font-weight:600;">STOCK</span></td>
         <td><span class="code">{{ item.product.code }}</span></td>
         <td>{{ item.product.description }}</td>
-        <td style="text-align:right;font-weight:600;">{{ item.quantity|floatformat:0 }}</td>
+        <td style="text-align:right;"><input type="number" min="0" step="1" value="{{ item.quantity|floatformat:0 }}" data-pk="{{ item.pk }}" onchange="saveQty(this)" style="width:70px;text-align:right;border:1px solid var(--bdr);border-radius:5px;padding:3px 6px;background:var(--surf2);color:var(--txt);font-weight:600;"></td>
         {% endif %}
         <td style="text-align:right;"><button onclick="deleteItem({{ item.pk }})" style="background:none;border:none;color:var(--mut);cursor:pointer;padding:2px 6px;border-radius:4px;font-size:.9rem;">✕</button></td>
       </tr>
@@ -91,6 +92,13 @@
 <script>
 const CSRF = '{{ csrf_token }}';
 const TMPL_PK = {{ tmpl.pk }};
+async function saveAsNew(){
+  const name = prompt('Save this template as a new one. Enter a name:', '{{ tmpl.name }} (copy)');
+  if(!name || !name.trim()) return;
+  const r = await fetch(`/templates/${TMPL_PK}/duplicate/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({name:name.trim()})});
+  const d = await r.json();
+  if(d.ok){ window.location = `/templates/${d.id}/`; } else { alert(d.error||'Failed'); }
+}
 let selProduct = null;
 let prodResults = [];
 let ddIdx = -1;
@@ -203,6 +211,14 @@ function addRow(type, pk, code, desc, qty){
 async function deleteItem(pk){
   await fetch(`/templates/${TMPL_PK}/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({action:'delete_item',item_pk:pk})});
   document.getElementById(`trow-${pk}`)?.remove();
+}
+
+async function saveQty(inp){
+  const qty = parseFloat(inp.value)||0;
+  inp.style.borderColor = '#d4700a';
+  const r = await fetch(`/templates/${TMPL_PK}/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({action:'update_qty',item_pk:inp.dataset.pk,quantity:qty})});
+  if((await r.json()).ok){ inp.style.borderColor='#16a34a'; setTimeout(()=>inp.style.borderColor='',1000); }
+  else { inp.style.borderColor='#dc2626'; }
 }
 
 async function saveTemplateName(){

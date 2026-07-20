@@ -4,8 +4,8 @@
 {% block extra_style %}
 .page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem;}
 .staff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.1rem;}
-.staff-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.4rem;box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;text-align:center;gap:.6rem;transition:border-color .15s;}
-.staff-card:hover{border-color:var(--acc);}
+.staff-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.4rem;box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;text-align:center;gap:.6rem;transition:border-color .15s,transform .15s,box-shadow .15s;cursor:pointer;text-decoration:none;}
+.staff-card:hover{border-color:var(--acc);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.15);}
 .staff-av{width:56px;height:56px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;box-shadow:0 0 0 3px #fff,0 0 0 5px rgba(0,0,0,.1);}
 [data-theme="dark"] .staff-av{box-shadow:0 0 0 3px var(--surf),0 0 0 5px rgba(255,255,255,.15);}
 .staff-name{font-size:1rem;font-weight:600;color:var(--txt);}
@@ -20,9 +20,9 @@
 </div>
 <div class="staff-grid">
   {% for u in users %}
-  <div class="staff-card">
+  <a href="{% url 'staff_profile' u.pk %}" class="staff-card">
     <div class="staff-av" style="background:{{ u.pk|avatar_colour }};">
-      {{ u.get_full_name|default:u.username|slice:":2"|upper }}
+      {% with n=u.get_full_name|default:u.username %}{% with p=n.split %}{{ p.0|slice:":1"|upper }}{% if p|length > 1 %}{{ p|last|slice:":1"|upper }}{% endif %}{% endwith %}{% endwith %}
     </div>
     <div class="staff-name">{{ u.get_full_name|default:u.username }}</div>
     {% if u.profile.role %}<div class="staff-role">{{ u.profile.role }}</div>{% endif %}
@@ -30,8 +30,7 @@
       {% if u.profile.phone %}<span>📞 {{ u.profile.phone }}</span>{% endif %}
       <span>✉ {{ u.email }}</span>
     </div>
-    <a href="{% url 'staff_profile' u.pk %}" class="btn btn-ghost btn-sm staff-btn">View Profile</a>
-  </div>
+  </a>
   {% endfor %}
 </div>
 {% endblock %}

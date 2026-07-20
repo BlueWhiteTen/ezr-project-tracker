@@ -1,0 +1,157 @@
+{% extends 'projects/base.html' %}
+{% block title %}Suppliers — Project Tracker{% endblock %}
+{% block extra_style %}
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.3rem;flex-wrap:wrap;gap:1rem;}
+.search-row{display:flex;gap:.6rem;margin-bottom:1.3rem;}
+.cust-list{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);}
+.cust-row{display:flex;align-items:center;gap:1rem;padding:.35rem 1.2rem;border-bottom:.5px solid var(--bdr);transition:background .12s;}
+.cust-row:last-child{border-bottom:none;}
+.cust-row:hover{background:var(--surf2);}
+.cust-name{font-size:.9rem;font-weight:600;color:var(--txt);min-width:180px;}
+.cust-contact{font-size:.82rem;color:var(--mut);flex:1;}
+.cust-phone{font-size:.82rem;color:var(--mut);min-width:130px;}
+.cust-letter{background:var(--surf2);padding:.2rem 1.2rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);border-bottom:1px solid var(--bdr);}
+.nc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s;}
+.nc-overlay.open{opacity:1;pointer-events:all;}
+.nc-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-58%);width:480px;max-width:95vw;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);z-index:201;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
+.nc-modal.open{opacity:1;pointer-events:all;transform:translate(-50%,-50%);}
+.nc-head{padding:1rem 1.3rem;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;background:var(--surf2);border-radius:var(--rad-lg) var(--rad-lg) 0 0;}
+.nc-body{padding:1.3rem;display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
+.nc-foot{padding:.85rem 1.3rem;border-top:1px solid var(--bdr);display:flex;gap:.5rem;justify-content:flex-end;}
+.close-btn{background:transparent;border:1px solid var(--bdr);border-radius:var(--rad);color:var(--mut);font-size:.9rem;cursor:pointer;padding:3px 9px;}
+.close-btn:hover{background:var(--red-bg);color:var(--red);}
+{% endblock %}
+{% block content %}
+<div class="page-hdr">
+  <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">Suppliers</h1>
+  <div style="display:flex;gap:.5rem;">
+    <label class="btn btn-ghost" style="cursor:pointer;">📥 Import from Sage<input type="file" accept=".xlsx" onchange="importSuppliers(this)" style="display:none;"></label>
+    <button class="btn btn-primary" onclick="openNew()">+ New Supplier</button>
+  </div>
+</div>
+<form method="get" class="search-row">
+  <input class="form-input" name="q" value="{{ query }}" placeholder="Search name, contact, email, account…" style="max-width:360px;">
+  <button class="btn btn-ghost btn-sm" type="submit">Search</button>
+  {% if query %}<a href="{% url 'supplier_list' %}" class="btn btn-ghost btn-sm">Clear</a>{% endif %}
+</form>
+<div class="cust-list">
+  {% if suppliers %}
+  {% regroup suppliers by name.0|upper as by_letter %}
+  {% for letter_group in by_letter %}
+  <div class="cust-letter">{{ letter_group.grouper }}</div>
+  {% for s in letter_group.list %}
+  <div class="cust-row">
+    <a href="{% url 'supplier_detail' s.pk %}" class="cust-name" style="text-decoration:none;color:inherit;">{{ s.name }}</a>
+    <div class="cust-contact">{% if s.contact_name %}{{ s.contact_name }}{% endif %}{% if s.contact_name and s.email %} · {% endif %}{% if s.email %}{{ s.email }}{% endif %}</div>
+    <div class="cust-phone">{% if s.phone %}{{ s.phone }}{% endif %}</div>
+    <a href="{% url 'supplier_detail' s.pk %}" class="btn btn-ghost btn-sm">View</a>
+  </div>
+  {% endfor %}
+  {% endfor %}
+  {% else %}
+  <div style="text-align:center;padding:3rem;color:var(--mut);">
+    {% if query %}No suppliers found for "{{ query }}"{% else %}No suppliers yet — click + New Supplier to add one{% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<div class="nc-overlay" id="nc-overlay" onclick="closeNew()"></div>
+<div class="nc-modal" id="nc-modal">
+  <div class="nc-head">
+    <span style="font-weight:600;">New Supplier</span>
+    <button class="close-btn" onclick="closeNew()">✕</button>
+  </div>
+  <div class="nc-body">
+    <div class="form-group" style="grid-column:1/-1;margin-bottom:0;">
+      <label class="form-label">Supplier Name *</label>
+      <input class="form-input" id="nc-name" type="text" placeholder="e.g. Trimline Supplies Ltd">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Contact Name</label>
+      <input class="form-input" id="nc-contact" type="text">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Phone</label>
+      <input class="form-input" id="nc-phone" type="text">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Email</label>
+      <input class="form-input" id="nc-email" type="email">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Payment Terms</label>
+      <input class="form-input" id="nc-terms" type="text" placeholder="e.g. 30 days">
+    </div>
+    <div class="form-group" style="grid-column:1/-1;margin-bottom:0;">
+      <label class="form-label">Address Line 1</label>
+      <input class="form-input" id="nc-addr1" type="text">
+    </div>
+    <div class="form-group" style="grid-column:1/-1;margin-bottom:0;">
+      <label class="form-label">Address Line 2</label>
+      <input class="form-input" id="nc-addr2" type="text">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Town</label>
+      <input class="form-input" id="nc-town" type="text">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">County</label>
+      <input class="form-input" id="nc-county" type="text">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Post Code</label>
+      <input class="form-input" id="nc-postcode" type="text">
+    </div>
+    <div style="grid-column:1/-1;font-size:.75rem;color:var(--mut);">Account number is generated automatically from the supplier name.</div>
+    <div id="nc-error" style="grid-column:1/-1;color:var(--red);font-size:.82rem;display:none;"></div>
+  </div>
+  <div class="nc-foot">
+    <button onclick="closeNew()" class="btn btn-ghost btn-sm">Cancel</button>
+    <button onclick="submitNew()" class="btn btn-primary btn-sm">Create</button>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+async function importSuppliers(inp){
+  const f = inp.files[0];
+  if(!f) return;
+  if(!confirm(`Import suppliers from "${f.name}"? Existing suppliers (matched by account number or name) will be updated; new ones will be created.`)) { inp.value=''; return; }
+  const fd = new FormData(); fd.append('file', f);
+  const r = await fetch('{% url "supplier_import" %}', {method:'POST', headers:{'X-CSRFToken':CSRF}, body:fd});
+  const d = await r.json();
+  if(d.ok){
+    alert(`Import complete.\n\nCreated: ${d.created}\nUpdated: ${d.updated}\nSkipped (no name): ${d.skipped}`);
+    location.reload();
+  } else {
+    alert(d.error || 'Import failed');
+  }
+  inp.value='';
+}
+function openNew(){ document.getElementById('nc-overlay').classList.add('open'); document.getElementById('nc-modal').classList.add('open'); setTimeout(()=>document.getElementById('nc-name').focus(),100); }
+function closeNew(){ document.getElementById('nc-overlay').classList.remove('open'); document.getElementById('nc-modal').classList.remove('open'); }
+async function submitNew(){
+  const name = document.getElementById('nc-name').value.trim();
+  const err = document.getElementById('nc-error');
+  if(!name){err.textContent='Supplier name is required';err.style.display='block';return;}
+  const payload = {
+    name,
+    contact_name: document.getElementById('nc-contact').value.trim(),
+    phone: document.getElementById('nc-phone').value.trim(),
+    email: document.getElementById('nc-email').value.trim(),
+    payment_terms: document.getElementById('nc-terms').value.trim(),
+    address_line1: document.getElementById('nc-addr1').value.trim(),
+    address_line2: document.getElementById('nc-addr2').value.trim(),
+    town: document.getElementById('nc-town').value.trim(),
+    county: document.getElementById('nc-county').value.trim(),
+    postcode: document.getElementById('nc-postcode').value.trim(),
+  };
+  const r = await fetch('/suppliers/new/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify(payload)});
+  const d = await r.json();
+  if(d.error){err.textContent=d.error;err.style.display='block';return;}
+  window.location = `/suppliers/${d.id}/`;
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeNew();});
+</script>
+{% endblock %}

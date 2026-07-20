@@ -33,6 +33,7 @@
       <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:.65rem;">Sign In</button>
     </form>
     <div class="auth-switch">Don't have an account? <a href="{% url 'register' %}">Register here</a></div>
+    <div class="auth-switch"><a href="{% url 'password_reset' %}">Forgot your password?</a></div>
   </div>
 </div>
 {% endblock %}

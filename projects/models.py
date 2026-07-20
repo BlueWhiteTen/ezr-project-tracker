@@ -19,9 +19,24 @@ class Project(models.Model):
         ('quoted',       'Quoted'),
         ('order_received','Order Received'),
         ('processed',    'Processed'),
+        ('part_delivered','Part Delivered'),
         ('completed',    'Completed'),
         ('on_hold',      'On Hold'),
         ('cancelled',    'Cancelled'),
+    ]
+
+    PAYMENT_CHOICES = [
+        ('account',  'On Account'),
+        ('proforma', 'Proforma'),
+        ('bacs',     'BACs'),
+        ('chaps',    'CHAPs'),
+        ('sagepay',  'Sagepay'),
+        ('paypal',   'PayPal'),
+        ('cc',       'CC'),
+        ('dc',       'DC'),
+        ('chq',      'CHQ'),
+        ('cash',     'Cash'),
+        ('cod',      'COD'),
     ]
 
     INSTALL_DATE_TYPE = [('exact','Exact Date'),('month','Month')]
@@ -32,7 +47,9 @@ class Project(models.Model):
     location       = models.CharField(max_length=300, blank=True)
     description    = models.CharField(max_length=300, blank=True)
     status         = models.CharField(max_length=30, choices=STATUS_CHOICES, default='enquiry')
+    payment_method = models.CharField(max_length=20, blank=True, choices=PAYMENT_CHOICES)
     sales_order    = models.CharField(max_length=5, blank=True)
+    project_number = models.PositiveIntegerField(null=True, blank=True, unique=True, db_index=True)
     drawing_number = models.CharField(max_length=100, blank=True)
 
     delivery_required = models.BooleanField(default=False)
@@ -58,6 +75,7 @@ class Project(models.Model):
     addr_city     = models.CharField(max_length=100, blank=True)
     addr_county   = models.CharField(max_length=100, blank=True)
     addr_postcode = models.CharField(max_length=20, blank=True)
+    addr_country  = models.CharField(max_length=60, blank=True, default='United Kingdom')
     addr_fao      = models.CharField(max_length=200, blank=True)
     addr_phone    = models.CharField(max_length=30, blank=True)
     last_edited_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='edited_projects')
@@ -89,8 +107,29 @@ class Project(models.Model):
                 return date(y, m, 1)
         return None
 
+    ORDER_STATUSES = ('order_received', 'processed', 'part_delivered', 'completed')
+
+    @property
+    def is_order(self):
+        """True once the project has progressed to Order Received or later
+        (including completed). Cancelled never counts as an order."""
+        return self.status in self.ORDER_STATUSES
+
+    @property
+    def accepted_cost(self):
+        """Return the accepted costing option, or None."""
+        return self.costs.filter(is_accepted=True).first()
+
+    @property
+    def cost(self):
+        """Backward-compat: return the first/accepted cost option.
+        Replaces the old OneToOne accessor."""
+        return self.accepted_cost or self.costs.first()
+
     def get_traffic_light(self):
         from datetime import date
+        if self.status in ('completed', 'on_hold', 'cancelled'):
+            return 'done'
         d = self.get_effective_installation_date()
         if not d:
             d = self.delivery_date if self.delivery_required else None
@@ -182,6 +221,7 @@ class Reminder(models.Model):
     message     = models.CharField(max_length=300)
     remind_at   = models.DateTimeField()
     sent        = models.BooleanField(default=False)
+    dismissed   = models.BooleanField(default=False)
     created_at  = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -204,10 +244,29 @@ class TeamMessage(models.Model):
 
 
 class StaffProfile(models.Model):
-    user  = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
-    role  = models.CharField(max_length=100, blank=True)
-    phone = models.CharField(max_length=20, blank=True)
-    bio   = models.TextField(blank=True)
+    COLOUR_CHOICES = [
+        ('#d4700a', 'Orange'),
+        ('#2563eb', 'Blue'),
+        ('#16a34a', 'Green'),
+        ('#9333ea', 'Purple'),
+        ('#dc2626', 'Red'),
+        ('#0891b2', 'Cyan'),
+        ('#ca8a04', 'Yellow'),
+        ('#be185d', 'Pink'),
+        ('#0f766e', 'Teal'),
+        ('#1d4ed8', 'Dark Blue'),
+        ('#7c3aed', 'Violet'),
+        ('#b45309', 'Brown'),
+        ('#374151', 'Slate'),
+        ('#db2777', 'Fuchsia'),
+        ('#059669', 'Emerald'),
+        ('#9f1239', 'Rose'),
+    ]
+    user   = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    role   = models.CharField(max_length=100, blank=True)
+    phone  = models.CharField(max_length=20, blank=True)
+    bio    = models.TextField(blank=True)
+    colour = models.CharField(max_length=7, blank=True, help_text='Hex colour for avatar')
 
     def __str__(self):
         return f"{self.user.get_full_name()} — {self.role}"
@@ -258,23 +317,44 @@ class InstallationReport(models.Model):
 
 class ReportPhoto(models.Model):
     report    = models.ForeignKey(InstallationReport, on_delete=models.CASCADE, related_name='photos')
-    image     = models.ImageField(upload_to='report_photos/')
+    image     = models.ImageField(upload_to='report_photos/', null=True, blank=True)
+    file_data = models.BinaryField(null=True, blank=True)
+    file_mime = models.CharField(max_length=100, blank=True)
+    file_original_name = models.CharField(max_length=200, blank=True)
     caption   = models.CharField(max_length=200, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
 
 class SatisfactionNote(models.Model):
     report    = models.ForeignKey(InstallationReport, on_delete=models.CASCADE, related_name='satisfaction_notes')
-    file      = models.FileField(upload_to='satisfaction_notes/')
+    file      = models.FileField(upload_to='satisfaction_notes/', null=True, blank=True)
+    file_data = models.BinaryField(null=True, blank=True)
+    file_mime = models.CharField(max_length=100, blank=True)
+    file_original_name = models.CharField(max_length=200, blank=True)
     caption   = models.CharField(max_length=200, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def is_pdf(self):
+        return (self.file_mime or '').lower() == 'application/pdf' or (self.file_original_name or '').lower().endswith('.pdf')
 
 
 class CustomerProfile(models.Model):
     name         = models.CharField(max_length=200, unique=True)
+    account_number = models.CharField(max_length=100, blank=True, help_text='Sage customer account reference')
     contact_name = models.CharField(max_length=200, blank=True)
     email        = models.EmailField(blank=True)
+    email2       = models.EmailField(blank=True)
+    email3       = models.EmailField(blank=True)
     phone        = models.CharField(max_length=30, blank=True)
+    vat_number   = models.CharField(max_length=40, blank=True)
+    eori_number  = models.CharField(max_length=40, blank=True)
+    address_line1  = models.CharField(max_length=200, blank=True)
+    address_line2  = models.CharField(max_length=200, blank=True)
+    town           = models.CharField(max_length=100, blank=True)
+    county         = models.CharField(max_length=100, blank=True)
+    postcode       = models.CharField(max_length=20, blank=True)
+    country        = models.CharField(max_length=60, blank=True, default='United Kingdom')
     address      = models.TextField(blank=True)
     notes            = models.TextField(blank=True)
     important_notes  = models.TextField(blank=True)
@@ -283,6 +363,51 @@ class CustomerProfile(models.Model):
 
     class Meta:
         ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class Supplier(models.Model):
+    name           = models.CharField(max_length=200, unique=True)
+    contact_name   = models.CharField(max_length=200, blank=True)
+    email          = models.EmailField(blank=True)
+    phone          = models.CharField(max_length=30, blank=True)
+    address_line1  = models.CharField(max_length=200, blank=True)
+    address_line2  = models.CharField(max_length=200, blank=True)
+    town           = models.CharField(max_length=100, blank=True)
+    county         = models.CharField(max_length=100, blank=True)
+    postcode       = models.CharField(max_length=20, blank=True)
+    address        = models.TextField(blank=True)   # legacy / combined
+    account_number = models.CharField(max_length=100, blank=True)
+    payment_terms  = models.CharField(max_length=100, blank=True)   # e.g. "30 days"
+    lead_time_days = models.PositiveIntegerField(default=0)
+    notes          = models.TextField(blank=True)
+    created_at     = models.DateTimeField(auto_now_add=True)
+    updated_at     = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def save(self, *args, **kwargs):
+        if not self.account_number and self.name:
+            # First 4 letters (A-Z only) uppercased + sequential 3-digit suffix
+            prefix = ''.join(c for c in self.name.upper() if c.isalpha())[:4]
+            if not prefix:
+                prefix = 'XXXX'
+            existing = Supplier.objects.filter(account_number__startswith=prefix)
+            if self.pk:
+                existing = existing.exclude(pk=self.pk)
+            n = 1
+            used = set()
+            for s in existing:
+                suffix = s.account_number[len(prefix):]
+                if suffix.isdigit():
+                    used.add(int(suffix))
+            while n in used:
+                n += 1
+            self.account_number = f'{prefix}{n:03d}'
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -351,6 +476,10 @@ class PickingList(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     dispatched_at = models.DateTimeField(null=True, blank=True)
+    allocated     = models.BooleanField(default=False)
+    allocated_at  = models.DateTimeField(null=True, blank=True)
+    allocated_by  = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='picking_lists_allocated')
+    templates_used = models.ManyToManyField('PickingTemplate', blank=True, related_name='used_in_picking_lists')
 
     class Meta:
         ordering = ['-created_at']
@@ -464,7 +593,10 @@ class AccessoryOverride(models.Model):
 
 
 class ProjectCost(models.Model):
-    project     = models.OneToOneField(Project, on_delete=models.CASCADE, related_name='cost')
+    project     = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='costs')
+    label       = models.CharField(max_length=100, default='Option A')
+    is_accepted = models.BooleanField(default=False)
+    order       = models.PositiveSmallIntegerField(default=0)
     wall_fixings         = models.PositiveIntegerField(default=0)
     back_to_back_fixings = models.PositiveIntegerField(default=0)
     mobile_base_sets     = models.PositiveIntegerField(default=0)
@@ -476,8 +608,11 @@ class ProjectCost(models.Model):
     updated_by  = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
     accessories = models.ManyToManyField('UprightAccessory', blank=True)
 
+    class Meta:
+        ordering = ['order', 'id']
+
     def __str__(self):
-        return f"Cost for {self.project}"
+        return f"{self.label} — {self.project}"
 
 
 class ProjectCostLine(models.Model):
@@ -494,9 +629,17 @@ class ProjectCostLine(models.Model):
         ('toptie',  'Top Tie'),
         ('beams',   'Beams'),
         ('extras',  'Extras'),
+        ('ls_frame','LS Frame'),
+        ('ls_shelf','LS Shelf'),
+        ('ls_trolley','LS Trolley'),
+    ]
+    PRODUCT_LINES = [
+        ('trimline', 'Trimline'),
+        ('longspan', 'Longspan'),
     ]
     cost       = models.ForeignKey(ProjectCost, on_delete=models.CASCADE, related_name='lines')
-    line_type  = models.CharField(max_length=10, choices=LINE_TYPES)
+    line_type  = models.CharField(max_length=12, choices=LINE_TYPES)
+    product_line = models.CharField(max_length=10, choices=PRODUCT_LINES, default='trimline')
     description= models.CharField(max_length=300)
     # Frame/shelf specifics
     size       = models.CharField(max_length=50, blank=True)   # e.g. '120" x 24"'
@@ -514,3 +657,311 @@ class ProjectCostLine(models.Model):
     @property
     def line_total(self):
         return float(self.quantity) * float(self.unit_cost)
+
+
+class PurchaseOrder(models.Model):
+    STATUS_CHOICES = [
+        ('draft',     'Draft'),
+        ('sent',      'Sent'),
+        ('confirmed', 'Confirmed'),
+        ('part_received', 'Partially Received'),
+        ('received',  'Received'),
+        ('cancelled', 'Cancelled'),
+    ]
+    po_number      = models.CharField(max_length=30, unique=True, blank=True)
+    supplier       = models.ForeignKey(Supplier, on_delete=models.PROTECT, related_name='purchase_orders')
+    project        = models.ForeignKey(Project, null=True, blank=True, on_delete=models.SET_NULL, related_name='purchase_orders')
+    status         = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    order_date     = models.DateField(null=True, blank=True)
+    expected_date  = models.DateField(null=True, blank=True)  # "Required Delivery" — what we asked for
+    quote_number   = models.CharField(max_length=100, blank=True)  # supplier's quote ref, shown on printout
+    acknowledged_date = models.DateField(null=True, blank=True)    # "Expected Delivery" — supplier-confirmed
+    ack_reference  = models.CharField(max_length=100, blank=True)  # supplier's acknowledgement/sales order number
+    notes          = models.TextField(blank=True)
+    delivery_address  = models.TextField(blank=True)  # legacy, kept for compatibility
+    del_company       = models.CharField(max_length=200, blank=True)
+    del_line1         = models.CharField(max_length=200, blank=True)
+    del_line2         = models.CharField(max_length=200, blank=True)
+    del_city          = models.CharField(max_length=100, blank=True)
+    del_county        = models.CharField(max_length=100, blank=True)
+    del_postcode      = models.CharField(max_length=20, blank=True)
+    del_contact       = models.CharField(max_length=200, blank=True)
+    carriage          = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    locked         = models.BooleanField(default=False)
+    locked_at      = models.DateTimeField(null=True, blank=True)
+    locked_by      = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='pos_locked')
+    received       = models.BooleanField(default=False)
+    received_at    = models.DateTimeField(null=True, blank=True)
+    received_by    = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='pos_received')
+    status_before_receive = models.CharField(max_length=20, blank=True)  # for undo
+    created_by     = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='pos_created')
+    created_at     = models.DateTimeField(auto_now_add=True)
+    updated_at     = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.po_number} — {self.supplier.name}"
+
+    def save(self, *args, **kwargs):
+        if not self.po_number:
+            # PO-0001 style, based on max existing
+            last = PurchaseOrder.objects.exclude(po_number='').order_by('-id').first()
+            n = 1
+            if last and last.po_number.startswith('PO-'):
+                try:
+                    n = int(last.po_number.split('-')[1]) + 1
+                except (ValueError, IndexError):
+                    n = PurchaseOrder.objects.count() + 1
+            self.po_number = f'PO-{n:04d}'
+        super().save(*args, **kwargs)
+
+    @property
+    def lines_total(self):
+        return sum(line.line_total for line in self.lines.all())
+
+    @property
+    def total(self):
+        return round(self.lines_total + float(self.carriage), 2)
+
+    @property
+    def total_with_vat(self):
+        return round(self.total * 1.2, 2)
+
+
+class PurchaseOrderLine(models.Model):
+    LINE_TYPES = [
+        ('stock',   'Stock'),
+        ('ns',      'Non-Stock'),
+        ('message', 'Message'),
+    ]
+    purchase_order = models.ForeignKey(PurchaseOrder, on_delete=models.CASCADE, related_name='lines')
+    item_type      = models.CharField(max_length=10, choices=LINE_TYPES, default='stock')
+    product        = models.ForeignKey(Product, null=True, blank=True, on_delete=models.SET_NULL)
+    description    = models.CharField(max_length=300, blank=True)   # for non-stock / message
+    quantity       = models.DecimalField(max_digits=10, decimal_places=2, default=1)
+    qty_received   = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    unit_cost      = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    sort_order     = models.PositiveIntegerField(default=0)
+
+    @property
+    def qty_outstanding(self):
+        return max(float(self.quantity) - float(self.qty_received), 0)
+
+    @property
+    def is_fully_received(self):
+        if self.item_type == 'message':
+            return True
+        return float(self.qty_received) >= float(self.quantity)
+
+    class Meta:
+        ordering = ['sort_order', 'id']
+
+    @property
+    def line_total(self):
+        if self.item_type == 'message':
+            return 0
+        return round(float(self.quantity) * float(self.unit_cost), 2)
+
+    @property
+    def display_code(self):
+        return self.product.code if self.product else ('' if self.item_type == 'message' else 'NS')
+
+    @property
+    def display_desc(self):
+        return self.product.description if self.product else self.description
+
+
+class StockMovement(models.Model):
+    MOVEMENT_TYPES = [
+        ('received',   'Received (PO)'),
+        ('received_undo', 'Receipt Reversed'),
+        ('allocated',  'Allocated'),
+        ('deallocated','Allocation Released'),
+        ('dispatched', 'Dispatched / Sent'),
+        ('adjust',     'Manual Adjustment'),
+    ]
+    product        = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='movements')
+    purchase_order = models.ForeignKey(PurchaseOrder, null=True, blank=True, on_delete=models.SET_NULL, related_name='movements')
+    project        = models.ForeignKey(Project, null=True, blank=True, on_delete=models.SET_NULL, related_name='stock_movements')
+    movement_type  = models.CharField(max_length=20, choices=MOVEMENT_TYPES, default='adjust')
+    qty_change     = models.DecimalField(max_digits=10, decimal_places=2)  # + in, - out
+    reason         = models.CharField(max_length=200, blank=True)
+    user           = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    created_at     = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    @property
+    def direction(self):
+        return 'IN' if float(self.qty_change) >= 0 else 'OUT'
+
+    def __str__(self):
+        return f"{self.product.code} {self.qty_change:+} ({self.reason})"
+
+
+class FittingNote(models.Model):
+    title          = models.CharField(max_length=200)
+    products       = models.ManyToManyField(Product, related_name='fitting_notes', blank=True)
+    templates      = models.ManyToManyField(PickingTemplate, related_name='fitting_notes', blank=True)
+    file_data      = models.BinaryField(null=True, blank=True)
+    file_mime      = models.CharField(max_length=100, blank=True)
+    file_original_name = models.CharField(max_length=200, blank=True)
+    notes          = models.TextField(blank=True)
+    uploaded_by    = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    uploaded_at    = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['title']
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def is_pdf(self):
+        return (self.file_mime or '').lower() == 'application/pdf' or (self.file_original_name or '').lower().endswith('.pdf')
+
+class QuotePhoto(models.Model):
+    """A library photo for quotes, tagged with product codes. When a quote is
+    generated, photos whose codes appear in the costing are auto-suggested."""
+    title          = models.CharField(max_length=200)
+    codes          = models.TextField(blank=True, help_text="Comma or space separated product codes")
+    file_data      = models.BinaryField(null=True, blank=True)
+    file_mime      = models.CharField(max_length=100, blank=True)
+    file_original_name = models.CharField(max_length=200, blank=True)
+    uploaded_by    = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    uploaded_at    = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['title']
+
+    def __str__(self):
+        return self.title
+
+    def code_list(self):
+        import re
+        return [c.strip().upper() for c in re.split(r'[,\s]+', self.codes or '') if c.strip()]
+
+
+class ProjectQuote(models.Model):
+    cost           = models.OneToOneField('ProjectCost', on_delete=models.CASCADE, related_name='quote', null=True, blank=True)
+    project        = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='quotes', null=True, blank=True)
+    photos         = models.ManyToManyField(QuotePhoto, blank=True, related_name='quotes')
+    photo_columns  = models.PositiveSmallIntegerField(default=2)
+    intro          = models.TextField(blank=True)
+    greeting       = models.CharField(max_length=200, blank=True)
+    thank_you      = models.TextField(blank=True)
+    closing        = models.TextField(blank=True)
+    signature_name = models.CharField(max_length=200, blank=True)
+    quote_date     = models.CharField(max_length=100, blank=True)
+    address_block  = models.TextField(blank=True)
+    header_ref     = models.CharField(max_length=300, blank=True)
+    supply_line    = models.TextField(blank=True)
+    capacity       = models.TextField(blank=True)
+    bay_breakdown  = models.TextField(blank=True)
+    spec_note      = models.TextField(blank=True)
+    main_price     = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    main_price_label = models.CharField(max_length=200, default='Our price to supply, deliver and install:')
+    extra_label    = models.CharField(max_length=200, blank=True)
+    extra_price    = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    lead_time      = models.CharField(max_length=200, blank=True)
+    payment_terms  = models.CharField(max_length=200, blank=True)
+    terms_text     = models.TextField(blank=True)
+    updated_at     = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Quote — {self.project.project_name}"
+
+
+class ProformaInvoice(models.Model):
+    cost           = models.OneToOneField('ProjectCost', on_delete=models.CASCADE, related_name='proforma', null=True, blank=True)
+    project        = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='proformas', null=True, blank=True)
+    order_no       = models.CharField(max_length=100, blank=True)
+    invoice_date   = models.CharField(max_length=100, blank=True)
+    invoice_to     = models.TextField(blank=True)
+    delivery_to    = models.CharField(max_length=300, blank=True, default='AS INVOICE')
+    ezr_contact    = models.CharField(max_length=200, blank=True)
+    po_number      = models.CharField(max_length=100, blank=True)
+    requisitioner  = models.CharField(max_length=100, blank=True)
+    shipped_via    = models.CharField(max_length=100, blank=True)
+    fob_point      = models.CharField(max_length=100, blank=True)
+    terms          = models.CharField(max_length=100, blank=True, default='PRO-FORMA')
+    comments       = models.TextField(blank=True)
+    description    = models.TextField(blank=True)
+    goods_total    = models.DecimalField(max_digits=12, decimal_places=2, default=0)   # ex-VAT order value
+    deposit_pct    = models.PositiveSmallIntegerField(default=50)
+    vat_rate       = models.DecimalField(max_digits=5, decimal_places=2, default=20)
+    shipping       = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    updated_at     = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Pro-Forma — {self.project.project_name}"
+
+
+class PriceListItem(models.Model):
+    """Editable price list for Trimline and Longspan items. Costings read from here."""
+    CATEGORY_CHOICES = [
+        ('ls_frame', 'Longspan Frame'),
+        ('ls_shelf', 'Longspan Shelf Level'),
+        ('ls_trolley', 'Longspan Trolley'),
+        ('trimline', 'Trimline'),
+        ('other', 'Other'),
+    ]
+    product_line = models.CharField(max_length=10, default='longspan')
+    category     = models.CharField(max_length=60, choices=CATEGORY_CHOICES, default='ls_frame')
+    code         = models.CharField(max_length=60, blank=True)   # e.g. size key '3000x900'
+    label        = models.CharField(max_length=200)
+    price        = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    weight       = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    sort_order   = models.PositiveIntegerField(default=0)
+    updated_at   = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['product_line', 'category', 'sort_order', 'label']
+
+    def __str__(self):
+        return f"{self.label} — £{self.price}"
+
+class QuoteAttachedPhoto(models.Model):
+    """A photo manually uploaded to a specific quote, with size and order."""
+    SIZE_CHOICES = [('small','Small'),('medium','Medium'),('large','Large')]
+    quote        = models.ForeignKey(ProjectQuote, on_delete=models.CASCADE, related_name='attached_photos')
+    file_data    = models.BinaryField(null=True, blank=True)
+    file_mime    = models.CharField(max_length=100, blank=True)
+    file_original_name = models.CharField(max_length=200, blank=True)
+    size         = models.CharField(max_length=10, choices=SIZE_CHOICES, default='medium')
+    sort_order   = models.PositiveIntegerField(default=0)
+    uploaded_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sort_order', 'pk']
+
+class ProjectPresence(models.Model):
+    project   = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='presences')
+    user      = models.ForeignKey(User, on_delete=models.CASCADE)
+    last_seen = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('project', 'user')
+
+    def __str__(self):
+        return f"{self.user} in {self.project}"
+
+
+class DeliveryPhase(models.Model):
+    """A delivery phase/drop for a project (e.g. Phase 1: ground floor)."""
+    project      = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='delivery_phases')
+    label        = models.CharField(max_length=200)              # e.g. "Phase 1 — Ground floor"
+    delivered_on = models.DateField(null=True, blank=True)
+    delivered    = models.BooleanField(default=False)
+    notes        = models.TextField(blank=True)
+    sort_order   = models.PositiveIntegerField(default=0)
+    created_at   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sort_order', 'id']
+
+    def __str__(self):
+        return f"{self.project.project_name} — {self.label}"

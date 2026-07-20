@@ -1,0 +1,179 @@
+{% extends 'projects/base.html' %}
+{% load humanize %}
+{% block title %}Pro-Forma Invoice — {{ project.project_name }}{% endblock %}
+{% block extra_style %}
+  *{box-sizing:border-box;}
+  .toolbar{display:flex;gap:.6rem;margin-bottom:1rem;}
+  .page{max-width:820px;margin:1.5rem auto;background:#fff;padding:2.5rem 3rem;box-shadow:0 2px 12px rgba(0,0,0,.08);color:#1a1a1a;font-size:.85rem;}
+  .pf-logo{text-align:right;font-size:.7rem;color:#444;line-height:1.5;}
+  .pf-logo img{height:54px;margin-bottom:.3rem;}
+  h1.pf-title{text-align:center;font-size:2rem;font-weight:700;margin:1.4rem 0 1.8rem;}
+  .pf-meta{margin-bottom:1.2rem;line-height:1.6;}
+  .addr-row{display:flex;gap:1.5rem;margin-bottom:1.4rem;}
+  .addr-box{flex:1;}
+  .addr-box .lbl{font-weight:700;margin-bottom:.3rem;}
+  .addr-box .body{border:1px solid #999;border-radius:3px;padding:.6rem;min-height:110px;white-space:pre-line;line-height:1.5;}
+  table.pf{width:100%;border-collapse:collapse;margin:.6rem 0;}
+  table.pf th,table.pf td{border:1px solid #999;padding:.4rem .6rem;font-size:.8rem;}
+  table.pf th{background:#f3f3f3;font-weight:700;text-align:center;}
+  .items th,.items td{border:1px solid #999;padding:.45rem .6rem;}
+  .items .r{text-align:right;}
+  .totals{width:320px;margin-left:auto;margin-top:.4rem;border-collapse:collapse;}
+  .totals td{padding:.4rem .6rem;font-size:.82rem;white-space:nowrap;}
+  .totals .tl{text-align:right;color:#444;}
+  .totals .tv{text-align:right;border:1px solid #999;width:120px;}
+  .bank{margin-top:2rem;line-height:1.6;font-weight:700;}
+  .pf-footer{border-top:1px solid #ccc;padding-top:.6rem;text-align:center;font-size:.7rem;color:#666;line-height:1.5;}
+  .pf-footer-spacer{display:none;}
+  .thanks{text-align:center;font-weight:700;margin-top:1.2rem;}
+  .efield{display:none;}
+  .editing .efield{display:block;width:100%;border:1px solid var(--acc);border-radius:4px;padding:4px 6px;font-family:inherit;font-size:.82rem;}
+  .editing .vfield{display:none;}
+  textarea.efield{resize:vertical;}
+  @media print{
+    .toolbar{display:none;}
+    body{background:#fff;}
+    .page{box-shadow:none;margin:0;max-width:100%;padding:1.2cm 1.2cm 0 1.2cm;}
+    .efield{display:none !important;}
+    .pf-footer{
+      position:fixed;
+      bottom:0;
+      left:0;
+      right:0;
+      margin:0;
+      padding:.5rem 1.2cm;
+      border-top:1px solid #ccc;
+      background:#fff;
+    }
+    .pf-footer-spacer{display:block;height:2.5cm;}
+    @page { margin:0.5cm; size:auto; }
+  }
+{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <a href="{% url 'project_cost' project.pk %}" class="btn btn-ghost">← Back to Costing</a>
+  <button class="btn" onclick="toggleEdit()" id="edit-btn">✏ Edit</button>
+  <button class="btn btn-primary" onclick="savePf()" id="save-btn" style="display:none;">💾 Save</button>
+  <button class="btn btn-ghost" onclick="document.getElementById('action-field').value='print';document.getElementById('pf-form').submit();">🖨 Print</button>
+  <a href="{% url 'proforma_pdf_option' project.pk cost.pk %}" class="btn btn-ghost">⬇ Download PDF</a>
+</div>
+
+<form method="post" id="pf-form">
+{% csrf_token %}
+<div class="page" id="pf-page">
+  <div class="pf-logo">
+    <img src="/static/logo.png" alt="EZR"><br>
+    Manufacturers &amp; Suppliers of Shelving Systems
+  </div>
+
+  <h1 class="pf-title">Pro-Forma Invoice</h1>
+
+  <div class="pf-meta">
+    <strong>Order no:</strong>
+    <span class="vfield">{{ pf.order_no }}</span>
+    <input class="efield" name="order_no" value="{{ pf.order_no }}" style="max-width:200px;display:inline-block;"><br>
+    <strong>Date:</strong>
+    <span class="vfield">{{ pf.invoice_date }}</span>
+    <input class="efield" name="invoice_date" value="{{ pf.invoice_date }}" style="max-width:240px;display:inline-block;">
+  </div>
+
+  <div class="addr-row">
+    <div class="addr-box">
+      <div class="lbl">Invoice to:</div>
+      <div class="body vfield">{{ pf.invoice_to }}</div>
+      <textarea class="efield" name="invoice_to" rows="6">{{ pf.invoice_to }}</textarea>
+    </div>
+    <div class="addr-box">
+      <div class="lbl">Delivery to:</div>
+      <div class="body vfield">{{ pf.delivery_to }}</div>
+      <textarea class="efield" name="delivery_to" rows="6">{{ pf.delivery_to }}</textarea>
+    </div>
+  </div>
+
+  <div style="margin-bottom:.4rem;"><strong>Comments or Special Instructions:</strong>
+    <div class="vfield" style="white-space:pre-line;">{{ pf.comments }}</div>
+    <textarea class="efield" name="comments" rows="2">{{ pf.comments }}</textarea>
+  </div>
+
+  <table class="pf">
+    <tr><th>EZR Contact</th><th>P.O. Number</th><th>Requisitioner</th><th>Shipped via</th><th>F.O.B. Point</th><th>Terms</th></tr>
+    <tr>
+      <td><span class="vfield">{{ pf.ezr_contact }}</span><input class="efield" name="ezr_contact" value="{{ pf.ezr_contact }}"></td>
+      <td><span class="vfield">{{ pf.po_number }}</span><input class="efield" name="po_number" value="{{ pf.po_number }}"></td>
+      <td><span class="vfield">{{ pf.requisitioner }}</span><input class="efield" name="requisitioner" value="{{ pf.requisitioner }}"></td>
+      <td><span class="vfield">{{ pf.shipped_via }}</span><input class="efield" name="shipped_via" value="{{ pf.shipped_via }}"></td>
+      <td><span class="vfield">{{ pf.fob_point }}</span><input class="efield" name="fob_point" value="{{ pf.fob_point }}"></td>
+      <td><span class="vfield">{{ pf.terms }}</span><input class="efield" name="terms" value="{{ pf.terms }}"></td>
+    </tr>
+  </table>
+
+  <table class="items" style="width:100%;border-collapse:collapse;margin-top:.6rem;">
+    <tr><th style="text-align:left;width:90px;">Quantity</th><th style="text-align:left;">Description</th><th class="r" style="width:90px;">Unit price</th><th class="r" style="width:110px;">Total</th></tr>
+    <tr>
+      <td></td>
+      <td>
+        <span class="vfield" style="white-space:pre-line;">{{ pf.description }}</span>
+        <textarea class="efield" name="description" rows="3">{{ pf.description }}</textarea>
+      </td>
+      <td></td><td></td>
+    </tr>
+    <tr><td></td><td><strong>{{ pf.deposit_pct }}% PAYMENT DUE NOW PLEASE</strong></td><td></td><td class="r"><strong>£{{ deposit_amount|floatformat:2|intcomma }}+VAT</strong></td></tr>
+    <tr><td></td><td><strong>BALANCE ON COMPLETION PLEASE</strong></td><td></td><td class="r"><strong>£{{ balance_amount|floatformat:2|intcomma }}+VAT</strong></td></tr>
+  </table>
+
+  <table class="totals">
+    <tr><td class="tl">Subtotal</td><td class="tv">£{{ goods|floatformat:2|intcomma }}</td></tr>
+    <tr><td class="tl">Sales tax</td><td class="tv">£{{ vat|floatformat:2|intcomma }}</td></tr>
+    <tr><td class="tl">Shipping &amp; handling</td><td class="tv">{% if shipping %}£{{ shipping|floatformat:2|intcomma }}{% endif %}</td></tr>
+    <tr><td class="tl"><strong>Total order value</strong></td><td class="tv"><strong>£{{ total|floatformat:2|intcomma }}</strong></td></tr>
+  </table>
+
+  <!-- Edit-only controls for the financials -->
+  <div class="efield" style="margin-top:1rem;border:1px dashed var(--acc);border-radius:6px;padding:.7rem;">
+    <div style="font-weight:700;margin-bottom:.4rem;">Figures (edit mode)</div>
+    <label style="font-size:.78rem;">Goods total (ex VAT) £
+      <input name="goods_total" type="number" step="0.01" value="{{ pf.goods_total|floatformat:2 }}" style="width:120px;">
+    </label>
+    &nbsp;&nbsp;
+    <label style="font-size:.78rem;">Deposit %
+      <input name="deposit_pct" type="number" min="0" max="100" value="{{ pf.deposit_pct }}" style="width:60px;">
+    </label>
+    &nbsp;&nbsp;
+    <label style="font-size:.78rem;">Shipping £
+      <input name="shipping" type="number" step="0.01" value="{% if pf.shipping %}{{ pf.shipping|floatformat:2 }}{% endif %}" style="width:100px;" placeholder="0">
+    </label>
+  </div>
+
+  <div class="bank">
+    Bank Details: Barclays Bank Plc<br>
+    Sort Code: 209748 &nbsp; Account Number 00914428<br>
+    IBAN GB93 BUKB 2097 4800 914428<br>
+    SWIFTBIC BUKBGB22
+  </div>
+
+  <div class="thanks">Thank you for your business!</div>
+
+  <div class="pf-footer-spacer"></div>
+  <div class="pf-footer">
+    Unit 8c Witan Park, Avenue Two Station Lane, Witney, OX28 4FH &nbsp; T: 01993 779494 &nbsp; F: 01993 704111<br>
+    E: sales@ezrshelving.com | www.ezrshelving.com<br>
+    E-Z-Rect Ltd trading as EZR Shelving. Registered in England &amp; Wales. Company no. 2874065
+  </div>
+</div>
+<input type="hidden" name="action" id="action-field" value="save">
+</form>
+
+{% if print_mode %}<script>window.onload=()=>window.print();</script>{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+let editing=false;
+function toggleEdit(){
+  editing=!editing;
+  document.getElementById('pf-page').classList.toggle('editing', editing);
+  document.getElementById('edit-btn').style.display = editing?'none':'inline-block';
+  document.getElementById('save-btn').style.display = editing?'inline-block':'none';
+}
+function savePf(){ document.getElementById('action-field').value='save'; document.getElementById('pf-form').submit(); }
+</script>
+{% endblock %}

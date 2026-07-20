@@ -1,0 +1,75 @@
+{% extends 'projects/base.html' %}
+{% block title %}{{ supplier.name }} — Suppliers{% endblock %}
+{% block extra_style %}
+.layout{display:grid;grid-template-columns:340px 1fr;gap:1.4rem;align-items:start;}
+.form-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.5rem;box-shadow:var(--shadow);margin-bottom:1.2rem;}
+.section-title{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:.85rem;padding-bottom:.4rem;border-bottom:1px solid var(--bdr);}
+.po-row{display:flex;align-items:center;gap:.75rem;padding:.65rem 0;border-bottom:.5px solid var(--bdr);font-size:.875rem;}
+.po-row:last-child{border-bottom:none;}
+@media(max-width:768px){.layout{grid-template-columns:1fr;}}
+{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.4rem;flex-wrap:wrap;padding-top:.5rem;">
+  <a href="{% url 'supplier_list' %}" class="btn btn-ghost btn-sm">← Suppliers</a>
+  <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">{{ supplier.name }}</h1>
+</div>
+
+<div class="layout">
+  <div>
+    <div class="form-card">
+      <div class="section-title">Supplier Details</div>
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-group"><label class="form-label">Supplier Name</label><input class="form-input" name="name" value="{{ supplier.name }}"></div>
+        <div class="form-group"><label class="form-label">Account Number</label><input class="form-input" value="{{ supplier.account_number }}" disabled style="background:var(--surf2);color:var(--mut);"></div>
+        <div class="form-group"><label class="form-label">Contact Name</label><input class="form-input" name="contact_name" value="{{ supplier.contact_name }}"></div>
+        <div class="form-group"><label class="form-label">Phone</label><input class="form-input" name="phone" value="{{ supplier.phone }}"></div>
+        <div class="form-group"><label class="form-label">Email</label><input class="form-input" name="email" type="email" value="{{ supplier.email }}"></div>
+        <div class="form-group"><label class="form-label">Payment Terms</label><input class="form-input" name="payment_terms" value="{{ supplier.payment_terms }}" placeholder="e.g. 30 days"></div>
+        <div class="form-group"><label class="form-label">Lead Time (days)</label><input class="form-input" name="lead_time_days" type="number" min="0" value="{{ supplier.lead_time_days }}"></div>
+        <div class="form-group"><label class="form-label">Address Line 1</label><input class="form-input" name="address_line1" value="{{ supplier.address_line1 }}"></div>
+        <div class="form-group"><label class="form-label">Address Line 2</label><input class="form-input" name="address_line2" value="{{ supplier.address_line2 }}"></div>
+        <div class="form-group"><label class="form-label">Town</label><input class="form-input" name="town" value="{{ supplier.town }}"></div>
+        <div class="form-group"><label class="form-label">County</label><input class="form-input" name="county" value="{{ supplier.county }}"></div>
+        <div class="form-group"><label class="form-label">Post Code</label><input class="form-input" name="postcode" value="{{ supplier.postcode }}"></div>
+        <div class="form-group" style="margin-bottom:0;"><label class="form-label">Notes</label><textarea class="form-input" name="notes" rows="3">{{ supplier.notes }}</textarea></div>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:1rem;">Save Changes</button>
+      </form>
+    </div>
+  </div>
+
+  <div>
+    <div class="form-card">
+      <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>Purchase Orders ({{ pos|length }})</span>
+        <button class="btn btn-primary btn-sm" onclick="newPOForSupplier()">+ New PO</button>
+      </div>
+      {% if pos %}
+        {% for po in pos %}
+        <div class="po-row">
+          <a href="{% url 'po_detail' po.pk %}" style="font-weight:600;color:var(--acc);text-decoration:none;min-width:90px;">{{ po.po_number }}</a>
+          <div style="flex:1;font-size:.78rem;color:var(--mut);">
+            {% if po.order_date %}{{ po.order_date|date:"d M Y" }}{% endif %}
+            {% if po.expected_date %} · exp {{ po.expected_date|date:"d M Y" }}{% endif %}
+          </div>
+          <span style="font-weight:600;">£{{ po.total|floatformat:2 }}</span>
+          <span class="badge badge-{{ po.status }}">{{ po.get_status_display }}</span>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div style="color:var(--mut);font-size:.875rem;">No purchase orders yet for {{ supplier.name }}</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+async function newPOForSupplier(){
+  const r = await fetch('/purchase-orders/new/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({supplier_id:{{ supplier.pk }}})});
+  const d = await r.json();
+  if(d.ok) window.location = `/purchase-orders/${d.pk}/`;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,500 @@
+{% extends 'projects/base.html' %}
+{% block title %}{{ po.po_number }} — Purchase Orders{% endblock %}
+{% block extra_style %}
+.po-head{display:flex;align-items:center;gap:1rem;margin-bottom:1.3rem;flex-wrap:wrap;padding-top:.5rem;}
+.layout{display:grid;grid-template-columns:1fr 320px;gap:1.4rem;align-items:start;}
+.card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.3rem;box-shadow:var(--shadow);margin-bottom:1.2rem;}
+.section-title{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:.85rem;padding-bottom:.4rem;border-bottom:1px solid var(--bdr);}
+.lines-table{width:100%;border-collapse:collapse;}
+.lines-table th{padding:.5rem .6rem;font-size:.7rem;text-transform:uppercase;color:var(--mut);text-align:left;border-bottom:1px solid var(--bdr);}
+.lines-table td{padding:.55rem .6rem;font-size:.85rem;border-bottom:.5px solid var(--bdr);vertical-align:middle;}
+.lines-table input{width:70px;text-align:right;border:1px solid var(--bdr);border-radius:4px;padding:3px 6px;background:var(--surf2);color:var(--txt);font-size:.82rem;}
+.add-line-row{display:grid;grid-template-columns:2fr 70px 80px auto;gap:.5rem;align-items:end;margin-top:.85rem;}
+.recv-banner{background:#0f766e;color:#fff;border-radius:var(--rad);padding:.85rem 1.1rem;margin-bottom:1.2rem;display:flex;justify-content:space-between;align-items:center;}
+.lock-switch{position:relative;display:inline-block;width:48px;height:28px;flex-shrink:0;}
+.lock-switch input{opacity:0;width:0;height:0;}
+.lock-slider{position:absolute;cursor:pointer;inset:0;background-color:#9ca3af;border-radius:28px;transition:background-color .2s;}
+.lock-slider:before{position:absolute;content:"";height:22px;width:22px;left:3px;bottom:3px;background-color:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+.lock-switch input:checked + .lock-slider{background-color:#16a34a;}
+.lock-switch input:checked + .lock-slider:before{transform:translateX(20px);}
+@media(max-width:768px){.layout{grid-template-columns:1fr;}}
+{% endblock %}
+{% block content %}
+<div class="po-head">
+  <a href="{% url 'po_list' %}" class="btn btn-ghost btn-sm">← Purchase Orders</a>
+  <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">{{ po.po_number }}</h1>
+  <span class="badge badge-{{ po.status }}" id="po-status-badge">{{ po.get_status_display }}</span>
+  <button onclick="printPO()" class="btn btn-ghost btn-sm" style="margin-left:auto;">🖨 Print PO</button>
+</div>
+
+{% if po.received %}
+<div class="recv-banner">
+  <div>✓ Received on {{ po.received_at|date:"d M Y H:i" }}{% if po.received_by %} by {{ po.received_by.get_full_name|default:po.received_by.username }}{% endif %} — stock has been updated.</div>
+  <button class="btn btn-ghost btn-sm" style="background:#fff;color:#0f766e;" onclick="undoReceipt()">Undo Receipt</button>
+</div>
+{% endif %}
+
+<div class="layout">
+  <div>
+    <div class="card">
+      <div class="section-title">Order Lines</div>
+      <table class="lines-table" id="lines-table">
+        <thead><tr><th>Code</th><th>Description</th><th style="text-align:right;">Qty</th><th style="text-align:right;">Unit £</th><th style="text-align:right;">Total</th><th></th></tr></thead>
+        <tbody id="lines-body">
+          {% for line in po.lines.all %}
+          {% if line.item_type == 'message' %}
+          <tr id="line-{{ line.pk }}" style="background:var(--surf2);">
+            <td colspan="5" style="font-style:italic;color:var(--mut);font-size:.82rem;">📝 {{ line.description }}</td>
+            <td style="text-align:right;">{% if not po.received and not po.locked %}<button onclick="deleteLine({{ line.pk }})" style="background:none;border:none;color:var(--mut);cursor:pointer;">✕</button>{% endif %}</td>
+          </tr>
+          {% else %}
+          <tr id="line-{{ line.pk }}">
+            <td style="font-family:var(--fm);font-size:.78rem;color:var(--acc);">{{ line.display_code }}</td>
+            <td>{{ line.display_desc }}</td>
+            <td style="text-align:right;">
+              {% if po.received or po.locked %}{{ line.quantity|floatformat:0 }}{% else %}
+              <input type="number" value="{{ line.quantity|floatformat:0 }}" min="0" step="1" onchange="updateLine({{ line.pk }},'quantity',this.value)">
+              {% endif %}
+            </td>
+            <td style="text-align:right;">
+              {% if po.received or po.locked %}{{ line.unit_cost|floatformat:2 }}{% else %}
+              <input type="number" value="{{ line.unit_cost|floatformat:2 }}" min="0" step="0.01" onchange="updateLine({{ line.pk }},'unit_cost',this.value)">
+              {% endif %}
+            </td>
+            <td style="text-align:right;font-weight:600;" id="lt-{{ line.pk }}">£{{ line.line_total|floatformat:2 }}</td>
+            <td style="text-align:right;">{% if not po.received and not po.locked %}<button onclick="deleteLine({{ line.pk }})" style="background:none;border:none;color:var(--mut);cursor:pointer;">✕</button>{% endif %}</td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if not po.received and not po.locked %}
+      <div style="border-top:1px solid var(--bdr);margin-top:1rem;padding-top:1rem;display:flex;flex-direction:column;gap:.85rem;">
+
+        <!-- 1. Stock item — autofilling -->
+        <div>
+          <label class="form-label" style="font-size:.72rem;">Stock item</label>
+          <div style="display:grid;grid-template-columns:1fr 70px 80px auto;gap:.5rem;margin-bottom:.25rem;padding-right:calc(var(--btn-sm-h, 32px) + .5rem);">
+            <div></div>
+            <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);text-align:center;">Qty</div>
+            <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);text-align:center;">Unit cost</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 70px 80px auto;gap:.5rem;align-items:end;">
+            <div style="position:relative;">
+              <input class="form-input" id="sl-search" placeholder="Type code or description…" autocomplete="off" style="font-size:.82rem;" oninput="searchStock(this.value)">
+              <div id="sl-results" style="position:absolute;top:100%;left:0;right:0;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);box-shadow:var(--shadow-md);z-index:30;max-height:220px;overflow-y:auto;display:none;"></div>
+            </div>
+            <div><input class="form-input" id="sl-qty" type="number" value="1" min="1" placeholder="Qty"></div>
+            <div><input class="form-input" id="sl-cost" type="number" value="0" min="0" step="0.01" placeholder="Unit £"></div>
+            <button class="btn btn-primary btn-sm" onclick="addStockLine()">Add</button>
+          </div>
+          <input type="hidden" id="sl-product-id">
+          <div id="sl-chosen" style="font-size:.78rem;color:var(--acc);font-weight:600;margin-top:.3rem;display:none;"></div>
+        </div>
+
+        <!-- 2. Non-stock item -->
+        <div>
+          <label class="form-label" style="font-size:.72rem;">Non-stock item</label>
+          <div style="display:grid;grid-template-columns:1fr 70px 80px auto;gap:.5rem;align-items:end;">
+            <div><input class="form-input" id="ns-desc" placeholder="Description…" style="font-size:.82rem;"></div>
+            <div><input class="form-input" id="ns-qty" type="number" value="1" min="1" placeholder="Qty"></div>
+            <div><input class="form-input" id="ns-cost" type="number" value="0" min="0" step="0.01" placeholder="Unit £"></div>
+            <button class="btn btn-primary btn-sm" onclick="addNSLine()">Add</button>
+          </div>
+        </div>
+
+        <!-- 3. Message line -->
+        <div>
+          <label class="form-label" style="font-size:.72rem;">Message / note line</label>
+          <div style="display:flex;gap:.5rem;align-items:end;">
+            <div style="flex:1;"><input class="form-input" id="msg-text" placeholder="e.g. Deliver to rear entrance" style="font-size:.82rem;"></div>
+            <button class="btn btn-ghost btn-sm" onclick="addMessageLine()">Add Note</button>
+          </div>
+        </div>
+
+      </div>
+      {% endif %}
+
+      <div style="text-align:right;margin-top:1rem;border-top:1px solid var(--bdr);padding-top:.8rem;">
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:.6rem;margin-bottom:.5rem;">
+          <label style="font-size:.82rem;color:var(--mut);">Carriage:</label>
+          <div style="position:relative;">
+            <span style="position:absolute;left:.5rem;top:50%;transform:translateY(-50%);color:var(--mut);font-size:.85rem;">£</span>
+            <input type="number" id="po-carriage" value="{{ po.carriage|floatformat:2 }}" min="0" step="0.01"
+              style="width:90px;text-align:right;padding:.3rem .4rem .3rem 1.2rem;border:1px solid var(--bdr);border-radius:4px;background:var(--surf);color:var(--txt);font-size:.85rem;"
+              {% if po.locked %}disabled{% endif %}
+              onblur="updateCarriage(this.value)">
+          </div>
+        </div>
+        <div style="font-size:1.1rem;font-weight:700;">Total: <span id="po-total">£{{ po.total|floatformat:2 }}</span></div>
+        <div style="font-size:.82rem;color:var(--mut);margin-top:2px;">Inc. VAT: <span id="po-total-vat">£{{ po.total_with_vat|floatformat:2 }}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="section-title">Details</div>
+      <div class="form-group"><label class="form-label">Supplier</label>
+        <div style="font-size:.9rem;font-weight:600;color:var(--txt);padding:.5rem 0;">{{ po.supplier.name }}</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Linked Project (optional)</label>
+        {% if po.project %}
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;">
+          <span style="font-size:.85rem;font-weight:600;color:var(--txt);">
+            {% if po.project.project_number %}Ref {{ po.project.project_number }} — {% endif %}{{ po.project.project_name }}
+          </span>
+          {% if not po.received and not po.locked %}
+          <button type="button" class="btn btn-ghost btn-sm" style="padding:1px 6px;font-size:.72rem;" onclick="clearProject()">✕</button>
+          {% endif %}
+        </div>
+        {% endif %}
+        {% if not po.received and not po.locked %}
+        <div style="position:relative;">
+          <input class="form-input" id="proj-search" placeholder="Type ref number or project name…" style="font-size:.82rem;"
+            oninput="searchProjects(this.value)" autocomplete="off">
+          <div id="proj-results" style="position:absolute;top:100%;left:0;right:0;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);box-shadow:var(--shadow-md);z-index:30;max-height:220px;overflow-y:auto;display:none;"></div>
+        </div>
+        {% endif %}
+      </div>
+      <div class="form-group"><label class="form-label">Status</label>
+        <select class="form-input" id="po-status" {% if po.received or po.locked %}disabled{% endif %} onchange="updatePO('status',this.value)">
+          {% for val,label in status_choices %}<option value="{{ val }}" {% if po.status == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Order Date</label><input class="form-input" type="date" id="po-order-date" value="{{ po.order_date|date:'Y-m-d' }}" onchange="updatePO('order_date',this.value)" {% if po.locked %}disabled{% endif %}></div>
+      <div class="form-group"><label class="form-label">Required Delivery</label><input class="form-input" type="date" id="po-exp-date" value="{{ po.expected_date|date:'Y-m-d' }}" onchange="updatePO('expected_date',this.value)" {% if po.locked %}disabled{% endif %}></div>
+      <div class="form-group"><label class="form-label">Quote Number</label><input class="form-input" id="po-quote-number" value="{{ po.quote_number }}" placeholder="Supplier's quote ref" onblur="updatePO('quote_number',this.value)" {% if po.locked %}disabled{% endif %}></div>
+      <div class="form-group" style="margin-bottom:0;"><label class="form-label">Notes</label><textarea class="form-input" id="po-notes" rows="3" onblur="updatePO('notes',this.value)" {% if po.locked %}disabled{% endif %}>{{ po.notes }}</textarea></div>
+      <div class="form-group" style="margin-bottom:0;margin-top:1rem;">
+        <label class="form-label">Delivery Address</label>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="openDeliveryAddr()" style="width:100%;justify-content:flex-start;gap:.5rem;" {% if po.locked %}disabled{% endif %}>
+          📍 {% if po.del_company or po.del_line1 or po.del_postcode %}{% if po.del_company %}<strong>{{ po.del_company }}</strong>{% if po.del_line1 %}, {% endif %}{% endif %}{{ po.del_line1 }}{% if po.del_city %}, {{ po.del_city }}{% endif %}{% if po.del_postcode %} {{ po.del_postcode }}{% endif %}
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:var(--grn,#16a34a);color:#fff;border-radius:50%;font-size:.6rem;margin-left:3px;">✓</span>
+          {% else %}Add delivery address{% endif %}
+        </button>
+      </div>
+
+      <!-- Post-acknowledgement section — filled in after supplier confirms -->
+      <div style="border-top:2px solid var(--bdr);margin-top:1.1rem;padding-top:1rem;">
+        <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);font-weight:600;margin-bottom:.8rem;">After Acknowledgement</div>
+        <div class="form-group"><label class="form-label">Acknowledgement / Sales Order No.</label><input class="form-input" id="po-ack-ref" value="{{ po.ack_reference }}" placeholder="Supplier's SO or ack. reference" onblur="updatePO('ack_reference',this.value)"></div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Expected Delivery <span style="font-weight:400;color:var(--mut);font-size:.72rem;">(supplier-confirmed)</span></label>
+          <input class="form-input" type="date" id="po-ack-date" value="{{ po.acknowledged_date|date:'Y-m-d' }}" onchange="updatePO('acknowledged_date',this.value)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Lock toggle -->
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--rad);padding:.7rem .9rem;margin-bottom:.9rem;">
+      <div>
+        <div style="font-weight:600;font-size:.88rem;">{% if po.locked %}🔒 Locked{% else %}🔓 Unlocked{% endif %}</div>
+        <div style="font-size:.72rem;color:var(--mut);">{% if po.locked %}Editing is disabled{% else %}Editing is allowed{% endif %}</div>
+      </div>
+      <label class="lock-switch">
+        <input type="checkbox" id="lock-toggle" {% if po.locked %}checked{% endif %} onchange="toggleLock(this)">
+        <span class="lock-slider"></span>
+      </label>
+    </div>
+
+    {% if not po.received %}
+    <button class="btn btn-primary" style="width:100%;justify-content:center;background:var(--acc);border-color:var(--acc);margin-bottom:.6rem;" onclick="savePOLock()" id="save-po-btn" {% if po.locked %}disabled{% endif %}>💾 Save</button>
+    <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-bottom:.6rem;" onclick="printPO()" id="print-po-btn">🖨 Print PO</button>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;background:#0f766e;border-color:#0f766e;margin-bottom:.6rem;" onclick="markReceived()">✓ Mark Fully Received & Update Stock</button>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;background:var(--blue);border-color:var(--blue);margin-bottom:.6rem;" onclick="openPartial()">📦 Book in delivery (partial)</button>
+    <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;color:var(--red);" onclick="cancelPO()">Cancel PO</button>
+    {% endif %}
+  </div>
+</div>
+<!-- Partial receipt modal -->
+<div id="partial-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:2rem;">
+  <div style="background:var(--surf);border-radius:12px;max-width:560px;width:100%;max-height:85vh;overflow:auto;padding:1.4rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <div style="font-weight:700;font-size:1.05rem;">Book in delivery</div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('partial-modal').style.display='none'">✕</button>
+    </div>
+    <p style="font-size:.82rem;color:var(--mut);margin-bottom:.8rem;">Enter the quantity received now for each line. Stock updates by that amount. Leave 0 for nothing received.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+      <thead><tr style="border-bottom:1px solid var(--bdr);">
+        <th style="text-align:left;padding:.4rem;">Item</th>
+        <th style="text-align:right;padding:.4rem;">Ordered</th>
+        <th style="text-align:right;padding:.4rem;">Already in</th>
+        <th style="text-align:right;padding:.4rem;">Outstanding</th>
+        <th style="text-align:right;padding:.4rem;">Receive now</th>
+      </tr></thead>
+      <tbody>
+      {% for line in po.lines.all %}{% if line.item_type != 'message' %}
+        <tr style="border-bottom:.5px solid var(--bdr);">
+          <td style="padding:.4rem;">{{ line.display_code }} {{ line.description }}</td>
+          <td style="text-align:right;padding:.4rem;">{{ line.quantity|floatformat:0 }}</td>
+          <td style="text-align:right;padding:.4rem;">{{ line.qty_received|floatformat:0 }}</td>
+          <td style="text-align:right;padding:.4rem;font-weight:600;">{{ line.qty_outstanding|floatformat:0 }}</td>
+          <td style="text-align:right;padding:.4rem;"><input type="number" min="0" max="{{ line.qty_outstanding|floatformat:0 }}" value="0" data-line="{{ line.pk }}" class="rcv-input" style="width:70px;text-align:right;border:1px solid var(--bdr);border-radius:5px;padding:3px 6px;" {% if line.is_fully_received %}disabled value="0"{% endif %}></td>
+        </tr>
+      {% endif %}{% endfor %}
+      </tbody>
+    </table>
+    <div style="display:flex;gap:.5rem;margin-top:1rem;">
+      <button class="btn btn-ghost btn-sm" onclick="fillOutstanding()">Receive all outstanding</button>
+      <button class="btn btn-primary" style="margin-left:auto;" onclick="submitPartial()">Book in</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delivery Address Modal -->
+<div id="del-addr-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:2rem;">
+  <div style="background:var(--surf);border-radius:var(--rad-lg);padding:1.4rem;width:100%;max-width:480px;box-shadow:var(--shadow-md);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <span style="font-weight:600;font-size:1rem;">📍 Delivery Address</span>
+      <button class="btn btn-ghost btn-sm" onclick="closeDeliveryAddr()">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.7rem;">
+      <div><label class="form-label">Customer / Company</label><input class="form-input" id="da-company" value="{{ po.del_company }}" placeholder="e.g. Skechers UK Ltd"></div>
+      <div><label class="form-label">Address Line 1</label><input class="form-input" id="da-line1" value="{{ po.del_line1 }}" placeholder="Street address"></div>
+      <div><label class="form-label">Address Line 2</label><input class="form-input" id="da-line2" value="{{ po.del_line2 }}" placeholder="Unit, floor, etc."></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;">
+        <div><label class="form-label">City / Town</label><input class="form-input" id="da-city" value="{{ po.del_city }}" placeholder="City"></div>
+        <div><label class="form-label">County</label><input class="form-input" id="da-county" value="{{ po.del_county }}" placeholder="County"></div>
+      </div>
+      <div><label class="form-label">Post Code</label><input class="form-input" id="da-postcode" value="{{ po.del_postcode }}" placeholder="SW1A 1AA" style="max-width:160px;"></div>
+      <div><label class="form-label">Site Contact</label><input class="form-input" id="da-contact" value="{{ po.del_contact }}" placeholder="Name / phone number"></div>
+    </div>
+    <!-- Shortcut buttons -->
+    <div style="display:flex;flex-direction:column;gap:.4rem;margin-top:1rem;">
+      <button class="btn btn-ghost btn-sm" onclick="fillWarehouse()" style="width:100%;justify-content:flex-start;">🏭 Our Warehouse</button>
+      <button class="btn btn-ghost btn-sm" onclick="useProjectAddress()" style="width:100%;justify-content:flex-start;" {% if not po.project %}disabled title="No project linked to this PO"{% endif %}>📍 Project Address{% if not po.project %} <span style="font-size:.72rem;color:var(--mut);margin-left:.3rem;">(no project linked)</span>{% endif %}</button>
+    </div>
+    <div style="display:flex;gap:.6rem;margin-top:.8rem;justify-content:flex-end;">
+      <button class="btn btn-ghost btn-sm" onclick="closeDeliveryAddr()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveDeliveryAddr()">Save Address</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+const PO_PK = {{ po.pk }};
+const PROJECT_ADDRESS_JS_UNUSED = '';
+const PROJECT_ADDR = {{ project_addr_json|safe }};
+
+document.getElementById('al-product')?.addEventListener('change', e=>{
+  const opt = e.target.selectedOptions[0];
+  const cost = opt?.dataset.cost;
+  if(cost) document.getElementById('al-cost').value = parseFloat(cost).toFixed(2);
+});
+
+// ── 1. Stock item autocomplete ──
+let slTimer = null;
+function searchStock(q){
+  clearTimeout(slTimer);
+  const box = document.getElementById('sl-results');
+  if(!q || q.length < 1){ box.style.display='none'; return; }
+  slTimer = setTimeout(async ()=>{
+    const r = await fetch(`/api/products/?q=${encodeURIComponent(q)}`);
+    const list = await r.json();
+    if(!list.length){ box.style.display='none'; return; }
+    box.innerHTML = list.map(p=>`<div class="sl-opt" data-id="${p.id}" data-code="${p.code}" style="padding:.45rem .7rem;cursor:pointer;font-size:.82rem;border-bottom:.5px solid var(--bdr);" onmouseover="this.style.background='var(--surf2)'" onmouseout="this.style.background=''"><span style="font-family:var(--fm);color:var(--acc);font-weight:600;">${p.code}</span> <span style="color:var(--mut);">${p.description||''}</span></div>`).join('');
+    box.style.display='block';
+    box.querySelectorAll('.sl-opt').forEach(opt=>{
+      opt.onclick = ()=>{
+        document.getElementById('sl-search').value = opt.dataset.code;
+        document.getElementById('sl-product-id').value = opt.dataset.id;
+        const chosen = document.getElementById('sl-chosen');
+        chosen.textContent = 'Selected: ' + opt.dataset.code;
+        chosen.style.display = 'block';
+        box.style.display = 'none';
+      };
+    });
+  }, 200);
+}
+document.addEventListener('click', e=>{
+  if(!e.target.closest('#sl-search') && !e.target.closest('#sl-results')){
+    const box = document.getElementById('sl-results'); if(box) box.style.display='none';
+  }
+});
+async function addStockLine(){
+  const pid = document.getElementById('sl-product-id').value;
+  const qty = parseFloat(document.getElementById('sl-qty').value)||1;
+  const cost = parseFloat(document.getElementById('sl-cost').value)||0;
+  if(!pid){ alert('Search and select a stock item first'); return; }
+  const r = await fetch(`/purchase-orders/${PO_PK}/line/add/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({product_id:pid,quantity:qty,unit_cost:cost})});
+  const d = await r.json();
+  if(d.ok) location.reload(); else alert(d.error||'Failed');
+}
+
+// ── 2. Non-stock item ──
+async function addNSLine(){
+  const desc = document.getElementById('ns-desc').value.trim();
+  const qty = parseFloat(document.getElementById('ns-qty').value)||1;
+  const cost = parseFloat(document.getElementById('ns-cost').value)||0;
+  if(!desc){ alert('Type a non-stock description'); return; }
+  const r = await fetch(`/purchase-orders/${PO_PK}/line/add/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({item_type:'ns',description:desc,quantity:qty,unit_cost:cost})});
+  const d = await r.json();
+  if(d.ok) location.reload(); else alert(d.error||'Failed');
+}
+
+// ── 3. Message line ──
+async function addMessageLine(){
+  const msg = document.getElementById('msg-text').value.trim();
+  if(!msg){ alert('Type a note first'); return; }
+  const r = await fetch(`/purchase-orders/${PO_PK}/line/add/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({item_type:'message',description:msg})});
+  const d = await r.json();
+  if(d.ok) location.reload(); else alert(d.error||'Failed');
+}
+async function updateLine(pk,field,val){
+  const r = await fetch(`/po-line/${pk}/update/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({[field]:val})});
+  const d = await r.json();
+  if(d.ok){ document.getElementById(`lt-${pk}`).textContent='£'+d.line_total.toFixed(2); document.getElementById('po-total').textContent='£'+d.po_total.toFixed(2); document.getElementById('po-total-vat').textContent='£'+(d.po_total*1.2).toFixed(2); }
+}
+async function deleteLine(pk){
+  const r = await fetch(`/po-line/${pk}/delete/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+  const d = await r.json();
+  if(d.ok){ document.getElementById(`line-${pk}`).remove(); document.getElementById('po-total').textContent='£'+d.po_total.toFixed(2); document.getElementById('po-total-vat').textContent='£'+(d.po_total*1.2).toFixed(2); }
+}
+async function updatePO(field,val){
+  await fetch(`/purchase-orders/${PO_PK}/update/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({[field]:val})});
+}
+let projSearchTimer;
+function searchProjects(val){
+  clearTimeout(projSearchTimer);
+  const box = document.getElementById('proj-results');
+  if(!val.trim()){ box.style.display='none'; return; }
+  projSearchTimer = setTimeout(async ()=>{
+    const r = await fetch(`/api/project-search/?q=${encodeURIComponent(val)}`);
+    const d = await r.json();
+    if(!d.results.length){ box.style.display='none'; return; }
+    box.innerHTML = d.results.map(p=>
+      `<div onclick="selectProject(${p.pk},'${p.label.replace(/'/g,"\\\'")}')"
+        style="padding:.5rem .8rem;cursor:pointer;font-size:.85rem;border-bottom:1px solid var(--bdr);"
+        onmouseover="this.style.background='var(--surf2)'" onmouseout="this.style.background=''">${p.label}</div>`
+    ).join('');
+    box.style.display='block';
+  }, 250);
+}
+async function selectProject(pk, label){
+  document.getElementById('proj-results').style.display='none';
+  document.getElementById('proj-search').value='';
+  const r = await fetch(`/purchase-orders/${PO_PK}/update/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({project_id:pk})});
+  const d = await r.json();
+  if(d.ok) location.reload(); else alert(d.error||'Failed');
+}
+async function clearProject(){
+  const r = await fetch(`/purchase-orders/${PO_PK}/update/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({project_id:''})});
+  const d = await r.json();
+  if(d.ok) location.reload(); else alert(d.error||'Failed');
+}
+document.addEventListener('click', e=>{
+  if(!e.target.closest('#proj-results') && !e.target.closest('#proj-search')){
+    const b = document.getElementById('proj-results');
+    if(b) b.style.display='none';
+  }
+});
+function openDeliveryAddr(){ document.getElementById('del-addr-modal').style.display='flex'; }
+function closeDeliveryAddr(){ document.getElementById('del-addr-modal').style.display='none'; }
+async function saveDeliveryAddr(){
+  const data = {
+    del_company:  document.getElementById('da-company').value.trim(),
+    del_line1:    document.getElementById('da-line1').value.trim(),
+    del_line2:    document.getElementById('da-line2').value.trim(),
+    del_city:     document.getElementById('da-city').value.trim(),
+    del_county:   document.getElementById('da-county').value.trim(),
+    del_postcode: document.getElementById('da-postcode').value.trim(),
+    del_contact:  document.getElementById('da-contact').value.trim(),
+  };
+  const r = await fetch(`/purchase-orders/${PO_PK}/update/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify(data)});
+  const d = await r.json();
+  if(d.ok){ closeDeliveryAddr(); location.reload(); }
+  else alert(d.error||'Failed to save address');
+}
+async function updateCarriage(val){
+  const r = await fetch(`/purchase-orders/${PO_PK}/update/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({carriage:parseFloat(val)||0})});
+  const d = await r.json();
+  if(d.ok) location.reload();
+}
+function fillWarehouse(){
+  document.getElementById('da-company').value  = 'EZR Shelving';
+  document.getElementById('da-line1').value    = 'Unit 8c - Witan Park';
+  document.getElementById('da-line2').value    = 'Avenue Two';
+  document.getElementById('da-city').value     = 'Witney';
+  document.getElementById('da-county').value   = '';
+  document.getElementById('da-postcode').value = 'OX28 4FH';
+  document.getElementById('da-contact').value  = '01993 77 94 94';
+}
+function useProjectAddress(){
+  if(!PROJECT_ADDR){ alert('No project linked to this PO.'); return; }
+  if(!PROJECT_ADDR.line1 && !PROJECT_ADDR.city && !PROJECT_ADDR.postcode){
+    alert('No address was found for the linked project. Please add one in the project file first.');
+    return;
+  }
+  document.getElementById('da-company').value  = '';
+  document.getElementById('da-line1').value    = PROJECT_ADDR.line1 || '';
+  document.getElementById('da-line2').value    = PROJECT_ADDR.line2 || '';
+  document.getElementById('da-city').value     = PROJECT_ADDR.city  || '';
+  document.getElementById('da-county').value   = PROJECT_ADDR.county|| '';
+  document.getElementById('da-postcode').value = PROJECT_ADDR.postcode || '';
+}
+function openPartial(){ document.getElementById('partial-modal').style.display='flex'; }
+function fillOutstanding(){
+  document.querySelectorAll('.rcv-input').forEach(i=>{ if(!i.disabled) i.value=i.max; });
+}
+async function submitPartial(){
+  const receipts={};
+  document.querySelectorAll('.rcv-input').forEach(i=>{ const v=parseFloat(i.value)||0; if(v>0) receipts[i.dataset.line]=v; });
+  if(!Object.keys(receipts).length){ alert('Enter at least one quantity.'); return; }
+  const r=await fetch(`/purchase-orders/${PO_PK}/receive-partial/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({receipts})});
+  const d=await r.json();
+  if(d.ok) location.reload(); else alert(d.error||'Failed');
+}
+
+async function markReceived(){
+  if(!confirm('Mark this PO as received? This will add the ordered quantities to stock.')) return;
+  const r = await fetch(`/purchase-orders/${PO_PK}/receive/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+  const d = await r.json();
+  if(d.ok) location.reload(); else alert(d.error||'Failed');
+}
+async function undoReceipt(){
+  if(!confirm('Undo receipt? This will remove the received quantities from stock.')) return;
+  const r = await fetch(`/purchase-orders/${PO_PK}/unreceive/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+  const d = await r.json();
+  if(d.ok) location.reload(); else alert(d.error||'Failed');
+}
+async function toggleLock(checkbox){
+  const wantLock = checkbox.checked;
+  if(wantLock){
+    const r = await fetch(`/purchase-orders/${PO_PK}/lock/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+    const d = await r.json();
+    if(d.ok) location.reload(); else { alert(d.error||'Failed'); checkbox.checked = false; }
+  } else {
+    if(!confirm('Unlock this PO to make changes? Print will be disabled until you save again.')){ checkbox.checked = true; return; }
+    const r = await fetch(`/purchase-orders/${PO_PK}/unlock/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+    const d = await r.json();
+    if(d.ok) location.reload(); else { alert(d.error||'Failed'); checkbox.checked = true; }
+  }
+}
+async function savePOLock(){
+  const r = await fetch(`/purchase-orders/${PO_PK}/lock/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+  const d = await r.json();
+  if(d.ok) location.reload(); else alert(d.error||'Failed');
+}
+function printPO(){
+  {% if po.locked %}
+  window.open(`/purchase-orders/${PO_PK}/print/`, '_blank');
+  {% else %}
+  if(confirm('This will lock the PO, are you sure you want to proceed?')){
+    window.open(`/purchase-orders/${PO_PK}/print/`, '_blank');
+    setTimeout(()=>location.reload(), 600);
+  }
+  {% endif %}
+}
+async function cancelPO(){
+  if(!confirm('Cancel this purchase order? It will be marked Cancelled and kept on record.')) return;
+  const r = await fetch(`/purchase-orders/${PO_PK}/cancel/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+  const d = await r.json();
+  if(d.ok) location.reload(); else alert(d.error||'Failed');
+}
+</script>
+{% endblock %}

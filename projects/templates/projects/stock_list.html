@@ -26,7 +26,7 @@ tr:hover td{background:var(--surf2);}
 /* Edit modal */
 .eq-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s;}
 .eq-overlay.open{opacity:1;pointer-events:all;}
-.eq-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-58%);width:380px;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);z-index:201;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
+.eq-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-58%);width:600px;max-width:95vw;max-height:90vh;overflow-y:auto;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);z-index:201;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
 .eq-modal.open{opacity:1;pointer-events:all;transform:translate(-50%,-50%);}
 .eq-head{padding:.9rem 1.2rem;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;background:var(--surf2);border-radius:var(--rad-lg) var(--rad-lg) 0 0;}
 .eq-body{padding:1.2rem;}
@@ -129,6 +129,13 @@ tr:hover td{background:var(--surf2);}
     <div class="form-group"><label class="form-label">Quantity in Stock</label><input class="form-input" type="number" id="eq-qty" step="1"></div>
     <div class="form-group"><label class="form-label">Reorder Level</label><input class="form-input" type="number" id="eq-reorder" step="1"></div>
     <div class="form-group" style="margin-bottom:0;"><label class="form-label">Sales Price (£)</label><input class="form-input" type="number" id="eq-price" step="0.01" min="0" placeholder="0.00"></div>
+
+    <div style="margin-top:1.2rem;border-top:1px solid var(--bdr);padding-top:.9rem;">
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-bottom:.5rem;">Stock Activity</div>
+      <div id="eq-activity" style="max-height:260px;overflow-y:auto;font-size:.8rem;">
+        <div style="color:var(--mut);padding:.5rem 0;">Loading…</div>
+      </div>
+    </div>
   </div>
   <div class="eq-foot" style="justify-content:space-between;">
     <button onclick="deleteProduct()" class="btn btn-danger btn-sm">Delete Product</button>
@@ -155,6 +162,41 @@ function editProduct(pk, code, desc, qty, reorder, price){
   document.getElementById('eq-modal').classList.add('open');
   document.getElementById('eq-code-inp').focus();
   document.getElementById('eq-code-inp').select();
+  loadActivity(pk);
+}
+async function loadActivity(pk){
+  const box = document.getElementById('eq-activity');
+  box.innerHTML = '<div style="color:var(--mut);padding:.5rem 0;">Loading…</div>';
+  try{
+    const r = await fetch(`/stock/${pk}/activity/`);
+    const d = await r.json();
+    if(!d.ok || !d.movements.length){
+      box.innerHTML = '<div style="color:var(--mut);padding:.5rem 0;">No activity recorded yet.</div>';
+      return;
+    }
+    let html = `<div style="display:flex;gap:1rem;font-size:.78rem;color:var(--mut);margin-bottom:.5rem;">
+      <span>In stock: <b style="color:var(--txt);">${d.in_stock}</b></span>
+      <span>Allocated: <b style="color:var(--txt);">${d.allocated}</b></span>
+      <span>Free: <b style="color:var(--txt);">${d.free}</b></span>
+    </div>`;
+    html += '<table style="width:100%;border-collapse:collapse;font-size:.78rem;">';
+    html += '<thead><tr style="text-align:left;color:var(--mut);"><th style="padding:3px 6px;">Date</th><th style="padding:3px 6px;">Qty</th><th style="padding:3px 6px;">In/Out</th><th style="padding:3px 6px;">Type</th><th style="padding:3px 6px;">Reference</th></tr></thead><tbody>';
+    d.movements.forEach(m=>{
+      const colour = m.direction === 'IN' ? '#16a34a' : '#dc2626';
+      const sign = m.qty >= 0 ? '+' : '';
+      html += `<tr style="border-top:.5px solid var(--bdr);">
+        <td style="padding:4px 6px;white-space:nowrap;">${m.date}</td>
+        <td style="padding:4px 6px;font-weight:600;color:${colour};">${sign}${m.qty}</td>
+        <td style="padding:4px 6px;color:${colour};font-weight:600;">${m.direction}</td>
+        <td style="padding:4px 6px;">${m.type}</td>
+        <td style="padding:4px 6px;color:var(--mut);">${m.reference||''}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    box.innerHTML = html;
+  }catch(e){
+    box.innerHTML = '<div style="color:var(--red);padding:.5rem 0;">Failed to load activity.</div>';
+  }
 }
 async function toggleActive(pk, btn){
   const r = await fetch(`/stock/${pk}/toggle-active/`, {method:'POST', headers:{'X-CSRFToken':'{{ csrf_token }}'}});

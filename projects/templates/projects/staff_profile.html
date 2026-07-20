@@ -32,7 +32,7 @@
   <div>
     <div class="profile-card">
       <div class="profile-av" style="background:{{ member.pk|avatar_colour }};">
-        {{ member.get_full_name|default:member.username|slice:":2"|upper }}
+        {% with n=member.get_full_name|default:member.username %}{% with p=n.split %}{{ p.0|slice:":1"|upper }}{% if p|length > 1 %}{{ p|last|slice:":1"|upper }}{% endif %}{% endwith %}{% endwith %}
       </div>
       <div class="profile-name">{{ member.get_full_name|default:member.username }}</div>
       {% if profile.role %}<div class="profile-role">{{ profile.role }}</div>{% endif %}
@@ -48,6 +48,19 @@
         <div class="form-group"><label class="form-label">Last Name</label><input class="form-input" type="text" name="last_name" value="{{ member.last_name }}"></div>
         <div class="form-group"><label class="form-label">Role / Job Title</label><input class="form-input" type="text" name="role" value="{{ profile.role }}" placeholder="e.g. Installation Engineer"></div>
         <div class="form-group"><label class="form-label">Phone</label><input class="form-input" type="text" name="phone" value="{{ profile.phone }}" placeholder="+44 7700 000000"></div>
+        <div class="form-group">
+          <label class="form-label">Avatar Colour</label>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+            {% for hex, name in colour_choices %}
+            <label style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:.25rem;font-size:.68rem;color:var(--mut);">
+              <input type="radio" name="colour" value="{{ hex }}" {% if profile.colour == hex %}checked{% elif not profile.colour and forloop.first %}{% endif %} style="display:none;" onchange="document.querySelectorAll('.av-swatch').forEach(s=>s.style.outline='none');this.nextElementSibling.style.outline='3px solid var(--acc)';">
+              <div class="av-swatch" style="width:28px;height:28px;border-radius:50%;background:{{ hex }};outline:{% if profile.colour == hex %}3px solid var(--acc){% else %}none{% endif %};outline-offset:2px;transition:outline .1s;" onclick="this.previousElementSibling.click();">
+              </div>
+              {{ name }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
         <div class="form-group" style="margin-bottom:0;"><label class="form-label">Notes</label><textarea class="form-input" name="bio" rows="3" placeholder="Any notes…">{{ profile.bio }}</textarea></div>
         <button type="submit" class="btn btn-primary" style="margin-top:1rem;width:100%;justify-content:center;">Save Changes</button>
       </form>

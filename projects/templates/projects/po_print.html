@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+{% load static %}
+<html>
+<head>
+<meta charset="UTF-8">
+<title>{{ po.po_number }} — {{ po.supplier.name }} — EZR Shelving Purchase Order</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#000; background:#fff; padding:1.6cm; }
+
+  /* ── Top row: supplier address left | logo+PO number right ── */
+  .top-row { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2.5pt solid #000; padding-bottom:12pt; margin-bottom:14pt; }
+  .supplier-box .lbl { font-size:7pt; text-transform:uppercase; letter-spacing:0.7pt; color:#666; margin-bottom:3pt; }
+  .supplier-box .name { font-size:12pt; font-weight:700; margin-bottom:3pt; }
+  .supplier-box .addr-line { font-size:9.5pt; color:#222; line-height:1.45; }
+  .logo-box { text-align:right; }
+  .logo-box img { height:44pt; display:block; margin-left:auto; margin-bottom:6pt; }
+  .logo-box .po-number { font-size:13pt; font-weight:700; }
+  .logo-box .po-date { font-size:8.5pt; color:#444; margin-top:2pt; }
+
+  /* ── PO meta row ── */
+  .meta-row { display:flex; justify-content:space-between; margin-bottom:14pt; }
+  .meta-block .lbl { font-size:7pt; text-transform:uppercase; letter-spacing:0.6pt; color:#666; margin-bottom:2pt; }
+  .meta-block div { font-size:9pt; }
+
+  /* ── Items table ── */
+  table { width:100%; border-collapse:collapse; margin-bottom:10pt; }
+  thead tr { border-bottom:1.5pt solid #000; }
+  th { text-align:left; padding:5pt 6pt 5pt 0; font-size:7.5pt; text-transform:uppercase; letter-spacing:0.6pt; font-weight:700; }
+  th.num, td.num { text-align:right; }
+  td { padding:4pt 6pt 4pt 0; font-size:9.5pt; border-bottom:.5pt solid #e0e0e0; vertical-align:top; }
+  .msg-row td { font-style:italic; color:#555; padding-top:7pt; border-bottom:none; }
+
+  /* ── Bottom row: delivery left | totals right ── */
+  .bottom-row { display:flex; justify-content:space-between; align-items:flex-end; border-top:2pt solid #000; padding-top:12pt; margin-top:6pt; }
+  .delivery-box .lbl { font-size:7pt; text-transform:uppercase; letter-spacing:0.7pt; color:#666; margin-bottom:3pt; }
+  .delivery-box .addr-line { font-size:9.5pt; line-height:1.45; }
+  .totals-box { text-align:right; min-width:200pt; }
+  .totals-box table { margin-bottom:0; width:auto; margin-left:auto; }
+  .totals-box td { border:none; padding:2pt 0 2pt 16pt; font-size:9.5pt; }
+  .totals-box td:first-child { color:#555; text-align:left; }
+  .totals-box td:last-child { font-weight:600; text-align:right; }
+  .totals-box .grand td { font-size:13pt; font-weight:700; border-top:1.5pt solid #000; padding-top:5pt; }
+
+  /* ── Notes ── */
+  .notes-block { margin-top:14pt; padding-top:10pt; border-top:.75pt solid #ccc; font-size:9pt; color:#333; white-space:pre-line; }
+
+  @media print {
+    body { padding:0; }
+    @page { margin:0.4cm; size:A4 portrait; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP ROW -->
+<div class="top-row">
+  <div class="supplier-box">
+    <div class="lbl">Supplier / Invoice to</div>
+    <div class="name">{{ po.supplier.name }}</div>
+    {% for line in supplier_address_lines %}<div class="addr-line">{{ line }}</div>{% endfor %}
+    {% if po.supplier.account_number %}<div class="addr-line" style="margin-top:3pt;color:#555;">Account: {{ po.supplier.account_number }}</div>{% endif %}
+  </div>
+  <div class="logo-box">
+    <img src="/static/logo.png" alt="EZR Shelving">
+    <div class="po-number">{{ po.po_number }}</div>
+    <div class="po-date">{{ po.order_date|date:"d M Y"|default:"" }}</div>
+  </div>
+</div>
+
+<!-- META ROW -->
+<div class="meta-row">
+  <div class="meta-block">
+    <div class="lbl">Order Date</div>
+    <div>{{ po.order_date|date:"d M Y"|default:"—" }}</div>
+  </div>
+  <div class="meta-block">
+    <div class="lbl">Required Delivery</div>
+    <div>{{ po.expected_date|date:"d M Y"|default:"—" }}</div>
+  </div>
+  {% if po.quote_number %}
+  <div class="meta-block">
+    <div class="lbl">Quote Number</div>
+    <div>{{ po.quote_number }}</div>
+  </div>
+  {% endif %}
+  {% if po.project %}
+  <div class="meta-block">
+    <div class="lbl">Project</div>
+    <div>{{ po.project.project_name }}{% if po.project.project_number %} (Ref {{ po.project.project_number }}){% endif %}</div>
+  </div>
+  {% endif %}
+  {% if po.status != 'draft' %}
+  <div class="meta-block">
+    <div class="lbl">Status</div>
+    <div>{{ po.get_status_display }}</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ITEMS TABLE -->
+<table>
+  <thead>
+    <tr>
+      <th style="width:12%;">Code</th>
+      <th style="width:50%;">Description</th>
+      <th class="num" style="width:10%;">Qty</th>
+      <th class="num" style="width:14%;">Unit Cost</th>
+      <th class="num" style="width:14%;">Line Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for line in lines %}
+      {% if line.item_type == 'message' %}
+      <tr class="msg-row"><td colspan="5">{{ line.description }}</td></tr>
+      {% else %}
+      <tr>
+        <td style="font-family:monospace;font-size:.85em;">{{ line.display_code }}</td>
+        <td>{{ line.display_desc }}</td>
+        <td class="num">{{ line.quantity|floatformat:0 }}</td>
+        <td class="num">£{{ line.unit_cost|floatformat:2 }}</td>
+        <td class="num">£{{ line.line_total|floatformat:2 }}</td>
+      </tr>
+      {% endif %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- BOTTOM ROW: delivery left | totals right -->
+<div class="bottom-row">
+  <div class="delivery-box">
+    <div class="lbl">Deliver to</div>
+    {% if delivery_address_lines %}
+      {% for line in delivery_address_lines %}<div class="addr-line">{{ line }}</div>{% endfor %}
+    {% else %}
+      <div class="addr-line" style="color:#aaa;">Not specified</div>
+    {% endif %}
+  </div>
+
+  <div class="totals-box">
+    <table>
+      <tr><td>Lines subtotal</td><td>£{{ po.lines_total|floatformat:2 }}</td></tr>
+      {% if po.carriage %}
+      <tr><td>Carriage</td><td>£{{ po.carriage|floatformat:2 }}</td></tr>
+      {% endif %}
+      <tr class="grand"><td>Total (excl. VAT)</td><td>£{{ po.total|floatformat:2 }}</td></tr>
+      <tr><td>Total (inc. VAT)</td><td>£{{ po.total_with_vat|floatformat:2 }}</td></tr>
+    </table>
+  </div>
+</div>
+
+{% if po.notes %}
+<div class="notes-block"><strong>Notes:</strong> {{ po.notes }}</div>
+{% endif %}
+
+<div class="no-print" style="text-align:center;padding:.8rem;background:#f5f5f5;border-bottom:1px solid #ddd;display:flex;gap:.6rem;justify-content:center;">
+  <button onclick="window.print()" style="padding:.4rem 1.1rem;background:#333;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:.9rem;">🖨 Print</button>
+  <a href="{% url 'po_pdf' po.pk %}" style="padding:.4rem 1.1rem;background:#d4700a;color:#fff;border-radius:4px;text-decoration:none;font-size:.9rem;">⬇ Download PDF</a>
+</div>
+</body>
+</html>

@@ -3,160 +3,268 @@
 {% block extra_style %}
 .left-sidebar{display:none !important;}
 .main-content{margin-left:0 !important;}
-.board-page{background:#f5f5f3 !important;min-height:100vh;}
-.container{max-width:100% !important;padding:0 !important;}
-.board-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:.75rem;}
-.board-title{font-size:1.8rem;font-weight:700;letter-spacing:-.02em;color:#1a1a1a !important;}
-.board-meta{font-size:.82rem;color:#888;}
-.auto-refresh-indicator{display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:#888;}
-.pulse{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite;flex-shrink:0;}
+.container{max-width:100% !important;padding:0 !important;margin:0 !important;}
+.main-content{padding:0 !important;}
+
+/* Page wrapper */
+.board-page{background:var(--bg);box-sizing:border-box;width:100%;}
+
+/* Header */
+.board-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;}
+.board-title{font-size:1.6rem;font-weight:700;color:var(--txt);}
+.auto-refresh-indicator{display:flex;align-items:center;gap:.4rem;font-size:.75rem;color:var(--mut);}
+.pulse{width:7px;height:7px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite;flex-shrink:0;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
 
-/* Layout */
-.board-layout{display:grid;grid-template-columns:2fr 1fr;gap:1.5rem;align-items:start;width:100%;}
-@media(max-width:768px){
-  .board-layout{grid-template-columns:1fr;}
-  .board-right{grid-template-rows:auto;}
-  .board-table-wrap{overflow-x:auto;}
-  table{min-width:0;width:100%;}
-  th,td{font-size:.78rem;padding:.4rem .5rem;}
+/* Month sections — simple block layout, no grid */
+.month-block{margin-bottom:1.5rem;width:100%;}
+.month-title{font-size:1.1rem;font-weight:700;color:var(--txt);margin-bottom:.6rem;}
+
+/* Table wrapper — always full width, clips overflow */
+.month-block{width:100%;box-sizing:border-box;}
+.tbl-wrap{width:100%;box-sizing:border-box;border-radius:8px;overflow-y:auto;overflow-x:hidden;border:1px solid var(--bdr);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+
+/* Table always fills wrapper exactly */
+.proj-table{width:100%;border-collapse:collapse;table-layout:fixed;}
+
+/* Column widths */
+.proj-table .col-cust{width:38%;}
+.proj-table .col-loc{width:22%;}
+.proj-table .col-date{width:20%;}
+.proj-table .col-status{width:20%;}
+
+/* Header row */
+.proj-table thead tr{background:#d4700a;}
+.proj-table th{padding:.55rem .6rem;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#1a1a1a;text-align:left;white-space:nowrap;overflow:hidden;}
+
+/* Body rows */
+.proj-table td{padding:.65rem .6rem;font-size:.8rem;border-top:1px solid var(--bdr);vertical-align:middle;overflow:hidden;word-break:break-word;}
+.row-normal td{background:var(--surf);color:var(--txt);}
+.row-normal:nth-child(even) td{background:var(--surf2);}
+.row-today td{background:var(--acc-bg);}
+.row-past td{background:var(--surf3);color:var(--mut);}
+
+.cust-name{font-weight:600;font-size:.82rem;color:var(--txt);}
+.cust-loc{font-size:.7rem;color:var(--mut);margin-top:2px;}
+.row-past .cust-name,.row-past .inst-date{color:var(--mut);}
+.inst-date{font-size:.8rem;color:var(--txt);}
+
+/* Badge */
+.badge{display:inline-block;padding:2px 7px;border-radius:99px;font-size:.65rem;font-weight:600;border:1px solid transparent;white-space:nowrap;}
+.badge-order_received{background:#fff8f0;color:#d4700a;border-color:#f5c89a;}
+.badge-quoted{background:#fff4eb;color:#b35c00;border-color:#f5c89a;}
+.badge-processed{background:#fef9e7;color:#b7860b;border-color:#f7e18a;}
+.badge-in_production{background:#eff6ff;color:#2563eb;border-color:#bfdbfe;}
+.badge-ready{background:#f0fdf4;color:#16a34a;border-color:#bbf7d0;}
+.badge-delivered{background:#f0fdf4;color:#15803d;border-color:#86efac;}
+.badge-completed{background:#f0fdf4;color:#15803d;border-color:#86efac;}
+.badge-enquiry{background:var(--surf2);color:var(--mut);border-color:var(--bdr);}
+[data-theme="dark"] .badge-order_received{background:rgba(212,112,10,.15);color:#f08030;border-color:rgba(212,112,10,.3);}
+[data-theme="dark"] .badge-quoted{background:rgba(212,112,10,.1);color:#f08030;border-color:rgba(212,112,10,.2);}
+
+.tbl-empty{text-align:center;padding:1.5rem;color:var(--mut);font-size:.85rem;background:var(--surf);}
+
+/* Desktop: 2/3 left + 1/3 right stacked, full viewport, no page scroll */
+@media(min-width:769px){
+  body{overflow:hidden;}
+  .board-page{
+    padding:1.2rem 1.5rem;
+    height:calc(100vh - 78px);
+    max-height:calc(100vh - 78px);
+    overflow-y:auto;
+    box-sizing:border-box;
+  }
+  .board-hdr{margin-bottom:.8rem;}
+  .board-title{font-size:1.8rem;}
+  .month-title{font-size:1.1rem;margin-bottom:.4rem;}
+
+  /* Main 2-column grid */
+  .board-layout{
+    display:grid;
+    grid-template-columns:2fr 1fr;
+    gap:1.2rem;
+    height:calc(100% - 3.5rem);
+  }
+
+  /* Left: month 1 fills full height */
+  .board-layout > .month-block{
+    display:flex;
+    flex-direction:column;
+    height:100%;
+    overflow:hidden;
+  }
+  .board-layout > .month-block .tbl-wrap{
+    flex:1;
+    overflow-y:auto;
+  }
+
+  /* Right: months 2+3 stacked, split height */
+  .board-right{
+    display:flex;
+    flex-direction:column;
+    gap:1rem;
+    height:100%;
+    overflow:hidden;
+  }
+  .board-right .month-block{
+    display:flex;
+    flex-direction:column;
+    flex:1;
+    overflow:hidden;
+    min-height:0;
+  }
+  .board-right .month-block .tbl-wrap{
+    flex:1;
+    overflow-y:auto;
+    min-height:0;
+  }
+
+  /* Left column - bigger text for current month */
+  .board-layout > .month-block .proj-table th{padding:.8rem 1.2rem;font-size:1.1rem;}
+  .board-layout > .month-block .proj-table td{padding:1rem 1.2rem;font-size:1.1rem;}
+  .board-layout > .month-block .cust-name{font-size:1.25rem;}
+  .board-layout > .month-block .cust-loc{font-size:.9rem;}
+  .board-layout > .month-block .inst-date{font-size:1.1rem;}
+  .board-layout > .month-block .badge{font-size:.9rem;padding:5px 14px;}
+  .board-layout > .month-block .month-title{font-size:1.6rem;}
+
+  .proj-table th{padding:.7rem 1rem;font-size:.78rem;}
+  .proj-table td{padding:.75rem 1rem;font-size:.88rem;}
+  .cust-name{font-size:.9rem;}
+  .badge{font-size:.72rem;padding:3px 10px;}
+
+  /* Compaction tiers — applied by JS when a month has many rows */
+  .month-block.compact-1 .proj-table th{padding:.5rem .9rem;}
+  .month-block.compact-1 .proj-table td{padding:.5rem .9rem;font-size:.82rem;}
+  .month-block.compact-1 .cust-name{font-size:.85rem;}
+  .board-layout > .month-block.compact-1 .proj-table td{padding:.6rem 1rem;font-size:.95rem;}
+  .board-layout > .month-block.compact-1 .cust-name{font-size:1.05rem;}
+
+  .month-block.compact-2 .proj-table th{padding:.35rem .8rem;font-size:.7rem;}
+  .month-block.compact-2 .proj-table td{padding:.35rem .8rem;font-size:.76rem;}
+  .month-block.compact-2 .cust-name{font-size:.8rem;}
+  .month-block.compact-2 .cust-loc{font-size:.68rem;}
+  .month-block.compact-2 .badge{font-size:.65rem;padding:2px 8px;}
+  .board-layout > .month-block.compact-2 .proj-table td{padding:.4rem .9rem;font-size:.85rem;}
+  .board-layout > .month-block.compact-2 .cust-name{font-size:.92rem;}
+
+  .month-block.compact-3 .proj-table th{padding:.25rem .7rem;font-size:.64rem;}
+  .month-block.compact-3 .proj-table td{padding:.22rem .7rem;font-size:.7rem;}
+  .month-block.compact-3 .cust-name{font-size:.72rem;}
+  .month-block.compact-3 .cust-loc{font-size:.6rem;}
+  .month-block.compact-3 .badge{font-size:.58rem;padding:1px 6px;}
+  .month-block.compact-3 .inst-date{font-size:.7rem;}
+  .board-layout > .month-block.compact-3 .proj-table td{padding:.3rem .8rem;font-size:.78rem;}
+  .board-layout > .month-block.compact-3 .cust-name{font-size:.82rem;}
 }
-.board-right{display:grid;grid-template-rows:auto auto;gap:1.2rem;}
-
-/* Shared table styles */
-.board-section{}
-.section-title{font-size:1.3rem;font-weight:700;color:#1a1a1a;margin-bottom:.7rem;letter-spacing:.01em;}
-.board-table-wrap{border-radius:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.08);border:1px solid #e0ddd8;}
-table{width:100%;border-collapse:collapse;}
-
-/* Main table (left) */
-.main-table thead{background:#d4700a;}
-.main-table th{text-align:left;padding:1rem 1.4rem;font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#1a1a1a;white-space:nowrap;}
-.main-table td{padding:1.3rem 1.4rem;font-size:1.6rem;border-top:1px solid #e8e4de;vertical-align:middle;line-height:1.25;}
-.main-table .row-normal td{background:#fff;color:#1a1a1a;}
-.main-table .row-normal:nth-child(even) td{background:#f9f8f6;}
-.main-table .row-today td{background:#fff4eb;border-top:1px solid #f5c89a;}
-.main-table .row-past td{background:#f0ede8;color:#aaa;}
-.main-table .cust-name{font-weight:600;font-size:1.6rem;color:#1a1a1a;}
-.main-table .cust-loc{font-size:1rem;color:#888;margin-top:3px;}
-.main-table .row-past .cust-name{color:#bbb;}
-.main-table .row-past .cust-loc{color:#ccc;}
-.main-table .inst-date{font-weight:600;font-size:1.6rem;color:#1a1a1a;}
-.main-table .row-past .inst-date{color:#bbb;}
-.main-table .today-badge{background:#d4700a;color:#fff;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:99px;margin-left:.6rem;vertical-align:middle;}
-.main-table .badge{font-size:.85rem;padding:4px 12px;}
-
-/* Side tables (right) */
-.side-table thead{background:#d4700a;}
-.side-table th{text-align:left;padding:.65rem 1rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#1a1a1a;white-space:nowrap;}
-.side-table td{padding:.85rem 1rem;font-size:1rem;border-top:1px solid #e8e4de;vertical-align:middle;}
-.side-table .row-normal td{background:#fff;color:#1a1a1a;}
-.side-table .row-normal:nth-child(even) td{background:#f9f8f6;}
-.side-table .row-today td{background:#fff4eb;border-top:1px solid #f5c89a;}
-.side-table .row-past td{background:#f0ede8;color:#aaa;}
-.side-table .cust-name{font-weight:600;font-size:1rem;color:#1a1a1a;}
-.side-table .cust-loc{font-size:.78rem;color:#888;margin-top:2px;}
-.side-table .row-past .cust-name{color:#bbb;}
-.side-table .inst-date{font-weight:500;font-size:1rem;color:#1a1a1a;}
-.side-table .row-past .inst-date{color:#bbb;}
-.side-table .today-badge{background:#d4700a;color:#fff;font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:.4rem;vertical-align:middle;}
-.side-table .badge{font-size:.72rem;padding:2px 8px;}
-
-.board-empty{text-align:center;padding:2rem;color:#aaa;font-size:.9rem;background:#fff;}
 {% endblock %}
 
 {% block content %}
-<div class="board-page" style="margin:-1.8rem -1.5rem;padding:1.8rem 2.5rem;">
+<div class="board-page">
 
 <div class="board-hdr">
   <div class="board-title">Board</div>
-  <div style="display:flex;align-items:center;gap:1.2rem;">
-    <div class="auto-refresh-indicator"><div class="pulse"></div>Auto-refreshes every 30 min</div>
-  </div>
+  <div class="auto-refresh-indicator"><div class="pulse"></div>Auto-refreshes every 30 min</div>
 </div>
 
 <div class="board-layout">
 
-  <!-- LEFT: Current month -->
-  <div class="board-section">
-    <div class="section-title">{{ m1_name }}</div>
-    <div class="board-table-wrap">
-      <table class="main-table">
-        <thead><tr>
-          <th style="width:30%">Customer</th>
-          <th style="width:25%">Location</th>
-          <th style="width:25%">Installation Date</th>
-          <th style="width:20%">Status</th>
-        </tr></thead>
+  <!-- Month 1 -->
+  <div class="month-block">
+    <div class="month-title">{{ m1_name }}</div>
+    <div class="tbl-wrap">
+      <table class="proj-table">
+        <colgroup><col class="col-cust"><col class="col-loc"><col class="col-date"><col class="col-status"></colgroup>
+        <thead><tr><th>Customer</th><th>Location</th><th>Date</th><th>Status</th></tr></thead>
         <tbody>
         {% for item in m1_projects %}{% with p=item.project d=item.inst_date %}
         <tr class="{% if item.is_today %}row-today{% elif item.is_past %}row-past{% else %}row-normal{% endif %}">
-          <td><div class="cust-name">{{ p.customer }}{% if item.is_today %}<span class="today-badge">TODAY</span>{% endif %}</div>{% if p.description %}<div class="cust-loc">{{ p.description }}</div>{% endif %}</td>
-          <td><div class="cust-name" style="font-weight:500;">{{ p.location|default:"—" }}</div></td>
+          <td><div class="cust-name">{{ p.customer }}</div>{% if p.description %}<div class="cust-loc">{{ p.description }}</div>{% endif %}</td>
+          <td><div class="inst-date">{{ p.location|default:"—" }}</div></td>
           <td><div class="inst-date">{{ d|date:"d M Y" }}</div></td>
           <td><span class="badge badge-{{ p.status }}">{{ p.get_status_display }}</span></td>
         </tr>
         {% endwith %}{% endfor %}
-        {% if not m1_projects %}<tr><td colspan="4" class="board-empty">No installations this month</td></tr>{% endif %}
+        {% if not m1_projects %}<tr><td colspan="4" class="tbl-empty">No installations this month</td></tr>{% endif %}
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- RIGHT: Next two months -->
+  <!-- Right column: months 2 and 3 stacked -->
   <div class="board-right">
 
-    <!-- Next month -->
-    <div class="board-section">
-      <div class="section-title">{{ m2_name }}</div>
-      <div class="board-table-wrap">
-        <table class="side-table">
-          <thead><tr>
-            <th>Customer</th><th>Location</th><th>Date</th><th>Status</th>
-          </tr></thead>
-          <tbody>
-          {% for item in m2_projects %}{% with p=item.project d=item.inst_date %}
-          <tr class="{% if item.is_today %}row-today{% elif item.is_past %}row-past{% else %}row-normal{% endif %}">
-            <td><div class="cust-name">{{ p.customer }}</div>{% if p.description %}<div class="cust-loc">{{ p.description }}</div>{% endif %}</td>
-            <td><div class="cust-name" style="font-weight:400;">{{ p.location|default:"—" }}</div></td>
-            <td><div class="inst-date">{{ d|date:"d M Y" }}</div></td>
-            <td><span class="badge badge-{{ p.status }}">{{ p.get_status_display }}</span></td>
-          </tr>
-          {% endwith %}{% endfor %}
-          {% if not m2_projects %}<tr><td colspan="4" class="board-empty">No installations</td></tr>{% endif %}
-          </tbody>
-        </table>
-      </div>
+  <!-- Month 2 -->
+  <div class="month-block">
+    <div class="month-title">{{ m2_name }}</div>
+    <div class="tbl-wrap">
+      <table class="proj-table">
+        <colgroup><col class="col-cust"><col class="col-loc"><col class="col-date"><col class="col-status"></colgroup>
+        <thead><tr><th>Customer</th><th>Location</th><th>Date</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for item in m2_projects %}{% with p=item.project d=item.inst_date %}
+        <tr class="{% if item.is_today %}row-today{% elif item.is_past %}row-past{% else %}row-normal{% endif %}">
+          <td><div class="cust-name">{{ p.customer }}</div>{% if p.description %}<div class="cust-loc">{{ p.description }}</div>{% endif %}</td>
+          <td><div class="inst-date">{{ p.location|default:"—" }}</div></td>
+          <td><div class="inst-date">{{ d|date:"d M Y" }}</div></td>
+          <td><span class="badge badge-{{ p.status }}">{{ p.get_status_display }}</span></td>
+        </tr>
+        {% endwith %}{% endfor %}
+        {% if not m2_projects %}<tr><td colspan="4" class="tbl-empty">No installations</td></tr>{% endif %}
+        </tbody>
+      </table>
     </div>
-
-    <!-- Month after -->
-    <div class="board-section">
-      <div class="section-title">{{ m3_name }}</div>
-      <div class="board-table-wrap">
-        <table class="side-table">
-          <thead><tr>
-            <th>Customer</th><th>Location</th><th>Date</th><th>Status</th>
-          </tr></thead>
-          <tbody>
-          {% for item in m3_projects %}{% with p=item.project d=item.inst_date %}
-          <tr class="{% if item.is_today %}row-today{% elif item.is_past %}row-past{% else %}row-normal{% endif %}">
-            <td><div class="cust-name">{{ p.customer }}</div>{% if p.description %}<div class="cust-loc">{{ p.description }}</div>{% endif %}</td>
-            <td><div class="cust-name" style="font-weight:400;">{{ p.location|default:"—" }}</div></td>
-            <td><div class="inst-date">{{ d|date:"d M Y" }}</div></td>
-            <td><span class="badge badge-{{ p.status }}">{{ p.get_status_display }}</span></td>
-          </tr>
-          {% endwith %}{% endfor %}
-          {% if not m3_projects %}<tr><td colspan="4" class="board-empty">No installations</td></tr>{% endif %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
   </div>
+
+  <!-- Month 3 -->
+  <div class="month-block">
+    <div class="month-title">{{ m3_name }}</div>
+    <div class="tbl-wrap">
+      <table class="proj-table">
+        <colgroup><col class="col-cust"><col class="col-loc"><col class="col-date"><col class="col-status"></colgroup>
+        <thead><tr><th>Customer</th><th>Location</th><th>Date</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for item in m3_projects %}{% with p=item.project d=item.inst_date %}
+        <tr class="{% if item.is_today %}row-today{% elif item.is_past %}row-past{% else %}row-normal{% endif %}">
+          <td><div class="cust-name">{{ p.customer }}</div>{% if p.description %}<div class="cust-loc">{{ p.description }}</div>{% endif %}</td>
+          <td><div class="inst-date">{{ p.location|default:"—" }}</div></td>
+          <td><div class="inst-date">{{ d|date:"d M Y" }}</div></td>
+          <td><span class="badge badge-{{ p.status }}">{{ p.get_status_display }}</span></td>
+        </tr>
+        {% endwith %}{% endfor %}
+        {% if not m3_projects %}<tr><td colspan="4" class="tbl-empty">No installations</td></tr>{% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  </div><!-- end board-right -->
+
 </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script>setTimeout(()=>location.reload(), 1800000);</script>
+<script>
+// Auto-compact a month block if its table overflows its container
+function fitMonths(){
+  document.querySelectorAll('.month-block').forEach(block=>{
+    const wrap = block.querySelector('.tbl-wrap');
+    if(!wrap) return;
+    block.classList.remove('compact-1','compact-2','compact-3');
+    // Apply progressively until it fits (or max tier)
+    const tiers = ['compact-1','compact-2','compact-3'];
+    let i = 0;
+    while(wrap.scrollHeight > wrap.clientHeight + 4 && i < tiers.length){
+      block.classList.add(tiers[i]);
+      i++;
+    }
+  });
+}
+window.addEventListener('load', fitMonths);
+window.addEventListener('resize', fitMonths);
+setTimeout(fitMonths, 300);
+setTimeout(fitMonths, 1000);
+setTimeout(()=>location.reload(), 1800000);
+</script>
 {% endblock %}

@@ -36,8 +36,22 @@
         <div class="form-group"><label class="form-label">Company Name</label><input class="form-input" name="name" value="{{ customer.name }}"></div>
         <div class="form-group"><label class="form-label">Contact Name</label><input class="form-input" name="contact_name" value="{{ customer.contact_name }}" placeholder="John Smith"></div>
         <div class="form-group"><label class="form-label">Phone</label><input class="form-input" name="phone" value="{{ customer.phone }}" placeholder="+44 7700 000000"></div>
-        <div class="form-group"><label class="form-label">Email</label><input class="form-input" name="email" type="email" value="{{ customer.email }}" placeholder="contact@company.com"></div>
-        <div class="form-group"><label class="form-label">Address</label><textarea class="form-input" name="address" rows="3" placeholder="Full address…">{{ customer.address }}</textarea></div>
+        <div class="form-group"><label class="form-label">Email 1 (priority)</label><input class="form-input" name="email" type="email" value="{{ customer.email }}" placeholder="contact@company.com"></div>
+        <div class="form-group"><label class="form-label">Email 2</label><input class="form-input" name="email2" type="email" value="{{ customer.email2 }}" placeholder="accounts@company.com"></div>
+        <div class="form-group"><label class="form-label">Email 3</label><input class="form-input" name="email3" type="email" value="{{ customer.email3 }}" placeholder="orders@company.com"></div>
+        <div class="form-group"><label class="form-label">Address Line 1</label><input class="form-input" name="address_line1" value="{{ customer.address_line1 }}"></div>
+        <div class="form-group"><label class="form-label">Address Line 2</label><input class="form-input" name="address_line2" value="{{ customer.address_line2 }}"></div>
+        <div class="form-group"><label class="form-label">Town</label><input class="form-input" name="town" value="{{ customer.town }}"></div>
+        <div class="form-group"><label class="form-label">County</label><input class="form-input" name="county" value="{{ customer.county }}"></div>
+        <div class="form-group"><label class="form-label">Post Code</label><input class="form-input" name="postcode" value="{{ customer.postcode }}"></div>
+        <div class="form-group"><label class="form-label">Country</label>
+          <select class="form-input" name="country">
+            {% for c in countries %}<option value="{{ c }}" {% if customer.country == c or not customer.country and c == 'United Kingdom' %}selected{% endif %}>{{ c }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">VAT Number</label><input class="form-input" name="vat_number" value="{{ customer.vat_number }}" placeholder="GB123456789"></div>
+        <div class="form-group"><label class="form-label">EORI Number</label><input class="form-input" name="eori_number" value="{{ customer.eori_number }}" placeholder="GB123456789000"></div>
+        <div class="form-group"><label class="form-label">Sage Account Ref.</label><input class="form-input" name="account_number" value="{{ customer.account_number }}" placeholder="e.g. SKE001"></div>
         <div class="form-group" style="margin-bottom:0;"><label class="form-label">Notes</label><textarea class="form-input" name="notes" rows="3" placeholder="Any notes about this customer…">{{ customer.notes }}</textarea></div>
         <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:1rem;">Save Changes</button>
       </form>
