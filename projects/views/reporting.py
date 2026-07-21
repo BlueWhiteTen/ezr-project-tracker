@@ -411,6 +411,7 @@ def board_view(request):
 
 
 
+@login_required
 def so_search(request):
     q = request.GET.get('q','').strip()
     results = []

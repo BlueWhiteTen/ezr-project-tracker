@@ -151,6 +151,7 @@ def report_sat_upload(request, pk):
 
 
 
+@login_required
 def report_photo_file(request, pk):
     from django.http import HttpResponse, FileResponse
     photo = get_object_or_404(ReportPhoto, pk=pk)
@@ -214,6 +215,7 @@ def photo_library_project(request, pk):
 
 
 
+@login_required
 def satisfaction_note_file(request, pk):
     from django.http import HttpResponse, FileResponse
     note = get_object_or_404(SatisfactionNote, pk=pk)
@@ -298,6 +300,7 @@ def fitting_note_update(request, pk):
 
 
 
+@login_required
 def fitting_note_download(request, pk):
     note = get_object_or_404(FittingNote, pk=pk)
     if note.file_data:

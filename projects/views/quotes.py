@@ -356,6 +356,7 @@ def quote_attached_photo_delete(request, pk):
 
 
 
+@login_required
 def quote_attached_photo_file(request, pk):
     from django.http import HttpResponse
     photo = get_object_or_404(QuoteAttachedPhoto, pk=pk)
@@ -423,6 +424,7 @@ def quote_photo_delete(request, pk):
 
 
 
+@login_required
 def quote_photo_file(request, pk):
     from django.http import HttpResponse
     photo = get_object_or_404(QuotePhoto, pk=pk)

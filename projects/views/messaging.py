@@ -75,6 +75,7 @@ def inbox(request):
 
 
 
+@login_required
 def conversation_poll(request, user_id):
     """Return messages newer than `after` for live-updating a 1:1 conversation."""
     other = get_object_or_404(User, pk=user_id)
@@ -222,6 +223,7 @@ def team_chat(request):
 
 
 
+@login_required
 def team_chat_poll(request):
     """Return team chat messages newer than `after` for live updates."""
     after = request.GET.get('after', 0)
