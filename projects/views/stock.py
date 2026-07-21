@@ -241,10 +241,11 @@ def stock_adjust(request, pk):
             product.sales_price = data.get('sales_price') or 0
         product.save()
         if new_qty != old_qty:
+            reason = (data.get('reason') or '').strip() or 'Manual stock adjustment'
             StockMovement.objects.create(
                 product=product, movement_type='adjust',
                 qty_change=round(new_qty - old_qty, 2),
-                reason='Manual stock adjustment', user=request.user,
+                reason=reason, user=request.user,
             )
         return JsonResponse({'ok': True, 'deleted': False})
     return JsonResponse({'id': product.pk, 'code': product.code, 'description': product.description,

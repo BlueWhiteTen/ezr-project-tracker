@@ -129,6 +129,7 @@ tr:hover td{background:var(--surf2);}
     <div class="form-group"><label class="form-label">Quantity in Stock</label><input class="form-input" type="number" id="eq-qty" step="1"></div>
     <div class="form-group"><label class="form-label">Reorder Level</label><input class="form-input" type="number" id="eq-reorder" step="1"></div>
     <div class="form-group" style="margin-bottom:0;"><label class="form-label">Sales Price (£)</label><input class="form-input" type="number" id="eq-price" step="0.01" min="0" placeholder="0.00"></div>
+    <div class="form-group" style="margin-bottom:0;margin-top:.7rem;"><label class="form-label">Reason for change <span style="font-weight:400;color:var(--mut2)">(only needed if adjusting quantity)</span></label><input class="form-input" type="text" id="eq-reason" placeholder="e.g. Stocktake correction, damaged stock, found in warehouse…"></div>
 
     <div style="margin-top:1.2rem;border-top:1px solid var(--bdr);padding-top:.9rem;">
       <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-bottom:.5rem;">Stock Activity</div>
@@ -158,6 +159,7 @@ function editProduct(pk, code, desc, qty, reorder, price){
   document.getElementById('eq-qty').value = qty;
   document.getElementById('eq-reorder').value = reorder;
   document.getElementById('eq-price').value = price || '';
+  document.getElementById('eq-reason').value = '';
   document.getElementById('eq-overlay').classList.add('open');
   document.getElementById('eq-modal').classList.add('open');
   document.getElementById('eq-code-inp').focus();
@@ -227,7 +229,8 @@ async function saveEdit(){
   const qty     = document.getElementById('eq-qty').value;
   const reorder = document.getElementById('eq-reorder').value;
   const price = document.getElementById('eq-price').value;
-  await fetch(`/stock/${pk}/adjust/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({code,description:desc,quantity:qty,reorder_level:reorder,sales_price:price})});
+  const reason = document.getElementById('eq-reason').value.trim();
+  await fetch(`/stock/${pk}/adjust/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({code,description:desc,quantity:qty,reorder_level:reorder,sales_price:price,reason})});
   closeEdit();
   location.reload();
 }

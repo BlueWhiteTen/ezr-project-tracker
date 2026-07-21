@@ -61,7 +61,7 @@ class ProjectForm(forms.ModelForm):
             'status':          forms.Select(attrs={'class':'form-input'}),
             'sales_order':     forms.TextInput(attrs={'class':'form-input','placeholder':'10000','maxlength':'5','style':'font-family:monospace'}),
             'drawing_number':  forms.TextInput(attrs={'class':'form-input','placeholder':'e.g. DRW-2025-001'}),
-            'description':     forms.TextInput(attrs={'class':'form-input','placeholder':'e.g. Remote stockroom, Ground floor, Phase 2…'}),
+            'description':     forms.Textarea(attrs={'class':'form-input','rows':3,'style':'resize:vertical;font-family:inherit;','placeholder':'e.g. Supply, deliver and install 3 runs of longspan racking across ground floor stockroom'}),
             'assigned_to':     forms.Select(attrs={'class':'form-input'}),
             'delivery_required':   forms.CheckboxInput(attrs={'class':'form-checkbox'}),
             'delivery_date':       forms.DateInput(attrs={'class':'form-input','type':'date'}),
