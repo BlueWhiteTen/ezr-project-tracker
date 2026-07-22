@@ -233,6 +233,46 @@ def stock_activity(request, pk):
 
 
 @login_required
+def stock_print(request):
+    selected_cats = request.GET.getlist('cat')
+    selected_cols = request.GET.getlist('col')
+    if not selected_cols:
+        selected_cols = ['code', 'description']
+
+    all_columns = [
+        ('code', 'Code'), ('description', 'Description'),
+        ('quantity', 'In Stock'), ('qty_allocated', 'Allocated'),
+        ('qty_on_order', 'On Order'), ('free_stock', 'Free Stock'),
+        ('reorder_level', 'Reorder Level'), ('reorder_qty', 'Reorder Qty'),
+        ('cost_price', 'Buying Price'), ('weight', 'Weight (kg)'),
+    ]
+    columns = [(key, label) for key, label in all_columns if key in selected_cols]
+
+    from collections import OrderedDict
+    sections = OrderedDict()
+    for val, label in Product.CATEGORY_CHOICES:
+        if val in selected_cats:
+            sections[val] = {'label': label, 'products': []}
+    include_uncat = 'none' in selected_cats
+    if include_uncat:
+        sections['none'] = {'label': 'Uncategorized', 'products': []}
+
+    if sections:
+        q = Q(category__in=[k for k in sections if k != 'none'])
+        if include_uncat:
+            q |= Q(category='')
+        for p in Product.objects.filter(q).order_by('code'):
+            key = p.category if p.category in sections else 'none'
+            sections[key]['products'].append(p)
+
+    return render(request, 'projects/stock_print.html', {
+        'sections': sections,
+        'columns': columns,
+        'category_choices': Product.CATEGORY_CHOICES,
+    })
+
+
+@login_required
 @require_POST
 def stock_create(request):
     data = json.loads(request.body)

@@ -48,6 +48,7 @@ th:first-child, td:first-child{max-width:90px;width:90px;}
   <div style="display:flex;align-items:center;gap:.75rem;">
     <span style="font-size:.82rem;color:var(--mut);">{{ products|length }} products</span>
     <button class="btn btn-primary btn-sm" onclick="openNewProduct()">+ New Product</button>
+    <button class="btn btn-ghost btn-sm" onclick="openPrintStock()">🖶 Print</button>
     {% if request.user.is_superuser %}
     <label class="btn btn-ghost btn-sm" style="cursor:pointer;" for="import-file">⬆ Import from Excel</label>
     <input type="file" id="import-file" accept=".xlsx" style="display:none;" onchange="importStock(this)">
@@ -204,6 +205,58 @@ th:first-child, td:first-child{max-width:90px;width:90px;}
     <button onclick="saveNewProduct()" class="btn btn-primary btn-sm">Create Product</button>
   </div>
 </div>
+
+<!-- Print Stock List modal -->
+<div class="eq-overlay" id="pr-overlay" onclick="closePrintStock()"></div>
+<div class="eq-modal" id="pr-modal" style="width:640px;">
+  <div class="eq-head">
+    <div style="font-weight:600;font-size:.95rem;">Print Stock List</div>
+    <button onclick="closePrintStock()" style="background:none;border:1px solid var(--bdr);border-radius:var(--rad);color:var(--mut);cursor:pointer;padding:3px 9px;">✕</button>
+  </div>
+  <div class="eq-body">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">
+      <label class="form-label" style="margin-bottom:0;">Categories to include</label>
+      <span style="font-size:.78rem;">
+        <a href="#" onclick="prToggleAll('pr-cat', true); return false;" style="color:var(--acc);">All</a> ·
+        <a href="#" onclick="prToggleAll('pr-cat', false); return false;" style="color:var(--acc);">None</a>
+      </span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.3rem .8rem;border:1px solid var(--bdr);border-radius:var(--rad);padding:.7rem;margin-bottom:1.1rem;max-height:220px;overflow-y:auto;">
+      {% for val, label in category_choices %}
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer;">
+        <input type="checkbox" class="pr-cat" value="{{ val }}" checked> {{ label }}
+      </label>
+      {% endfor %}
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer;">
+        <input type="checkbox" class="pr-cat" value="none" checked> Uncategorized
+      </label>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">
+      <label class="form-label" style="margin-bottom:0;">Columns to include</label>
+      <span style="font-size:.78rem;">
+        <a href="#" onclick="prToggleAll('pr-col', true); return false;" style="color:var(--acc);">All</a> ·
+        <a href="#" onclick="prToggleAll('pr-col', false); return false;" style="color:var(--acc);">None</a>
+      </span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.3rem .8rem;border:1px solid var(--bdr);border-radius:var(--rad);padding:.7rem;">
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer;"><input type="checkbox" class="pr-col" value="code" checked> Code</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer;"><input type="checkbox" class="pr-col" value="description" checked> Description</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer;"><input type="checkbox" class="pr-col" value="quantity" checked> In Stock</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer;"><input type="checkbox" class="pr-col" value="qty_allocated"> Allocated</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer;"><input type="checkbox" class="pr-col" value="qty_on_order"> On Order</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer;"><input type="checkbox" class="pr-col" value="free_stock"> Free Stock</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer;"><input type="checkbox" class="pr-col" value="reorder_level"> Reorder Level</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer;"><input type="checkbox" class="pr-col" value="reorder_qty"> Reorder Qty</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer;"><input type="checkbox" class="pr-col" value="cost_price"> Buying Price</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer;"><input type="checkbox" class="pr-col" value="weight"> Weight (kg)</label>
+    </div>
+  </div>
+  <div class="eq-foot">
+    <button onclick="closePrintStock()" class="btn btn-ghost btn-sm">Cancel</button>
+    <button onclick="goPrintStock()" class="btn btn-primary btn-sm">🖶 Open Print View</button>
+  </div>
+</div>
 {% endblock %}
 {% block extra_js %}
 <script>
@@ -300,6 +353,28 @@ function openNewProduct(){
 function closeNewProduct(){
   document.getElementById('np-overlay').classList.remove('open');
   document.getElementById('np-modal').classList.remove('open');
+}
+function openPrintStock(){
+  document.getElementById('pr-overlay').classList.add('open');
+  document.getElementById('pr-modal').classList.add('open');
+}
+function closePrintStock(){
+  document.getElementById('pr-overlay').classList.remove('open');
+  document.getElementById('pr-modal').classList.remove('open');
+}
+function prToggleAll(cls, checked){
+  document.querySelectorAll('.'+cls).forEach(cb => cb.checked = checked);
+}
+function goPrintStock(){
+  const cats = Array.from(document.querySelectorAll('.pr-cat:checked')).map(cb => cb.value);
+  const cols = Array.from(document.querySelectorAll('.pr-col:checked')).map(cb => cb.value);
+  if(!cats.length){ alert('Select at least one category.'); return; }
+  if(!cols.length){ alert('Select at least one column.'); return; }
+  const params = new URLSearchParams();
+  cats.forEach(c => params.append('cat', c));
+  cols.forEach(c => params.append('col', c));
+  window.open(`/stock/print/?${params.toString()}`, '_blank');
+  closePrintStock();
 }
 async function saveNewProduct(){
   const code = document.getElementById('np-code').value.trim();

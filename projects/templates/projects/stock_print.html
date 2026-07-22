@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Stock List — Print</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#000; background:#fff; padding:1.5cm; }
+  .header { border-bottom:2.5pt solid #000; padding-bottom:10pt; margin-bottom:14pt; display:flex; justify-content:space-between; align-items:flex-end; }
+  .title { font-size:18pt; font-weight:700; color:#000; }
+  .dt { font-size:8pt; color:#555; margin-top:2pt; }
+  .print-btn { background:#d4700a; color:#fff; border:none; border-radius:4px; padding:8pt 16pt; font-size:10pt; font-weight:700; cursor:pointer; }
+  .section { margin-top:16pt; page-break-inside:avoid; }
+  .section-head { font-size:12pt; font-weight:700; color:#000; background:#eee; padding:4pt 6pt; border-left:4pt solid #d4700a; margin-bottom:4pt; }
+  table { width:100%; border-collapse:collapse; margin-bottom:4pt; }
+  thead tr { border-bottom:1.5pt solid #000; }
+  th { text-align:left; padding:3pt 6pt 3pt 0; font-size:7pt; text-transform:uppercase; letter-spacing:.06em; color:#000; font-weight:700; }
+  th.num, td.num { text-align:right; }
+  td { padding:2pt 6pt 2pt 0; font-size:8.5pt; color:#000; border-bottom:.3pt solid #ddd; }
+  .code { font-family:monospace; font-weight:700; font-size:8pt; }
+  .empty { font-size:8.5pt; color:#777; font-style:italic; padding:4pt 0; }
+  @media print {
+    body { padding:0; }
+    .print-btn { display:none; }
+    @page { margin:1cm; size:A4 portrait; }
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <div class="title">EZR Shelving — Stock List</div>
+    <div class="dt">Printed {% now "d M Y, H:i" %}</div>
+  </div>
+  <button class="print-btn" onclick="window.print()">🖶 Print</button>
+</div>
+
+{% if not sections %}
+  <p class="empty">No categories selected.</p>
+{% endif %}
+
+{% for key, section in sections.items %}
+<div class="section">
+  <div class="section-head">{{ section.label }} <span style="font-weight:400;font-size:9pt;color:#555;">({{ section.products|length }} item{{ section.products|length|pluralize }})</span></div>
+  {% if section.products %}
+  <table>
+    <thead>
+      <tr>
+        {% for key2, label in columns %}
+        <th {% if key2 != 'code' and key2 != 'description' %}class="num"{% endif %}>{{ label }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in section.products %}
+      <tr>
+        {% for key2, label in columns %}
+          {% if key2 == 'code' %}<td class="code">{{ p.code }}</td>
+          {% elif key2 == 'description' %}<td>{{ p.description }}</td>
+          {% elif key2 == 'quantity' %}<td class="num">{{ p.quantity|floatformat:0 }}</td>
+          {% elif key2 == 'qty_allocated' %}<td class="num">{{ p.qty_allocated|floatformat:0 }}</td>
+          {% elif key2 == 'qty_on_order' %}<td class="num">{{ p.qty_on_order|floatformat:0 }}</td>
+          {% elif key2 == 'free_stock' %}<td class="num">{{ p.free_stock|floatformat:0 }}</td>
+          {% elif key2 == 'reorder_level' %}<td class="num">{{ p.reorder_level|floatformat:0 }}</td>
+          {% elif key2 == 'reorder_qty' %}<td class="num">{{ p.reorder_qty|floatformat:0 }}</td>
+          {% elif key2 == 'cost_price' %}<td class="num">{% if p.cost_price %}£{{ p.cost_price|floatformat:2 }}{% else %}—{% endif %}</td>
+          {% elif key2 == 'weight' %}<td class="num">{% if p.weight is not None %}{{ p.weight|floatformat:2 }}{% else %}—{% endif %}</td>
+          {% endif %}
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No products in this category.</p>
+  {% endif %}
+</div>
+{% endfor %}
+
+</body>
+</html>
