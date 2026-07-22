@@ -1,9 +1,10 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>document.documentElement.dataset.theme = localStorage.getItem('pt-theme') || 'light';</script>
 <title>{% block title %}EZR Project Tracker{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -268,14 +269,10 @@ select.form-input{cursor:pointer;}
 </div>
 
 <script>
-(function(){
-  var t = localStorage.getItem('pt-theme') || 'light';
-  document.documentElement.dataset.theme = t;
-  document.addEventListener('DOMContentLoaded', function(){
-    var b = document.getElementById('theme-btn');
-    if(b) b.textContent = t === 'dark' ? 'Light mode' : 'Dark mode';
-  });
-})();
+document.addEventListener('DOMContentLoaded', function(){
+  var b = document.getElementById('theme-btn');
+  if(b) b.textContent = document.documentElement.dataset.theme === 'dark' ? 'Light mode' : 'Dark mode';
+});
 
 function toggleTheme(){
   var h = document.documentElement;
