@@ -160,6 +160,7 @@ def stock_list(request):
         'columns': columns,
         'show_inactive': show_inactive,
         'inactive_count': Product.objects.filter(is_active=False).count(),
+        'category_choices': Product.CATEGORY_CHOICES,
     })
 
 
@@ -229,6 +230,33 @@ def stock_activity(request, pk):
 
 @login_required
 @require_POST
+def stock_create(request):
+    data = json.loads(request.body)
+    code = (data.get('code') or '').strip()
+    if not code:
+        return JsonResponse({'error': 'Product code is required.'}, status=400)
+    if Product.objects.filter(code__iexact=code).exists():
+        return JsonResponse({'error': f'A product with code "{code}" already exists.'}, status=400)
+
+    def dec(key):
+        v = data.get(key)
+        return float(v) if v not in (None, '') else 0
+
+    weight_val = data.get('weight')
+    product = Product.objects.create(
+        code=code,
+        description=(data.get('description') or '').strip(),
+        category=data.get('category') or '',
+        quantity=dec('quantity'),
+        reorder_level=dec('reorder_level'),
+        cost_price=dec('cost_price'),
+        weight=float(weight_val) if weight_val not in (None, '') else None,
+    )
+    return JsonResponse({'ok': True, 'id': product.pk})
+
+
+@login_required
+@require_POST
 def stock_adjust(request, pk):
     product = get_object_or_404(Product, pk=pk)
     if request.method == 'POST':
@@ -249,6 +277,8 @@ def stock_adjust(request, pk):
         if 'weight' in data:
             wv = data.get('weight')
             product.weight = float(wv) if (wv not in (None, '')) else None
+        if 'category' in data:
+            product.category = data.get('category') or ''
         product.save()
         if new_qty != old_qty:
             reason = (data.get('reason') or '').strip() or 'Manual stock adjustment'
@@ -261,7 +291,8 @@ def stock_adjust(request, pk):
     return JsonResponse({'id': product.pk, 'code': product.code, 'description': product.description,
                          'quantity': float(product.quantity), 'reorder_level': float(product.reorder_level),
                          'sales_price': float(product.sales_price), 'cost_price': float(product.cost_price),
-                         'weight': float(product.weight) if product.weight is not None else None})
+                         'weight': float(product.weight) if product.weight is not None else None,
+                         'category': product.category})
 
 
 # ── Picking Lists ─────────────────────────────────────────────────────────────
@@ -271,6 +302,8 @@ def stock_adjust(request, pk):
 @login_required
 @require_POST
 def stock_import(request):
+    if not request.user.is_superuser:
+        return JsonResponse({'error': 'Only Tasos can import stock from Excel.'}, status=403)
     import openpyxl
     f = request.FILES.get('file')
     if not f:

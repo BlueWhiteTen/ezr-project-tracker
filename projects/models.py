@@ -442,9 +442,30 @@ class ProjectDocument(models.Model):
 
 
 class Product(models.Model):
+    CATEGORY_CHOICES = [
+        ('1', '1 Discontinued'),
+        ('2', '2 Board'),
+        ('3', '3 Type 1'),
+        ('4', '4 Trimline'),
+        ('5', '5 Type 1 & Trimline common'),
+        ('6', '6 AR Longspan'),
+        ('7', '7 AR Pallet Rack'),
+        ('8', '8 Misc Fixings'),
+        ('9', '9 JWW products'),
+        ('10', '10 Wire & Mesh'),
+        ('11', '11 Misc Metal'),
+        ('12', '12 Ladders & Steps'),
+        ('13', '13 Lockers & Cupboards'),
+        ('14', '14 Box & Bin - Plastic'),
+        ('15', '15 Box & Bin - Cardboard'),
+        ('16', '16 Misc Out Sourced'),
+        ('17', '17 Misc Non Product Item'),
+        ('18', '18 Written Off'),
+    ]
     is_active          = models.BooleanField(default=True)
     code               = models.CharField(max_length=100, unique=True)
     description        = models.CharField(max_length=300)
+    category           = models.CharField(max_length=2, choices=CATEGORY_CHOICES, blank=True)
     quantity           = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # In Stock
     qty_allocated      = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     qty_on_order       = models.DecimalField(max_digits=10, decimal_places=2, default=0)
