@@ -319,29 +319,54 @@ def stock_import(request):
     try:
         wb = openpyxl.load_workbook(f)
         ws = wb.active
-        rows = list(ws.iter_rows(values_only=True))[1:]
+        rows = list(ws.iter_rows(values_only=True))
+        if not rows:
+            return JsonResponse({'error': 'File is empty.'}, status=400)
+
+        # Map columns by header name — robust against Sage reordering its
+        # export in future, unlike matching by fixed column position.
+        header_row = [str(h).strip() if h is not None else '' for h in rows[0]]
+        required = ['Product Code', 'Description', 'Inactive', 'Quantity In Stock',
+                    'Quantity Allocated', 'Quantity On Order', 'Re-Order Level',
+                    'Re-Order Quantity', 'Free Stock']
+        missing = [h for h in required if h not in header_row]
+        if missing:
+            return JsonResponse({'error': f'Missing expected column(s): {", ".join(missing)}'}, status=400)
+        col = {h: header_row.index(h) for h in required}
+
+        def num(row, key):
+            v = row[col[key]]
+            return float(v) if v is not None else 0
+
         count = 0
-        for row in rows:
-            code = str(row[0]).strip() if row[0] else ''
-            desc = str(row[1]).strip() if row[1] else ''
+        deactivated = 0
+        for row in rows[1:]:
+            code = str(row[col['Product Code']]).strip() if row[col['Product Code']] else ''
             if not code or code == 'None':
                 continue
-            Product.objects.update_or_create(
-                code=code,
-                defaults={
-                    'description':   desc,
-                    'quantity':      float(row[3]) if row[3] is not None else 0,
-                    'qty_allocated': float(row[4]) if row[4] is not None else 0,
-                    'qty_on_order':  float(row[5]) if row[5] is not None else 0,
-                    'reorder_level': float(row[6]) if row[6] is not None else 0,
-                    'reorder_qty':   float(row[7]) if row[7] is not None else 0,
-                    'cost_price':    float(row[8]) if row[8] is not None else 0,
-                    'free_stock':    float(row[9]) if row[9] is not None else 0,
-                    'sales_price':   float(row[2]) if row[2] is not None else 0,
-                }
-            )
+            desc = str(row[col['Description']]).strip() if row[col['Description']] else ''
+            is_inactive = str(row[col['Inactive']] or '').strip().upper() == 'Y'
+
+            product, _ = Product.objects.get_or_create(code=code, defaults={'description': desc})
+            product.description   = desc
+            product.quantity       = num(row, 'Quantity In Stock')
+            product.qty_allocated  = num(row, 'Quantity Allocated')
+            product.qty_on_order   = num(row, 'Quantity On Order')
+            product.reorder_level  = num(row, 'Re-Order Level')
+            product.reorder_qty    = num(row, 'Re-Order Quantity')
+            product.free_stock     = num(row, 'Free Stock')
+            # Sales price, buying price, and weight are NOT touched here —
+            # those are managed directly in the app, not from Sage (Jul 2026).
+            if is_inactive:
+                product.is_active = False
+                product.category = '1'  # 1 Discontinued
+                deactivated += 1
+            # If not inactive, leave is_active/category exactly as they are
+            # in the app — Sage saying "active" doesn't override a manual
+            # deactivation made here for an unrelated reason.
+            product.save()
             count += 1
-        return JsonResponse({'ok': True, 'count': count})
+        return JsonResponse({'ok': True, 'count': count, 'deactivated': deactivated})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
