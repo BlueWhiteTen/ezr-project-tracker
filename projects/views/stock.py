@@ -115,6 +115,7 @@ def stock_list(request):
     sort     = request.GET.get('sort', 'code')
     direction= request.GET.get('dir', 'asc')
     low_only = request.GET.get('low', '') == '1'
+    show_inactive = request.GET.get('show_inactive', '') == '1'
 
     valid_sorts = ['code','description','quantity','qty_allocated','qty_on_order','free_stock','reorder_level','reorder_qty']
     if sort not in valid_sorts:
@@ -122,9 +123,10 @@ def stock_list(request):
     order = sort if direction == 'asc' else f'-{sort}'
 
     products = Product.objects.all()
+    if not show_inactive:
+        products = products.filter(is_active=True)
     if q:
         products = products.filter(Q(code__icontains=q) | Q(description__icontains=q))
-    # Note: inactive products still shown in stock list (greyed out) but filtered in search API
 
     low_stock_qs = products.filter(
         Q(reorder_level__gt=0, quantity__lte=models_F('reorder_level')) | Q(quantity__lt=0)
@@ -156,6 +158,8 @@ def stock_list(request):
         'low_only': low_only,
         'sort': sort, 'dir': direction,
         'columns': columns,
+        'show_inactive': show_inactive,
+        'inactive_count': Product.objects.filter(is_active=False).count(),
     })
 
 

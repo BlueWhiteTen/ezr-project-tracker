@@ -56,6 +56,15 @@ th:first-child, td:first-child{max-width:90px;width:90px;}
   <input class="form-input" name="q" value="{{ query }}" placeholder="Search code or description…" style="max-width:380px;" autofocus>
   <button class="btn btn-ghost btn-sm" type="submit">Search</button>
   {% if query %}<a href="{% url 'stock_list' %}" class="btn btn-ghost btn-sm">Clear</a>{% endif %}
+  {% if low_only %}<input type="hidden" name="low" value="1">{% endif %}
+  {% if sort != 'code' %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+  {% if dir != 'asc' %}<input type="hidden" name="dir" value="{{ dir }}">{% endif %}
+  {% if inactive_count %}
+  <label style="display:flex;align-items:center;gap:.4rem;font-size:.82rem;color:var(--mut);cursor:pointer;margin-left:.4rem;">
+    <input type="checkbox" name="show_inactive" value="1" {% if show_inactive %}checked{% endif %} onchange="this.form.submit()">
+    Show inactive ({{ inactive_count }})
+  </label>
+  {% endif %}
 </form>
 <div class="stock-table-wrap" style="overflow-x:auto;">
   <table>
