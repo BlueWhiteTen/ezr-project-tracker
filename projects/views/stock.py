@@ -147,7 +147,6 @@ def stock_list(request):
         {'key':'free_stock',    'label':'Free Stock',  'right':True,  'default_dir':'asc'},
         {'key':'reorder_level', 'label':'Reorder Lvl', 'right':True, 'default_dir':'desc'},
         {'key':'reorder_qty',   'label':'Reorder Qty', 'right':True, 'default_dir':'desc'},
-        {'key':'sales_price',   'label':'Sales Price', 'right':True, 'default_dir':'desc'},
         {'key':'cost_price',    'label':'Buying Price','right':True, 'default_dir':'desc'},
         {'key':'weight',        'label':'Weight (kg)', 'right':True, 'default_dir':'desc'},
     ]
