@@ -32,7 +32,7 @@ def home(request):
     week_end = today + timedelta(days=7)
 
     my_reminders = Reminder.objects.filter(
-        notify_user=request.user, dismissed=False
+        notify_user=request.user, dismissed=False, remind_at__lte=now
     ).select_related('project').order_by('remind_at')[:10]
 
     upcoming_reminders = Reminder.objects.filter(

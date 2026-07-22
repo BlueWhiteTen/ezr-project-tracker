@@ -12,11 +12,12 @@
   .print-btn { background:#d4700a; color:#fff; border:none; border-radius:4px; padding:8pt 16pt; font-size:10pt; font-weight:700; cursor:pointer; }
   .section { margin-top:16pt; page-break-inside:avoid; }
   .section-head { font-size:12pt; font-weight:700; color:#000; background:#eee; padding:4pt 6pt; border-left:4pt solid #d4700a; margin-bottom:4pt; }
-  table { width:100%; border-collapse:collapse; margin-bottom:4pt; }
+  table { width:100%; border-collapse:collapse; margin-bottom:4pt; table-layout:fixed; }
   thead tr { border-bottom:1.5pt solid #000; }
-  th { text-align:left; padding:3pt 6pt 3pt 0; font-size:7pt; text-transform:uppercase; letter-spacing:.06em; color:#000; font-weight:700; }
+  th { text-align:left; padding:3pt 6pt 3pt 0; font-size:7pt; text-transform:uppercase; letter-spacing:.06em; color:#000; font-weight:700; overflow:hidden; }
   th.num, td.num { text-align:right; }
-  td { padding:2pt 6pt 2pt 0; font-size:8.5pt; color:#000; border-bottom:.3pt solid #ddd; }
+  td { padding:2pt 6pt 2pt 0; font-size:8.5pt; color:#000; border-bottom:.3pt solid #ddd; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  td.wrap { white-space:normal; }
   .code { font-family:monospace; font-weight:700; font-size:8pt; }
   .empty { font-size:8.5pt; color:#777; font-style:italic; padding:4pt 0; }
   @media print {
@@ -44,9 +45,12 @@
   <div class="section-head">{{ section.label }} <span style="font-weight:400;font-size:9pt;color:#555;">({{ section.products|length }} item{{ section.products|length|pluralize }})</span></div>
   {% if section.products %}
   <table>
+    <colgroup>
+      {% for key2, label, width in columns %}<col style="width:{{ width }}%;">{% endfor %}
+    </colgroup>
     <thead>
       <tr>
-        {% for key2, label in columns %}
+        {% for key2, label, width in columns %}
         <th {% if key2 != 'code' and key2 != 'description' %}class="num"{% endif %}>{{ label }}</th>
         {% endfor %}
       </tr>
@@ -54,9 +58,9 @@
     <tbody>
       {% for p in section.products %}
       <tr>
-        {% for key2, label in columns %}
+        {% for key2, label, width in columns %}
           {% if key2 == 'code' %}<td class="code">{{ p.code }}</td>
-          {% elif key2 == 'description' %}<td>{{ p.description }}</td>
+          {% elif key2 == 'description' %}<td class="wrap">{{ p.description }}</td>
           {% elif key2 == 'quantity' %}<td class="num">{{ p.quantity|floatformat:0 }}</td>
           {% elif key2 == 'qty_allocated' %}<td class="num">{{ p.qty_allocated|floatformat:0 }}</td>
           {% elif key2 == 'qty_on_order' %}<td class="num">{{ p.qty_on_order|floatformat:0 }}</td>

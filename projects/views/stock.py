@@ -248,6 +248,17 @@ def stock_print(request):
     ]
     columns = [(key, label) for key, label in all_columns if key in selected_cols]
 
+    # Fixed widths so every section's table lines up vertically, regardless
+    # of how long the codes/descriptions happen to be in that section.
+    FIXED_WIDTHS = {'code': 13, 'description': 32}
+    num_numeric = sum(1 for k, _ in columns if k not in FIXED_WIDTHS)
+    remaining = 100 - sum(w for k, w in FIXED_WIDTHS.items() if k in dict(columns))
+    numeric_width = round(remaining / num_numeric, 1) if num_numeric else 0
+    columns = [
+        (key, label, FIXED_WIDTHS.get(key, numeric_width))
+        for key, label in columns
+    ]
+
     from collections import OrderedDict
     sections = OrderedDict()
     for val, label in Product.CATEGORY_CHOICES:
