@@ -117,7 +117,7 @@ def stock_list(request):
     low_only = request.GET.get('low', '') == '1'
     show_inactive = request.GET.get('show_inactive', '') == '1'
 
-    valid_sorts = ['code','description','quantity','qty_allocated','qty_on_order','free_stock','reorder_level','reorder_qty']
+    valid_sorts = ['code','description','quantity','qty_allocated','qty_on_order','free_stock','reorder_level','reorder_qty','cost_price','weight']
     if sort not in valid_sorts:
         sort = 'code'
     order = sort if direction == 'asc' else f'-{sort}'
