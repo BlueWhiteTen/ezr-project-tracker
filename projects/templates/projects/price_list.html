@@ -25,7 +25,15 @@
 </div>
 
 {% if not can_edit %}
-<div class="readonly-banner">👁 View only — prices can be edited by Tasos and Martin Chapman. Costings are built from these component prices.</div>
+<div class="readonly-banner">👁 View only — board material rates can be edited by Tasos and Martin Chapman.</div>
+{% endif %}
+<div class="readonly-banner" style="background:var(--surf2);color:var(--mut);">📦 Component prices and weights are now set on the <a href="{% url 'stock_list' %}">Stock page</a> and mirrored here automatically — match is by product code.</div>
+
+{% if unmatched_items %}
+<div class="readonly-banner" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;">
+  ⚠ {{ unmatched_items|length }} component{{ unmatched_items|pluralize }} have no matching code in Stock, so the value shown is the last known price/weight (not live):
+  {% for u in unmatched_items %}<span class="pl-code" style="margin-left:.3rem;">{{ u.code }}</span>{% endfor %}
+</div>
 {% endif %}
 
 <div class="pl-section" style="margin-bottom:1.4rem;">
@@ -55,9 +63,9 @@
         <tr><td style="font-size:.68rem;color:var(--mut);text-transform:uppercase;">Item</td><td style="font-size:.68rem;color:var(--mut);text-align:right;">Price £</td><td style="font-size:.68rem;color:var(--mut);text-align:right;width:90px;">Weight kg</td></tr>
         {% for item in items %}
         <tr>
-          <td>{{ item.label }} {% if item.code != item.label %}<span class="pl-code">{{ item.code }}</span>{% endif %}</td>
-          <td style="text-align:right;width:120px;"><input class="pl-price" type="number" step="0.01" value="{{ item.price|floatformat:2 }}" data-pk="{{ item.pk }}" {% if not can_edit %}disabled{% endif %} onchange="savePrice(this)"></td>
-          <td style="text-align:right;"><input class="pl-price" type="number" step="0.01" value="{% if item.weight is not None %}{{ item.weight|floatformat:2 }}{% endif %}" placeholder="—" data-pk="{{ item.pk }}" {% if not can_edit %}disabled{% endif %} onchange="saveWeight(this)" style="width:75px;"></td>
+          <td>{{ item.label }} {% if item.code != item.label %}<span class="pl-code">{{ item.code }}</span>{% endif %}{% if not item.matched %} <span title="No matching Stock code — showing last known value" style="color:#d97706;cursor:help;">⚠</span>{% endif %}</td>
+          <td style="text-align:right;width:120px;font-family:var(--fm);">£{{ item.stock_price|floatformat:2 }}</td>
+          <td style="text-align:right;width:90px;font-family:var(--fm);">{% if item.stock_weight is not None %}{{ item.stock_weight|floatformat:2 }}{% else %}<span style="color:var(--mut);">—</span>{% endif %}</td>
         </tr>
         {% endfor %}
       </table>
@@ -77,9 +85,9 @@
         <tr><td style="font-size:.68rem;color:var(--mut);text-transform:uppercase;">Item</td><td style="font-size:.68rem;color:var(--mut);text-align:right;">Price £</td><td style="font-size:.68rem;color:var(--mut);text-align:right;width:90px;">Weight kg</td></tr>
         {% for item in items %}
         <tr>
-          <td>{{ item.label }} {% if item.code != item.label %}<span class="pl-code">{{ item.code }}</span>{% endif %}</td>
-          <td style="text-align:right;width:120px;"><input class="pl-price" type="number" step="0.01" value="{{ item.price|floatformat:2 }}" data-pk="{{ item.pk }}" {% if not can_edit %}disabled{% endif %} onchange="savePrice(this)"></td>
-          <td style="text-align:right;"><input class="pl-price" type="number" step="0.01" value="{% if item.weight is not None %}{{ item.weight|floatformat:2 }}{% endif %}" placeholder="—" data-pk="{{ item.pk }}" {% if not can_edit %}disabled{% endif %} onchange="saveWeight(this)" style="width:75px;"></td>
+          <td>{{ item.label }} {% if item.code != item.label %}<span class="pl-code">{{ item.code }}</span>{% endif %}{% if not item.matched %} <span title="No matching Stock code — showing last known value" style="color:#d97706;cursor:help;">⚠</span>{% endif %}</td>
+          <td style="text-align:right;width:120px;font-family:var(--fm);">£{{ item.stock_price|floatformat:2 }}</td>
+          <td style="text-align:right;width:90px;font-family:var(--fm);">{% if item.stock_weight is not None %}{{ item.stock_weight|floatformat:2 }}{% else %}<span style="color:var(--mut);">—</span>{% endif %}</td>
         </tr>
         {% endfor %}
       </table>
@@ -99,26 +107,10 @@ function showLine(line){
   document.getElementById('t-trimline').className = line==='trimline'?'active':'';
   document.getElementById('t-longspan').className = line==='longspan'?'active':'';
 }
-async function savePrice(input){
-  const pk = input.dataset.pk, price = input.value;
-  input.style.borderColor = '#d4700a';
-  const r = await fetch('/price-list/update/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({pk, price})});
-  const d = await r.json();
-  if(d.ok){ input.style.borderColor='#16a34a'; setTimeout(()=>input.style.borderColor='',1200); }
-  else { input.style.borderColor='#dc2626'; alert(d.error||'Failed'); }
-}
 async function saveMaterial(input){
   const material = input.dataset.material, price = input.value;
   input.style.borderColor = '#d4700a';
   const r = await fetch('/price-list/update/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({material, price})});
-  const d = await r.json();
-  if(d.ok){ input.style.borderColor='#16a34a'; setTimeout(()=>input.style.borderColor='',1200); }
-  else { input.style.borderColor='#dc2626'; alert(d.error||'Failed'); }
-}
-async function saveWeight(input){
-  const pk = input.dataset.pk, weight = input.value;
-  input.style.borderColor = '#d4700a';
-  const r = await fetch('/price-list/update/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({pk, weight})});
   const d = await r.json();
   if(d.ok){ input.style.borderColor='#16a34a'; setTimeout(()=>input.style.borderColor='',1200); }
   else { input.style.borderColor='#dc2626'; alert(d.error||'Failed'); }

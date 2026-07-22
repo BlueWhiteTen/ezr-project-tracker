@@ -14,7 +14,7 @@ import json
 
 from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence
 from ..forms import RegisterForm, ProjectForm
-from .utils import (_can_edit_prices)
+from .utils import (_can_edit_prices, stock_lookup_by_code)
 from .costing import *  # noqa: F401,F403 — price list seeding needs all costing constants
 
 
@@ -44,6 +44,26 @@ def price_list(request):
     # Preserve category display order using first-seen order by pk
     from collections import OrderedDict
     items = PriceListItem.objects.all().order_by('pk')
+
+    # Price List now mirrors Stock: buying price and weight are read from the
+    # matching Stock item by code (case-insensitive exact match). Any item
+    # with no Stock match falls back to its own last-saved value (so nothing
+    # goes blank overnight) and is flagged for follow-up.
+    stock_by_code = stock_lookup_by_code()
+    unmatched = []
+    for item in items:
+        stock_item = stock_by_code.get((item.code or '').strip().upper())
+        if stock_item:
+            item.stock_price = stock_item.cost_price
+            item.stock_weight = stock_item.weight
+            item.matched = True
+        else:
+            item.stock_price = item.price
+            item.stock_weight = item.weight
+            item.matched = False
+            if item.code:
+                unmatched.append({'code': item.code, 'label': item.label})
+
     trimline = OrderedDict()
     longspan = OrderedDict()
     for item in items:
@@ -71,6 +91,7 @@ def price_list(request):
         'trimline_groups': trimline,
         'longspan_groups': longspan,
         'board_materials': board_materials,
+        'unmatched_items': unmatched,
     })
 
 
@@ -91,19 +112,9 @@ def price_list_update(request):
         except (ValueError, TypeError):
             return JsonResponse({'error': 'Invalid price'}, status=400)
         return JsonResponse({'ok': True, 'price': float(mat.price_per_sqft)})
-    # Component price update
-    item = get_object_or_404(PriceListItem, pk=data.get('pk'))
-    if 'weight' in data:
-        wv = str(data.get('weight', '')).strip()
-        item.weight = float(wv) if wv else None
-        item.save(update_fields=['weight', 'updated_at'])
-        return JsonResponse({'ok': True, 'weight': float(item.weight) if item.weight is not None else None})
-    try:
-        item.price = float(data.get('price', 0) or 0)
-        item.save(update_fields=['price', 'updated_at'])
-    except (ValueError, TypeError):
-        return JsonResponse({'error': 'Invalid price'}, status=400)
-    return JsonResponse({'ok': True, 'price': float(item.price)})
+    # Component price/weight is now mirrored live from Stock (read-only here) —
+    # edit the matching item on the Stock page instead.
+    return JsonResponse({'error': 'Component prices and weights are now set on the Stock page and mirrored here automatically.'}, status=400)
 
 
 
@@ -229,8 +240,16 @@ def _seed_price_list():
 
 
 def ls_component_prices():
-    """Return {code: price} for all longspan components from the editable price list."""
-    return {item.code: float(item.price) for item in PriceListItem.objects.filter(product_line='longspan')}
+    """Return {code: price} for all longspan components. Stock's buying price
+    (matched by code) takes priority; falls back to the Price List's own
+    stored value for any code with no Stock match yet."""
+    from .utils import stock_lookup_by_code
+    stock_by_code = stock_lookup_by_code()
+    result = {}
+    for item in PriceListItem.objects.filter(product_line='longspan'):
+        stock_item = stock_by_code.get((item.code or '').strip().upper())
+        result[item.code] = float(stock_item.cost_price) if stock_item else float(item.price)
+    return result
 
 
 

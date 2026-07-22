@@ -75,7 +75,7 @@ tr:hover td{background:var(--surf2);}
     <tbody>
     {% for p in products %}
     <tr id="prod-row-{{ p.pk }}" {% if not p.is_active %}class="prod-inactive"{% endif %}>
-      <td><span class="code" style="cursor:pointer;" onclick="editProduct({{ p.pk }},'{{ p.code|escapejs }}','{{ p.description|escapejs }}',{{ p.quantity }},{{ p.reorder_level }},{{ p.sales_price }})">{{ p.code }}</span></td>
+      <td><span class="code" style="cursor:pointer;" onclick="editProduct({{ p.pk }},'{{ p.code|escapejs }}','{{ p.description|escapejs }}',{{ p.quantity }},{{ p.reorder_level }},{{ p.sales_price }},{{ p.cost_price }},{% if p.weight is not None %}{{ p.weight }}{% else %}null{% endif %})">{{ p.code }}</span></td>
       <td>{{ p.description }}{% if not p.is_active %} <span style="font-size:.7rem;color:var(--mut);font-style:italic;">(inactive)</span>{% endif %}</td>
       <td style="text-align:right;">
         <span class="{% if p.reorder_level > 0 and p.quantity <= p.reorder_level %}qty-low{% elif p.quantity <= 0 %}qty-zero{% else %}qty-ok{% endif %}">{{ p.quantity|floatformat:0 }}</span>
@@ -97,8 +97,14 @@ tr:hover td{background:var(--surf2);}
       <td style="text-align:right;font-family:var(--fm);">
         {% if p.sales_price %}£{{ p.sales_price|floatformat:2 }}{% else %}<span style="color:var(--mut);">—</span>{% endif %}
       </td>
+      <td style="text-align:right;font-family:var(--fm);">
+        {% if p.cost_price %}£{{ p.cost_price|floatformat:2 }}{% else %}<span style="color:var(--mut);">—</span>{% endif %}
+      </td>
+      <td style="text-align:right;font-family:var(--fm);">
+        {% if p.weight is not None %}{{ p.weight|floatformat:2 }} kg{% else %}<span style="color:var(--mut);">—</span>{% endif %}
+      </td>
       <td style="text-align:right;white-space:nowrap;">
-        <button class="edit-qty" onclick="editProduct({{ p.pk }},'{{ p.code|escapejs }}','{{ p.description|escapejs }}',{{ p.quantity }},{{ p.reorder_level }},{{ p.sales_price }})">Edit</button>
+        <button class="edit-qty" onclick="editProduct({{ p.pk }},'{{ p.code|escapejs }}','{{ p.description|escapejs }}',{{ p.quantity }},{{ p.reorder_level }},{{ p.sales_price }},{{ p.cost_price }},{% if p.weight is not None %}{{ p.weight }}{% else %}null{% endif %})">Edit</button>
         <button class="edit-qty" id="act-btn-{{ p.pk }}" onclick="toggleActive({{ p.pk }}, this)"
           style="margin-left:.3rem;{% if p.is_active %}background:var(--surf2);color:var(--mut2);{% else %}background:#fef3c7;color:#92400e;border-color:#fcd34d;{% endif %}">
           {% if p.is_active %}Deactivate{% else %}Activate{% endif %}
@@ -106,7 +112,7 @@ tr:hover td{background:var(--surf2);}
       </td>
     </tr>
     {% empty %}
-    <tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--mut);">No products found — import your Excel file to get started</td></tr>
+    <tr><td colspan="12" style="text-align:center;padding:2rem;color:var(--mut);">No products found — import your Excel file to get started</td></tr>
     {% endfor %}
     </tbody>
   </table>
@@ -128,7 +134,9 @@ tr:hover td{background:var(--surf2);}
     <div class="form-group"><label class="form-label">Description</label><input class="form-input" type="text" id="eq-desc-inp"></div>
     <div class="form-group"><label class="form-label">Quantity in Stock</label><input class="form-input" type="number" id="eq-qty" step="1"></div>
     <div class="form-group"><label class="form-label">Reorder Level</label><input class="form-input" type="number" id="eq-reorder" step="1"></div>
-    <div class="form-group" style="margin-bottom:0;"><label class="form-label">Sales Price (£)</label><input class="form-input" type="number" id="eq-price" step="0.01" min="0" placeholder="0.00"></div>
+    <div class="form-group"><label class="form-label">Sales Price (£)</label><input class="form-input" type="number" id="eq-price" step="0.01" min="0" placeholder="0.00"></div>
+    <div class="form-group"><label class="form-label">Buying Price (£) <span style="font-weight:400;color:var(--mut2)">(feeds Price List &amp; costing)</span></label><input class="form-input" type="number" id="eq-cost" step="0.01" min="0" placeholder="0.00"></div>
+    <div class="form-group" style="margin-bottom:0;"><label class="form-label">Weight (kg) <span style="font-weight:400;color:var(--mut2)">(feeds delivery weight estimates)</span></label><input class="form-input" type="number" id="eq-weight" step="0.01" min="0" placeholder="0.00"></div>
     <div class="form-group" style="margin-bottom:0;margin-top:.7rem;"><label class="form-label">Reason for change <span style="font-weight:400;color:var(--mut2)">(only needed if adjusting quantity)</span></label><input class="form-input" type="text" id="eq-reason" placeholder="e.g. Stocktake correction, damaged stock, found in warehouse…"></div>
 
     <div style="margin-top:1.2rem;border-top:1px solid var(--bdr);padding-top:.9rem;">
@@ -150,7 +158,7 @@ tr:hover td{background:var(--surf2);}
 {% block extra_js %}
 <script>
 const CSRF = '{{ csrf_token }}';
-function editProduct(pk, code, desc, qty, reorder, price){
+function editProduct(pk, code, desc, qty, reorder, price, cost, weight){
   document.getElementById('eq-pk').value = pk;
   document.getElementById('eq-code').textContent = code;
   document.getElementById('eq-desc').textContent = desc;
@@ -159,6 +167,8 @@ function editProduct(pk, code, desc, qty, reorder, price){
   document.getElementById('eq-qty').value = qty;
   document.getElementById('eq-reorder').value = reorder;
   document.getElementById('eq-price').value = price || '';
+  document.getElementById('eq-cost').value = cost || '';
+  document.getElementById('eq-weight').value = (weight === null || weight === undefined) ? '' : weight;
   document.getElementById('eq-reason').value = '';
   document.getElementById('eq-overlay').classList.add('open');
   document.getElementById('eq-modal').classList.add('open');
@@ -229,8 +239,10 @@ async function saveEdit(){
   const qty     = document.getElementById('eq-qty').value;
   const reorder = document.getElementById('eq-reorder').value;
   const price = document.getElementById('eq-price').value;
+  const cost = document.getElementById('eq-cost').value;
+  const weight = document.getElementById('eq-weight').value;
   const reason = document.getElementById('eq-reason').value.trim();
-  await fetch(`/stock/${pk}/adjust/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({code,description:desc,quantity:qty,reorder_level:reorder,sales_price:price,reason})});
+  await fetch(`/stock/${pk}/adjust/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({code,description:desc,quantity:qty,reorder_level:reorder,sales_price:price,cost_price:cost,weight:weight,reason})});
   closeEdit();
   location.reload();
 }

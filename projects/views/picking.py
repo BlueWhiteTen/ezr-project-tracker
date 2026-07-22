@@ -57,10 +57,18 @@ def picking_list_view(request, project_pk):
         cp = CustomerProfile.objects.filter(name__iexact=project.customer).first()
         if cp and cp.important_notes:
             customer_notes = cp.important_notes
+    # Weight lookup: Stock's weight field (by code) is the source of truth.
+    # Anything not yet weighed in Stock falls back to the built-in default
+    # table in the template's JS.
+    stock_weights = {
+        p.code.strip().upper(): float(p.weight)
+        for p in Product.objects.exclude(weight__isnull=True).exclude(code='')
+    }
     return render(request, 'projects/picking_list.html', {
         'project': project, 'pl': pl, 'items': items,
         'templates': templates, 'customer_notes': customer_notes,
         'any_shortage': any_shortage, 'project_pk': project.pk,
+        'stock_weights': stock_weights,
     })
 
 
@@ -512,6 +520,8 @@ def picking_list_print(request, project_pk):
         if cp and cp.important_notes:
             customer_notes = cp.important_notes
 
+    # Fallback table for stock items that don't have a weight set yet —
+    # Stock's own weight field (set on the Stock page) takes priority.
     ITEM_WEIGHTS = {
         'BTP48':2.0,'BTP60':2.3,'BTP72':2.7,'BTP84':3.2,'BTP96':3.6,'BTP108':4.1,'BTP120':4.5,'BTP144':5.0,
         'TP48':2.0,'TP60':2.3,'TP72':2.7,'TP84':3.2,'TP96':3.6,'TP108':4.1,'TP120':4.5,'TP144':5.0,
@@ -536,6 +546,8 @@ def picking_list_print(request, project_pk):
                 if m:
                     sqft = (int(m.group(1)) * int(m.group(2))) / 92903.04
                     auto_weight += sqft * float(item.quantity)
+            elif item.product.weight is not None:
+                auto_weight += float(item.product.weight) * float(item.quantity)
             elif code in ITEM_WEIGHTS:
                 auto_weight += ITEM_WEIGHTS[code] * float(item.quantity)
 

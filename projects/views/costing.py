@@ -978,10 +978,17 @@ SHELF_DEPTHS  = ['12','15','18','21','24','27','30','36']
 
 
 def trimline_component_prices():
-    """Return {code: price} for trimline components from the editable price list."""
+    """Return {code: price} for trimline components. Stock's buying price
+    (matched by code) takes priority; falls back to the Price List's own
+    stored value for any code with no Stock match yet."""
     try:
-        return {item.code: float(item.price)
-                for item in PriceListItem.objects.filter(product_line='trimline')}
+        from .utils import stock_lookup_by_code
+        stock_by_code = stock_lookup_by_code()
+        result = {}
+        for item in PriceListItem.objects.filter(product_line='trimline'):
+            stock_item = stock_by_code.get((item.code or '').strip().upper())
+            result[item.code] = float(stock_item.cost_price) if stock_item else float(item.price)
+        return result
     except Exception:
         return {}
 

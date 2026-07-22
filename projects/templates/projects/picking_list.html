@@ -259,6 +259,7 @@
 </div><!-- /right -->
 </div><!-- /grid -->
 
+{{ stock_weights|json_script:"stock-weights-data" }}
 <script>
 // ── Stock Allocation ─────────────────────────────────────────────────────────
 const PL_PK_ALLOC = {{ pl.pk }};
@@ -283,6 +284,7 @@ async function deallocateStock(){
   const d = await r.json();
   if(d.ok) location.reload(); else alert(d.error||'Failed');
 }
+const STOCK_WEIGHTS = JSON.parse(document.getElementById('stock-weights-data').textContent || '{}');
 const ITEM_WEIGHTS = {
   'BTP48':2.0,'BTP60':2.3,'BTP72':2.7,'BTP84':3.2,'BTP96':3.6,'BTP108':4.1,'BTP120':4.5,'BTP144':5.0,
   'TP48':2.0,'TP60':2.3,'TP72':2.7,'TP84':3.2,'TP96':3.6,'TP108':4.1,'TP120':4.5,'TP144':5.0,
@@ -320,6 +322,8 @@ function calcWeight(){
     const qty  = parseFloat(row.querySelector('.qty-cell input')?.value ?? row.dataset.qty) || 0;
     if(isBoardDesc(desc)){
       auto += boardWeightFromDesc(desc) * qty;
+    } else if(STOCK_WEIGHTS[code] !== undefined){
+      auto += STOCK_WEIGHTS[code] * qty;
     } else if(ITEM_WEIGHTS[code]){
       auto += ITEM_WEIGHTS[code] * qty;
     }

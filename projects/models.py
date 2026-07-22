@@ -453,6 +453,7 @@ class Product(models.Model):
     free_stock         = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     sales_price        = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     cost_price         = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    weight             = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True, help_text='kg, used for delivery weight estimates')
     updated_at         = models.DateTimeField(auto_now=True)
 
     class Meta:

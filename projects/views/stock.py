@@ -147,7 +147,9 @@ def stock_list(request):
         {'key':'free_stock',    'label':'Free Stock',  'right':True,  'default_dir':'asc'},
         {'key':'reorder_level', 'label':'Reorder Lvl', 'right':True, 'default_dir':'desc'},
         {'key':'reorder_qty',   'label':'Reorder Qty', 'right':True, 'default_dir':'desc'},
-        {'key':'sales_price',   'label':'Price',       'right':True, 'default_dir':'desc'},
+        {'key':'sales_price',   'label':'Sales Price', 'right':True, 'default_dir':'desc'},
+        {'key':'cost_price',    'label':'Buying Price','right':True, 'default_dir':'desc'},
+        {'key':'weight',        'label':'Weight (kg)', 'right':True, 'default_dir':'desc'},
     ]
     return render(request, 'projects/stock_list.html', {
         'products': products, 'query': q,
@@ -239,6 +241,11 @@ def stock_adjust(request, pk):
         product.reorder_level = data.get('reorder_level', product.reorder_level)
         if 'sales_price' in data:
             product.sales_price = data.get('sales_price') or 0
+        if 'cost_price' in data:
+            product.cost_price = data.get('cost_price') or 0
+        if 'weight' in data:
+            wv = data.get('weight')
+            product.weight = float(wv) if (wv not in (None, '')) else None
         product.save()
         if new_qty != old_qty:
             reason = (data.get('reason') or '').strip() or 'Manual stock adjustment'
@@ -250,7 +257,8 @@ def stock_adjust(request, pk):
         return JsonResponse({'ok': True, 'deleted': False})
     return JsonResponse({'id': product.pk, 'code': product.code, 'description': product.description,
                          'quantity': float(product.quantity), 'reorder_level': float(product.reorder_level),
-                         'sales_price': float(product.sales_price)})
+                         'sales_price': float(product.sales_price), 'cost_price': float(product.cost_price),
+                         'weight': float(product.weight) if product.weight is not None else None})
 
 
 # ── Picking Lists ─────────────────────────────────────────────────────────────

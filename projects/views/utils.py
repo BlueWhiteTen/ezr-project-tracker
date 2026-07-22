@@ -8,8 +8,17 @@ from django.contrib.auth.models import User
 
 from ..models import (
     Project, ProjectLog, ProjectCost, ProjectCostLine, UprightAccessory,
-    PurchaseOrder, Reminder, Notification
+    PurchaseOrder, Reminder, Notification, Product
 )
+
+
+# ── Stock-mirrored pricing/weight (Stock is the source of truth) ──────────────
+
+def stock_lookup_by_code():
+    """Return {CODE_UPPER: Product} for every stock item, for exact-code matching
+    from the Price List and costing formulas. Stock is the single source of
+    truth for buying price and weight."""
+    return {p.code.strip().upper(): p for p in Product.objects.all()}
 
 
 # ── Project helpers ────────────────────────────────────────────────────────────
