@@ -10,13 +10,11 @@ LS_FRAME_PRICES = {
     2000: {600: 18.44, 900: 19.66, 1000: 19.66, 1200: 20.98},
     2500: {600: 22.62, 900: 24.22, 1000: 24.22, 1200: 25.93},
     3000: {600: 27.11, 900: 28.93, 1000: 28.93, 1200: 30.90},
-    3500: {600: 30.88, 900: 32.82, 1000: 32.82, 1200: 34.94},  # interpolated 3000-4000
     4000: {600: 34.66, 900: 36.71, 1000: 36.71, 1200: 38.99},
-    4500: {600: 38.42, 900: 40.60, 1000: 40.60, 1200: 43.01},  # interpolated 4000-5000
     5000: {600: 42.18, 900: 44.49, 1000: 44.49, 1200: 47.03},
 }
 
-LS_FRAME_HEIGHTS = [2000, 2500, 3000, 3500, 4000, 4500, 5000]
+LS_FRAME_HEIGHTS = [2000, 2500, 3000, 4000, 5000]
 LS_FRAME_DEPTHS = [600, 900, 1000, 1200]
 
 # ── Complete shelf level prices: "WIDTHxDEPTH" -> {price, cbs} ──
@@ -85,17 +83,22 @@ def ls_post_code(height):
 LS_HORIZONTAL_BY_DEPTH = {600: 'LSHB565', 900: 'LSHB865', 1000: 'LSHB965', 1200: 'LSHB1165'}
 
 # Galvanised diagonal brace code by DEPTH (galv is the only system now)
-# 600/900/1200 confirmed from stock screenshots. 1000D galv code to confirm — using LSDB1294.
-LS_DIAGONAL_BY_DEPTH = {600: 'LSDB835-G', 900: 'LSDB1058-G', 1000: 'LSDB1294', 1200: 'LSDB1312-G'}
+# 600/900/1200 confirmed real Stock codes. 1000D has no distinct Stock code of
+# its own (per Tasos, Jul 2026) — reuses the 900D part, same as frame/shelf
+# pricing already treats 1000D as effectively equal to 900D elsewhere in this
+# file. Revisit if a genuine 1000D-specific part gets stocked separately.
+LS_DIAGONAL_BY_DEPTH = {600: 'LSDB835-G', 900: 'LSDB1058-G', 1000: 'LSDB1058-G', 1200: 'LSDB1312-G'}
 
-# Beam code by width
+# Beam code by width. 2700 comes in two thicknesses (Z74/Z99) at the same
+# price — pinned to Z99 since that's the one actually held in stock (Jul 2026).
 LS_BEAM_BY_WIDTH = {
-    950: 'LSB950', 1150: 'LSB1150', 1500: 'LSB1500', 1800: 'LSB1800',
-    1850: 'LSB1850', 2250: 'LSB2250', 2400: 'LSB2400', 2700: 'LSB2700',
+    950: 'LSB950', 1150: 'LSB1150-Z61', 1500: 'LSB1500-Z61', 1800: 'LSB1800-Z64',
+    1850: 'LSB1850', 2250: 'LSB2250', 2400: 'LSB2400', 2700: 'LSB2700-Z99',
 }
 
-# Chipboard support code by depth
-LS_CBS_BY_DEPTH = {600: 'LSCB600', 900: 'LSCB900', 1000: 'LSCB1000', 1200: 'LSCB1200'}
+# Chipboard support code by depth. 1000D has no distinct Stock code of its
+# own — reuses the 900D part (same reasoning as the diagonal brace above).
+LS_CBS_BY_DEPTH = {600: 'LSCB600', 900: 'LSCB900', 1000: 'LSCB900', 1200: 'LSCB1200'}
 
 # Board code by width x depth (the chipboard that sits on the level)
 # Boards are sized slightly under nominal: 945/1145/1495/1795/1845/2245/2395 x 595/895/995
@@ -120,7 +123,7 @@ LS_ANCHOR = 'SA10X75'        # SA10x75/80 or DP10050
 
 # Castor assembly per trolley (from cost calculator + pick list)
 LS_CASTOR_WHEEL = 'CASTOR3'
-LS_CASTOR_BRACKET_BY_DEPTH = {600: 'LSCASTBRKT600', 900: 'LSCASTBRKT900', 1000: 'LSCASTBRKT900', 1200: 'LSCASTBRKTS'}
+LS_CASTOR_BRACKET_BY_DEPTH = {600: 'LSCASTOR3BKT/600', 900: 'LSCASTOR3BKT/900', 1000: 'LSCASTOR3BKT/900', 1200: 'LSCASTOR3BRKTS'}
 
 
 def ls_explode_trolley(depth, qty):

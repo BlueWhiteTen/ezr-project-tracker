@@ -21,6 +21,28 @@ def stock_lookup_by_code():
     return {p.code.strip().upper(): p for p in Product.objects.all()}
 
 
+# Some Price List codes have more than one valid Stock match — e.g. Trimline
+# posts come in more than one colour (TP## = grey, BTP## = blue) at the same
+# cost/weight. Try the canonical code first, then these alternates.
+STOCK_CODE_ALIASES = {
+    'TP48': ['BTP48'], 'TP60': ['BTP60'], 'TP72': ['BTP72'], 'TP84': ['BTP84'],
+    'TP96': ['BTP96'], 'TP108': ['BTP108'], 'TP120': ['BTP120'],
+}
+
+
+def resolve_stock_item(code, stock_by_code):
+    """Look up a Product for a Price List / formula code, trying known
+    colour-variant aliases when the exact code isn't in Stock. Returns the
+    Product or None."""
+    key = (code or '').strip().upper()
+    if key in stock_by_code:
+        return stock_by_code[key]
+    for alias in STOCK_CODE_ALIASES.get(key, []):
+        if alias.upper() in stock_by_code:
+            return stock_by_code[alias.upper()]
+    return None
+
+
 # ── Project helpers ────────────────────────────────────────────────────────────
 
 def _snap(p):

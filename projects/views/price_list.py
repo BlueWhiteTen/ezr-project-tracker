@@ -14,7 +14,7 @@ import json
 
 from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence
 from ..forms import RegisterForm, ProjectForm
-from .utils import (_can_edit_prices, stock_lookup_by_code)
+from .utils import (_can_edit_prices, stock_lookup_by_code, resolve_stock_item)
 from .costing import *  # noqa: F401,F403 — price list seeding needs all costing constants
 
 
@@ -34,7 +34,13 @@ def price_list(request):
       or PriceListItem.objects.filter(category__in=['Hanging Rails','Inboard Hanging Rail Set','25mm Inboard Hanging Rail Tube']).exists()
     has_trimline = PriceListItem.objects.filter(product_line='trimline', category='Shelf Bar').exists()
     has_longspan = PriceListItem.objects.filter(product_line='longspan').exists()
-    if not PriceListItem.objects.exists() or old_format or not has_trimline or not has_longspan:
+    # Jul 2026 catalog correction: codes matched up against real Stock and
+    # several renamed/removed. Force a reseed once if any stale code remains.
+    stale_codes = ['TP144','TCTB12','TCTB15','SB27','STM','DTM','SM','SM-SHIM',
+                    'STM-SHIM','DTM-SHIM','LSCASTBRKTS','LSCASTBRKT600','LSCASTBRKT900',
+                    'LSP3500','LSP4500','LSDB1294','LSCB1000','LSB1150','LSB1500','LSB1800','LSB2700']
+    needs_code_fix = PriceListItem.objects.filter(code__in=stale_codes).exists()
+    if not PriceListItem.objects.exists() or old_format or not has_trimline or not has_longspan or needs_code_fix:
         from django.db import transaction
         with transaction.atomic():
             PriceListItem.objects.all().delete()
@@ -52,7 +58,7 @@ def price_list(request):
     stock_by_code = stock_lookup_by_code()
     unmatched = []
     for item in items:
-        stock_item = stock_by_code.get((item.code or '').strip().upper())
+        stock_item = resolve_stock_item(item.code, stock_by_code)
         if stock_item:
             item.stock_price = stock_item.cost_price
             item.stock_weight = stock_item.weight
@@ -125,14 +131,14 @@ def _seed_price_list():
 
     # Weights (kg each) keyed by code
     W = {
-        'TP48':2.0,'TP60':2.3,'TP72':2.7,'TP84':3.2,'TP96':3.6,'TP108':4.1,'TP120':4.5,'TP144':5.0,
+        'TP48':2.0,'TP60':2.3,'TP72':2.7,'TP84':3.2,'TP96':3.6,'TP108':4.1,'TP120':4.5,
         'TPC12':0.5,'TPC15':0.5,'TPC18':0.6,'TPC21':0.8,'TPC24':0.9,'TPC27':1.0,'TPC30':1.2,'TPC36':1.3,
         'TFCV24':1.4,'TFCV30':1.4,'TFCV36':1.5,'TFCV39.5':1.6,'TFCV43.5':1.8,'TFCV48':2.0,
         'TWB36':2.2,'TWB48':3.2,'TWB60':3.8,'TWB72':4.6,
-        'TCTB12':0.6,'TCTB15':0.6,'TCTB18':0.6,'TCTB24':0.8,'TCTB30':1.0,'TCTB36':1.2,
-        'SB18':0.6,'SB24':0.8,'SB27':1.0,'SB30':1.0,'SB36':1.2,
+        'TCTB18':0.6,'TCTB24':0.8,'TCTB30':1.0,'TCTB36':1.2,
+        'SB18':0.6,'SB24':0.8,'SB30':1.0,'SB36':1.2,
         'TSR':0.0,'TPS':0.1,'TCLC':0.0,'FP':0.1,'TTC':0.0,'TFP':0.01,
-        'STM':0.0,'DTM':0.0,'SM':0.12,
+        'STMFOOT':0.0,'DTMFOOT':0.0,'SMFOOT':0.12,
     }
     def w(code): return W.get(code)
 
@@ -154,32 +160,36 @@ def _seed_price_list():
         PriceListItem.objects.create(product_line='trimline', category='TWB Beams',
             code=f'TWB{wd}', label=f'TWB {wd}"', price=price, weight=w(f'TWB{wd}'), sort_order=sort); sort += 1
     # Inboard Hanging Rail Support (a set = a pair of these + a 25mm tube)
+    # HRS21/HRS27 use different Stock codes (HRS21/3N, HRS27/3N) — everything
+    # else follows the plain HRS{depth} pattern.
+    hrs_code_override = {'21': 'HRS21/3N', '27': 'HRS27/3N'}
     sort = 0
     for d, price in IN_HANG_RAILS.items():
+        code = hrs_code_override.get(d, f'HRS{d}')
         PriceListItem.objects.create(product_line='trimline', category='Inboard Hanging Rail Support',
-            code=f'HRS{d}', label=f'Inboard hanging rail support {d}"', price=price, sort_order=sort); sort += 1
+            code=code, label=f'Inboard hanging rail support {d}"', price=price, sort_order=sort); sort += 1
     # 25mm Inboard Hanging Rail Tube
     PriceListItem.objects.create(product_line='trimline', category='Inboard Hanging Rail Support',
         code='25MMFLOCOATTUBE1MM', label='25mm inboard hanging rail tube', price=0, sort_order=sort)
-    # Combination Tie Bars
-    tctb = {'TCTB12':1.62,'TCTB15':1.84,'TCTB18':2.38,'TCTB24':2.99,'TCTB30':3.56,'TCTB36':4.20}
+    # Combination Tie Bars — TCTB12/TCTB15 removed, not stocked (Jul 2026)
+    tctb = {'TCTB18':2.38,'TCTB24':2.99,'TCTB30':3.56,'TCTB36':4.20}
     sort = 0
     for code, price in tctb.items():
         PriceListItem.objects.create(product_line='trimline', category='Combination Tie Bars',
             code=code, label=code, price=price, weight=w(code), sort_order=sort); sort += 1
-    # Shelf Bar
-    sb = {'SB18':1.62,'SB24':2.16,'SB27':2.70,'SB30':2.70,'SB36':3.18}
+    # Shelf Bar — SB27 removed, not stocked (Jul 2026)
+    sb = {'SB18':1.62,'SB24':2.16,'SB30':2.70,'SB36':3.18}
     sort = 0
     for code, price in sb.items():
         PriceListItem.objects.create(product_line='trimline', category='Shelf Bar',
             code=code, label=code, price=price, weight=w(code), sort_order=sort); sort += 1
-    # Fittings & Misc
+    # Fittings & Misc — DTM-SHIM removed, not stocked (Jul 2026)
     misc = [
         ('TSR','Shelf clips',0.43),('TPS','Post splice',0.49),('TCLC','Connector locking clip',0.25),
         ('FP','Floor plate metal',0.75),('TTC','Top cap',0.27),('TFP','Floor plate plastic',0.27),
-        ('STM','SGL mount foot',1.20),('STM-SHIM','Shim to suit (SGL)',0.56),
-        ('DTM','DBL mount foot',1.31),('DTM-SHIM','Shim to suit (DBL)',0.56),
-        ('SM','Side mount foot',1.05),('SM-SHIM','Shim to suit (side)',0.51),
+        ('STMFOOT','SGL mount foot',1.20),('SHIM2MM','Shim to suit (SGL)',0.56),
+        ('DTMFOOT','DBL mount foot',1.31),
+        ('SMFOOT','Side mount foot',1.05),('SMSHIM','Shim to suit (side)',0.51),
     ]
     sort = 0
     for code, label, price in misc:
@@ -188,7 +198,7 @@ def _seed_price_list():
 
     # ── LONGSPAN components ──
     # Posts by height
-    ls_post_prices = {2000:7.5, 2500:9.0, 3000:10.5, 3500:12.0, 4000:13.5, 4500:15.0, 5000:16.5}
+    ls_post_prices = {2000:7.5, 2500:9.0, 3000:10.5, 4000:13.5, 5000:16.5}
     sort = 0
     for h in LS_FRAME_HEIGHTS:
         PriceListItem.objects.create(product_line='longspan', category='Posts',
@@ -200,29 +210,33 @@ def _seed_price_list():
     for d, code in ls_horiz.items():
         PriceListItem.objects.create(product_line='longspan', category='Horizontal Braces',
             code=code, label=f'{code} ({d}D)', price=horiz_price.get(d,0), sort_order=sort); sort += 1
-    # Diagonal braces by depth (galv)
-    ls_diag = {600:'LSDB835-G', 900:'LSDB1058-G', 1000:'LSDB1294', 1200:'LSDB1312-G'}
+    # Diagonal braces by depth (galv). 1000D reuses the 900D part — see note
+    # in longspan_data.py's LS_DIAGONAL_BY_DEPTH.
+    ls_diag = {600:'LSDB835-G', 900:'LSDB1058-G', 1000:'LSDB1058-G', 1200:'LSDB1312-G'}
     diag_price = {600:3.5, 900:4.2, 1000:4.6, 1200:5.0}
     sort = 0
     for d, code in ls_diag.items():
         PriceListItem.objects.create(product_line='longspan', category='Diagonal Braces',
             code=code, label=f'{code} ({d}D)', price=diag_price.get(d,0), sort_order=sort); sort += 1
-    # Beams by width
+    # Beams by width — 1150/1500/1800/2700 use their real Stock codes;
+    # 2700 comes in two thicknesses (Z74/Z99), pinned to Z99 (higher stock).
     ls_beams = {950:4.52, 1150:5.31, 1500:6.78, 1800:8.38, 1850:8.96, 2250:10.76, 2400:11.42, 2700:12.78}
+    ls_beam_code_override = {1150:'LSB1150-Z61', 1500:'LSB1500-Z61', 1800:'LSB1800-Z64', 2700:'LSB2700-Z99'}
     sort = 0
-    for w, price in ls_beams.items():
+    for wd, price in ls_beams.items():
+        code = ls_beam_code_override.get(wd, f'LSB{wd}')
         PriceListItem.objects.create(product_line='longspan', category='Beams (pair)',
-            code=f'LSB{w}', label=f'LSB{w}', price=price, sort_order=sort); sort += 1
-    # Chipboard supports by depth
-    ls_cbs = {600:'LSCB600', 900:'LSCB900', 1000:'LSCB1000', 1200:'LSCB1200'}
+            code=code, label=f'LSB{wd}', price=price, sort_order=sort); sort += 1
+    # Chipboard supports by depth. 1000D reuses the 900D part.
+    ls_cbs = {600:'LSCB600', 900:'LSCB900', 1000:'LSCB900', 1200:'LSCB1200'}
     cbs_price = {600:0.63, 900:0.913, 1000:1.009, 1200:1.2}
     sort = 0
     for d, code in ls_cbs.items():
         PriceListItem.objects.create(product_line='longspan', category='Chipboard Supports',
             code=code, label=f'{code} ({d}D)', price=cbs_price.get(d,0), sort_order=sort); sort += 1
     # Castor / Trolley
-    castor = [('LSCASTBRKT600','Castor bracket 600',3.37),('LSCASTBRKT900','Castor bracket 900',4.46),
-              ('LSCASTBRKTS','Castor bracket 1200',6.43),('CASTOR3','Castor wheel',4.76)]
+    castor = [('LSCASTOR3BKT/600','Castor bracket 600',3.37),('LSCASTOR3BKT/900','Castor bracket 900',4.46),
+              ('LSCASTOR3BRKTS','Castor bracket 1200',6.43),('CASTOR3','Castor wheel',4.76)]
     sort = 0
     for code, label, price in castor:
         PriceListItem.objects.create(product_line='longspan', category='Castor / Trolley',
@@ -241,13 +255,13 @@ def _seed_price_list():
 
 def ls_component_prices():
     """Return {code: price} for all longspan components. Stock's buying price
-    (matched by code) takes priority; falls back to the Price List's own
-    stored value for any code with no Stock match yet."""
-    from .utils import stock_lookup_by_code
+    (matched by code, with colour-variant aliases) takes priority; falls back
+    to the Price List's own stored value for any code with no Stock match yet."""
+    from .utils import stock_lookup_by_code, resolve_stock_item
     stock_by_code = stock_lookup_by_code()
     result = {}
     for item in PriceListItem.objects.filter(product_line='longspan'):
-        stock_item = stock_by_code.get((item.code or '').strip().upper())
+        stock_item = resolve_stock_item(item.code, stock_by_code)
         result[item.code] = float(stock_item.cost_price) if stock_item else float(item.price)
     return result
 

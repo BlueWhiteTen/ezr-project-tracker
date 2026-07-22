@@ -142,16 +142,16 @@ def project_cost(request, pk, cost_pk=None):
         })
     # ── Weight estimate from the picking reference ──
     ITEM_WEIGHTS = {
-        'BTP48':2.0,'BTP60':2.3,'BTP72':2.7,'BTP84':3.2,'BTP96':3.6,'BTP108':4.1,'BTP120':4.5,'BTP144':5.0,
-        'TP48':2.0,'TP60':2.3,'TP72':2.7,'TP84':3.2,'TP96':3.6,'TP108':4.1,'TP120':4.5,'TP144':5.0,
+        'BTP48':2.0,'BTP60':2.3,'BTP72':2.7,'BTP84':3.2,'BTP96':3.6,'BTP108':4.1,'BTP120':4.5,
+        'TP48':2.0,'TP60':2.3,'TP72':2.7,'TP84':3.2,'TP96':3.6,'TP108':4.1,'TP120':4.5,
         'TPC12':0.5,'TPC15':0.5,'TPC18':0.6,'TPC21':0.8,'TPC24':0.9,'TPC27':1.0,'TPC30':1.2,'TPC36':1.3,
         'TFCL36':1.6,'TFCL39.5':1.6,'TFCL48':2.0,
         'TFCV24':1.4,'TFCV30':1.4,'TFCV36':1.5,'TFCV39.5':1.6,'TFCV43.5':1.8,'TFCV48':2.0,
         'TBC36':1.5,'TBC39.5':1.8,'TBC48':2.0,
         'TWB36':2.2,'TWB39.5':3.2,'TWB48':3.2,'TWB60':3.8,'TWB72':4.6,
-        'TCTB12':0.6,'TCTB15':0.6,'TCTB18':0.6,'TCTB24':0.8,'TCTB30':1.0,'TCTB36':1.2,
-        'SB18':0.6,'SB24':0.8,'SB27':1.0,'SB30':1.0,'SB36':1.2,
-        'FP':0.1,'SM':0.12,'TFP':0.01,
+        'TCTB18':0.6,'TCTB24':0.8,'TCTB30':1.0,'TCTB36':1.2,
+        'SB18':0.6,'SB24':0.8,'SB30':1.0,'SB36':1.2,
+        'FP':0.1,'SMFOOT':0.12,'TFP':0.01,
     }
     import re as _re_wt
     total_weight = 0.0
@@ -909,15 +909,15 @@ def generate_picking_reference(lines, selected_accessories=None, wall_fixings=0,
 
 # ── Pricing data ──────────────────────────────────────────────────────────────
 
-# Post prices (code -> price)
+# Post prices (code -> price) — TP144 removed, no Stock code exists (Jul 2026)
 POSTS = {'TP48':5.55,'TP60':6.81,'TP72':8.18,'TP84':9.45,'TP96':10.91,
-         'TP108':12.25,'TP120':13.61,'TP144':16.32}
+         'TP108':12.25,'TP120':13.61}
 # Connector prices (code -> price)
 TPCS  = {'TPC12':1.44,'TPC15':1.61,'TPC18':1.90,'TPC21':2.28,'TPC24':2.28,
           'TPC27':2.81,'TPC30':2.81,'TPC36':3.25}
 # Height -> (post_code, n_connectors)
 HEIGHT_MAP = {'48':('TP48',2),'60':('TP60',2),'72':('TP72',3),'84':('TP84',3),
-              '96':('TP96',4),'108':('TP108',4),'120':('TP120',5),'144':('TP144',5)}
+              '96':('TP96',4),'108':('TP108',4),'120':('TP120',5)}
 # Depth -> connector_code
 DEPTH_MAP  = {'12':'TPC12','15':'TPC15','18':'TPC18','21':'TPC21',
               '24':'TPC24','27':'TPC27','30':'TPC30','36':'TPC36'}
@@ -968,7 +968,7 @@ MESH_PANEL_PRICES = {
 }
 TOP_TIE_PRICE = 3.0
 
-FRAME_HEIGHTS = ['48','60','72','84','96','108','120','144']
+FRAME_HEIGHTS = ['48','60','72','84','96','108','120']
 FRAME_DEPTHS  = ['12','15','18','21','24','27','30','36']
 TFCV_WIDTHS   = ['24','30','36','39.5','43.5','48']
 TWB_WIDTHS    = ['36','48','60','72']
@@ -979,14 +979,14 @@ SHELF_DEPTHS  = ['12','15','18','21','24','27','30','36']
 
 def trimline_component_prices():
     """Return {code: price} for trimline components. Stock's buying price
-    (matched by code) takes priority; falls back to the Price List's own
-    stored value for any code with no Stock match yet."""
+    (matched by code, with colour-variant aliases) takes priority; falls back
+    to the Price List's own stored value for any code with no Stock match yet."""
     try:
-        from .utils import stock_lookup_by_code
+        from .utils import stock_lookup_by_code, resolve_stock_item
         stock_by_code = stock_lookup_by_code()
         result = {}
         for item in PriceListItem.objects.filter(product_line='trimline'):
-            stock_item = stock_by_code.get((item.code or '').strip().upper())
+            stock_item = resolve_stock_item(item.code, stock_by_code)
             result[item.code] = float(stock_item.cost_price) if stock_item else float(item.price)
         return result
     except Exception:

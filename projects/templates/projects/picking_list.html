@@ -286,16 +286,16 @@ async function deallocateStock(){
 }
 const STOCK_WEIGHTS = JSON.parse(document.getElementById('stock-weights-data').textContent || '{}');
 const ITEM_WEIGHTS = {
-  'BTP48':2.0,'BTP60':2.3,'BTP72':2.7,'BTP84':3.2,'BTP96':3.6,'BTP108':4.1,'BTP120':4.5,'BTP144':5.0,
-  'TP48':2.0,'TP60':2.3,'TP72':2.7,'TP84':3.2,'TP96':3.6,'TP108':4.1,'TP120':4.5,'TP144':5.0,
+  'BTP48':2.0,'BTP60':2.3,'BTP72':2.7,'BTP84':3.2,'BTP96':3.6,'BTP108':4.1,'BTP120':4.5,
+  'TP48':2.0,'TP60':2.3,'TP72':2.7,'TP84':3.2,'TP96':3.6,'TP108':4.1,'TP120':4.5,
   'TPC12':0.5,'TPC15':0.5,'TPC18':0.6,'TPC21':0.8,'TPC24':0.9,'TPC27':1.0,'TPC30':1.2,'TPC36':1.3,
   'TFCL36':1.6,'TFCL39.5':1.6,'TFCL48':2.0,
   'TFCV24':1.4,'TFCV30':1.4,'TFCV36':1.5,'TFCV39.5':1.6,'TFCV43.5':1.8,'TFCV48':2.0,
   'TBC36':1.5,'TBC39.5':1.8,'TBC48':2.0,
   'TWB36':2.2,'TWB39.5':3.2,'TWB48':3.2,'TWB60':3.8,'TWB72':4.6,
-  'TCTB12':0.6,'TCTB15':0.6,'TCTB18':0.6,'TCTB24':0.8,'TCTB30':1.0,'TCTB36':1.2,
-  'SB18':0.6,'SB24':0.8,'SB27':1.0,'SB30':1.0,'SB36':1.2,
-  'FP':0.1,'SM':0.12,'TFP':0.01,
+  'TCTB18':0.6,'TCTB24':0.8,'TCTB30':1.0,'TCTB36':1.2,
+  'SB18':0.6,'SB24':0.8,'SB30':1.0,'SB36':1.2,
+  'FP':0.1,'SMFOOT':0.12,'TFP':0.01,
 };
 const MM2_PER_SQFT = 92903.04; // 1 sq ft = 92903.04 sq mm
 
