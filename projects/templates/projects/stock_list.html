@@ -27,7 +27,7 @@ th:first-child, td:first-child{max-width:90px;width:90px;}
 /* Edit modal */
 .eq-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s;}
 .eq-overlay.open{opacity:1;pointer-events:all;}
-.eq-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-58%);width:600px;max-width:95vw;max-height:90vh;overflow-y:auto;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);z-index:201;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
+.eq-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-58%);width:760px;max-width:95vw;max-height:90vh;overflow-y:auto;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);z-index:201;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
 .eq-modal.open{opacity:1;pointer-events:all;transform:translate(-50%,-50%);}
 .eq-head{padding:.9rem 1.2rem;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;background:var(--surf2);border-radius:var(--rad-lg) var(--rad-lg) 0 0;}
 .eq-body{padding:1.2rem;}
@@ -187,17 +187,18 @@ async function loadActivity(pk){
       <span>Allocated: <b style="color:var(--txt);">${d.allocated}</b></span>
       <span>Free: <b style="color:var(--txt);">${d.free}</b></span>
     </div>`;
-    html += '<table style="width:100%;border-collapse:collapse;font-size:.78rem;">';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:.78rem;table-layout:fixed;">';
+    html += '<colgroup><col style="width:130px;"><col style="width:50px;"><col style="width:55px;"><col style="width:120px;"><col></colgroup>';
     html += '<thead><tr style="text-align:left;color:var(--mut);"><th style="padding:3px 6px;">Date</th><th style="padding:3px 6px;">Qty</th><th style="padding:3px 6px;">In/Out</th><th style="padding:3px 6px;">Type</th><th style="padding:3px 6px;">Reference</th></tr></thead><tbody>';
     d.movements.forEach(m=>{
       const colour = m.direction === 'IN' ? '#16a34a' : '#dc2626';
       const sign = m.qty >= 0 ? '+' : '';
       html += `<tr style="border-top:.5px solid var(--bdr);">
-        <td style="padding:4px 6px;white-space:nowrap;">${m.date}</td>
-        <td style="padding:4px 6px;font-weight:600;color:${colour};">${sign}${m.qty}</td>
-        <td style="padding:4px 6px;color:${colour};font-weight:600;">${m.direction}</td>
+        <td style="padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${m.date}</td>
+        <td style="padding:4px 6px;font-weight:600;color:${colour};white-space:nowrap;">${sign}${m.qty}</td>
+        <td style="padding:4px 6px;color:${colour};font-weight:600;white-space:nowrap;">${m.direction}</td>
         <td style="padding:4px 6px;">${m.type}</td>
-        <td style="padding:4px 6px;color:var(--mut);">${m.reference||''}</td>
+        <td style="padding:4px 6px;color:var(--mut);word-break:break-word;">${m.reference||''}</td>
       </tr>`;
     });
     html += '</tbody></table>';
