@@ -62,6 +62,12 @@ th:first-child, td:first-child{max-width:90px;width:90px;}
   {% if low_only %}<input type="hidden" name="low" value="1">{% endif %}
   {% if sort != 'code' %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
   {% if dir != 'asc' %}<input type="hidden" name="dir" value="{{ dir }}">{% endif %}
+  <select class="form-input" name="category" style="max-width:220px;" onchange="this.form.submit()">
+    <option value="">All categories</option>
+    {% for val, label in category_choices %}
+    <option value="{{ val }}" {% if selected_category == val %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
   {% if inactive_count %}
   <label style="display:flex;align-items:center;gap:.4rem;font-size:.82rem;color:var(--mut);cursor:pointer;margin-left:.4rem;">
     <input type="checkbox" name="show_inactive" value="1" {% if show_inactive %}checked{% endif %} onchange="this.form.submit()">
@@ -88,7 +94,7 @@ th:first-child, td:first-child{max-width:90px;width:90px;}
     <tbody>
     {% for p in products %}
     <tr id="prod-row-{{ p.pk }}" {% if not p.is_active %}class="prod-inactive"{% endif %}>
-      <td><span class="code" style="cursor:pointer;" onclick="editProduct({{ p.pk }},'{{ p.code|escapejs }}','{{ p.description|escapejs }}',{{ p.quantity }},{{ p.reorder_level }},{{ p.cost_price }},{% if p.weight is not None %}{{ p.weight }}{% else %}null{% endif %},'{{ p.category|escapejs }}')">{{ p.code }}</span></td>
+      <td><span class="code" style="cursor:pointer;" onclick="editProduct({{ p.pk }},'{{ p.code|escapejs }}','{{ p.description|escapejs }}',{{ p.quantity }},{{ p.reorder_level }},{{ p.cost_price }},{% if p.weight is not None %}{{ p.weight }}{% else %}null{% endif %},'{{ p.category|escapejs }}',{{ p.reorder_qty }})">{{ p.code }}</span></td>
       <td>{{ p.description }}{% if not p.is_active %} <span style="font-size:.7rem;color:var(--mut);font-style:italic;">(inactive)</span>{% endif %}</td>
       <td style="text-align:right;">
         <span class="{% if p.reorder_level > 0 and p.quantity <= p.reorder_level %}qty-low{% elif p.quantity <= 0 %}qty-zero{% else %}qty-ok{% endif %}">{{ p.quantity|floatformat:0 }}</span>
@@ -98,13 +104,8 @@ th:first-child, td:first-child{max-width:90px;width:90px;}
       <td style="text-align:right;color:var(--mut);">{{ p.qty_allocated|floatformat:0 }}</td>
       <td style="text-align:right;color:var(--mut);">{{ p.qty_on_order|floatformat:0 }}</td>
       <td style="text-align:right;font-weight:600;color:{% if p.free_stock < 0 %}var(--red){% elif p.free_stock > 0 %}var(--grn){% else %}var(--mut){% endif %};">{{ p.free_stock|floatformat:0 }}</td>
-      <td style="text-align:right;">
-        <input type="number" class="inline-edit" value="{{ p.reorder_level|floatformat:0 }}"
-          onblur="saveReorder({{ p.pk }}, this.value, this)"
-          onkeydown="if(event.key==='Enter')this.blur();"
-          style="width:70px;text-align:right;background:transparent;border:1px solid transparent;border-radius:4px;padding:2px 4px;font-size:.875rem;{% if p.reorder_level > 0 and p.quantity <= p.reorder_level %}color:var(--red);font-weight:600;{% else %}color:var(--txt2);{% endif %}"
-          onfocus="this.style.borderColor='var(--acc)';this.style.background='var(--surf)';"
-        >
+      <td style="text-align:right;{% if p.reorder_level > 0 and p.quantity <= p.reorder_level %}color:var(--red);font-weight:600;{% else %}color:var(--txt2);{% endif %}">
+        {{ p.reorder_level|floatformat:0 }}
       </td>
       <td style="text-align:right;color:var(--mut);">{{ p.reorder_qty|floatformat:0 }}</td>
       <td style="text-align:right;font-family:var(--fm);">
@@ -114,7 +115,7 @@ th:first-child, td:first-child{max-width:90px;width:90px;}
         {% if p.weight is not None %}{{ p.weight|floatformat:2 }} kg{% else %}<span style="color:var(--mut);">—</span>{% endif %}
       </td>
       <td style="text-align:right;white-space:nowrap;">
-        <button class="edit-qty" onclick="editProduct({{ p.pk }},'{{ p.code|escapejs }}','{{ p.description|escapejs }}',{{ p.quantity }},{{ p.reorder_level }},{{ p.cost_price }},{% if p.weight is not None %}{{ p.weight }}{% else %}null{% endif %},'{{ p.category|escapejs }}')">Edit</button>
+        <button class="edit-qty" onclick="editProduct({{ p.pk }},'{{ p.code|escapejs }}','{{ p.description|escapejs }}',{{ p.quantity }},{{ p.reorder_level }},{{ p.cost_price }},{% if p.weight is not None %}{{ p.weight }}{% else %}null{% endif %},'{{ p.category|escapejs }}',{{ p.reorder_qty }})">Edit</button>
         <button class="edit-qty" id="act-btn-{{ p.pk }}" onclick="toggleActive({{ p.pk }}, this)"
           style="margin-left:.3rem;{% if p.is_active %}background:var(--surf2);color:var(--mut2);{% else %}background:#fef3c7;color:#92400e;border-color:#fcd34d;{% endif %}">
           {% if p.is_active %}Deactivate{% else %}Activate{% endif %}
@@ -152,6 +153,7 @@ th:first-child, td:first-child{max-width:90px;width:90px;}
     </div>
     <div class="form-group"><label class="form-label">Quantity in Stock</label><input class="form-input" type="number" id="eq-qty" step="1"></div>
     <div class="form-group"><label class="form-label">Reorder Level</label><input class="form-input" type="number" id="eq-reorder" step="1"></div>
+    <div class="form-group"><label class="form-label">Reorder Quantity</label><input class="form-input" type="number" id="eq-reorderqty" step="1"></div>
     <div class="form-group"><label class="form-label">Buying Price (£) <span style="font-weight:400;color:var(--mut2)">(feeds Price List &amp; costing)</span></label><input class="form-input" type="number" id="eq-cost" step="0.01" min="0" placeholder="0.00"></div>
     <div class="form-group" style="margin-bottom:0;"><label class="form-label">Weight (kg) <span style="font-weight:400;color:var(--mut2)">(feeds delivery weight estimates)</span></label><input class="form-input" type="number" id="eq-weight" step="0.01" min="0" placeholder="0.00"></div>
     <div class="form-group" style="margin-bottom:0;margin-top:.7rem;"><label class="form-label">Reason for change <span style="font-weight:400;color:var(--mut2)">(only needed if adjusting quantity)</span></label><input class="form-input" type="text" id="eq-reason" placeholder="e.g. Stocktake correction, damaged stock, found in warehouse…"></div>
@@ -193,6 +195,7 @@ th:first-child, td:first-child{max-width:90px;width:90px;}
     </div>
     <div class="form-group"><label class="form-label">Quantity in Stock</label><input class="form-input" type="number" id="np-qty" step="1" value="0"></div>
     <div class="form-group"><label class="form-label">Reorder Level</label><input class="form-input" type="number" id="np-reorder" step="1" value="0"></div>
+    <div class="form-group"><label class="form-label">Reorder Quantity</label><input class="form-input" type="number" id="np-reorderqty" step="1" value="0"></div>
     <div class="form-group"><label class="form-label">Buying Price (£) <span style="font-weight:400;color:var(--mut2)">(feeds Price List &amp; costing)</span></label><input class="form-input" type="number" id="np-cost" step="0.01" min="0" placeholder="0.00"></div>
     <div class="form-group" style="margin-bottom:0;"><label class="form-label">Weight (kg) <span style="font-weight:400;color:var(--mut2)">(feeds delivery weight estimates)</span></label><input class="form-input" type="number" id="np-weight" step="0.01" min="0" placeholder="0.00"></div>
   </div>
@@ -205,7 +208,7 @@ th:first-child, td:first-child{max-width:90px;width:90px;}
 {% block extra_js %}
 <script>
 const CSRF = '{{ csrf_token }}';
-function editProduct(pk, code, desc, qty, reorder, cost, weight, category){
+function editProduct(pk, code, desc, qty, reorder, cost, weight, category, reorderQty){
   document.getElementById('eq-pk').value = pk;
   document.getElementById('eq-code').textContent = code;
   document.getElementById('eq-desc').textContent = desc;
@@ -214,6 +217,7 @@ function editProduct(pk, code, desc, qty, reorder, cost, weight, category){
   document.getElementById('eq-category').value = category || '';
   document.getElementById('eq-qty').value = qty;
   document.getElementById('eq-reorder').value = reorder;
+  document.getElementById('eq-reorderqty').value = reorderQty || 0;
   document.getElementById('eq-cost').value = cost || '';
   document.getElementById('eq-weight').value = (weight === null || weight === undefined) ? '' : weight;
   document.getElementById('eq-reason').value = '';
@@ -286,6 +290,7 @@ function openNewProduct(){
   document.getElementById('np-category').value = '';
   document.getElementById('np-qty').value = '0';
   document.getElementById('np-reorder').value = '0';
+  document.getElementById('np-reorderqty').value = '0';
   document.getElementById('np-cost').value = '';
   document.getElementById('np-weight').value = '';
   document.getElementById('np-error').style.display = 'none';
@@ -310,6 +315,7 @@ async function saveNewProduct(){
     category: document.getElementById('np-category').value,
     quantity: document.getElementById('np-qty').value,
     reorder_level: document.getElementById('np-reorder').value,
+    reorder_qty: document.getElementById('np-reorderqty').value,
     cost_price: document.getElementById('np-cost').value,
     weight: document.getElementById('np-weight').value,
   };
@@ -329,11 +335,12 @@ async function saveEdit(){
   const desc    = document.getElementById('eq-desc-inp').value.trim();
   const qty     = document.getElementById('eq-qty').value;
   const reorder = document.getElementById('eq-reorder').value;
+  const reorderQty = document.getElementById('eq-reorderqty').value;
   const cost = document.getElementById('eq-cost').value;
   const weight = document.getElementById('eq-weight').value;
   const category = document.getElementById('eq-category').value;
   const reason = document.getElementById('eq-reason').value.trim();
-  await fetch(`/stock/${pk}/adjust/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({code,description:desc,quantity:qty,reorder_level:reorder,cost_price:cost,weight:weight,category:category,reason})});
+  await fetch(`/stock/${pk}/adjust/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({code,description:desc,quantity:qty,reorder_level:reorder,reorder_qty:reorderQty,cost_price:cost,weight:weight,category:category,reason})});
   closeEdit();
   location.reload();
 }
@@ -347,43 +354,6 @@ async function deleteProduct(){
   location.reload();
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeEdit();});
-
-async function saveReorder(pk, value, el){
-  el.style.borderColor='transparent';
-  el.style.background='transparent';
-  await fetch(`/stock/${pk}/adjust/`,{
-    method:'POST',
-    headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-    body:JSON.stringify({reorder_level: value})
-  });
-  // Update LOW badge instantly without page reload
-  const row = document.getElementById(`prod-row-${pk}`);
-  if(!row) return;
-  const qtySpan = row.querySelector('td:nth-child(3) span.qty-low, td:nth-child(3) span.qty-ok, td:nth-child(3) span.qty-zero');
-  const badge = row.querySelector('.low-badge');
-  const reorder = parseFloat(value) || 0;
-  const qty = qtySpan ? parseFloat(qtySpan.textContent) : 0;
-  const isLow = reorder > 0 && qty <= reorder;
-  // Update qty span colour
-  if(qtySpan){
-    qtySpan.className = isLow ? 'qty-low' : qty <= 0 ? 'qty-zero' : 'qty-ok';
-  }
-  // Update reorder input colour
-  el.style.color = isLow ? 'var(--red)' : 'var(--txt2)';
-  el.style.fontWeight = isLow ? '600' : '';
-  // Update badge
-  if(isLow){
-    if(!badge){
-      const b = document.createElement('span');
-      b.className = 'low-badge';
-      b.style.marginLeft = '.4rem';
-      b.textContent = 'LOW';
-      qtySpan?.parentNode?.appendChild(b);
-    }
-  } else {
-    badge?.remove();
-  }
-}
 
 async function importStock(inp){
   const file = inp.files[0];

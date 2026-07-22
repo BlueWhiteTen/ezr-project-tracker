@@ -27,8 +27,6 @@
 {% if not can_edit %}
 <div class="readonly-banner">👁 View only — board material rates can be edited by Tasos and Martin Chapman.</div>
 {% endif %}
-<div class="readonly-banner" style="background:var(--surf2);color:var(--mut);">📦 Component prices and weights are now set on the <a href="{% url 'stock_list' %}">Stock page</a> and mirrored here automatically — match is by product code.</div>
-
 {% if unmatched_items %}
 <div class="readonly-banner" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;">
   ⚠ {{ unmatched_items|length }} component{{ unmatched_items|pluralize }} have no matching code in Stock, so the value shown is the last known price/weight (not live):

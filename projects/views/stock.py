@@ -116,6 +116,7 @@ def stock_list(request):
     direction= request.GET.get('dir', 'asc')
     low_only = request.GET.get('low', '') == '1'
     show_inactive = request.GET.get('show_inactive', '') == '1'
+    category = request.GET.get('category', '').strip()
 
     valid_sorts = ['code','description','quantity','qty_allocated','qty_on_order','free_stock','reorder_level','reorder_qty','cost_price','weight']
     if sort not in valid_sorts:
@@ -127,6 +128,8 @@ def stock_list(request):
         products = products.filter(is_active=True)
     if q:
         products = products.filter(Q(code__icontains=q) | Q(description__icontains=q))
+    if category:
+        products = products.filter(category=category)
 
     low_stock_qs = products.filter(
         Q(reorder_level__gt=0, quantity__lte=models_F('reorder_level')) | Q(quantity__lt=0)
@@ -161,6 +164,7 @@ def stock_list(request):
         'show_inactive': show_inactive,
         'inactive_count': Product.objects.filter(is_active=False).count(),
         'category_choices': Product.CATEGORY_CHOICES,
+        'selected_category': category,
     })
 
 
@@ -249,6 +253,7 @@ def stock_create(request):
         category=data.get('category') or '',
         quantity=dec('quantity'),
         reorder_level=dec('reorder_level'),
+        reorder_qty=dec('reorder_qty'),
         cost_price=dec('cost_price'),
         weight=float(weight_val) if weight_val not in (None, '') else None,
     )
@@ -270,6 +275,8 @@ def stock_adjust(request, pk):
         new_qty = float(data.get('quantity', product.quantity) or 0)
         product.quantity    = new_qty
         product.reorder_level = data.get('reorder_level', product.reorder_level)
+        if 'reorder_qty' in data:
+            product.reorder_qty = data.get('reorder_qty') or 0
         if 'sales_price' in data:
             product.sales_price = data.get('sales_price') or 0
         if 'cost_price' in data:
@@ -290,6 +297,7 @@ def stock_adjust(request, pk):
         return JsonResponse({'ok': True, 'deleted': False})
     return JsonResponse({'id': product.pk, 'code': product.code, 'description': product.description,
                          'quantity': float(product.quantity), 'reorder_level': float(product.reorder_level),
+                         'reorder_qty': float(product.reorder_qty),
                          'sales_price': float(product.sales_price), 'cost_price': float(product.cost_price),
                          'weight': float(product.weight) if product.weight is not None else None,
                          'category': product.category})
