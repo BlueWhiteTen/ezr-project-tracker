@@ -15,7 +15,7 @@ import json
 from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence
 from ..forms import RegisterForm, ProjectForm
 from .utils import (_picking_locked_response)
-from .costing import generate_picking_reference
+from .costing import generate_picking_reference, parse_ns2_key
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -529,7 +529,7 @@ def picking_list_print(request, project_pk):
         'TFCL36':1.6,'TFCL39.5':1.6,'TFCL48':2.0,
         'TFCV24':1.4,'TFCV30':1.4,'TFCV36':1.5,'TFCV39.5':1.6,'TFCV43.5':1.8,'TFCV48':2.0,
         'TBC36':1.5,'TBC39.5':1.8,'TBC48':2.0,
-        'TWB36':2.2,'TWB39.5':3.2,'TWB48':3.2,'TWB60':3.8,'TWB72':4.6,
+        'TWB36':2.2,'TWB39.5':3.2,'TWB48':3.2,'TWB60':3.8,'TWB66':4.2,'TWB72':4.6,
         'TCTB18':0.6,'TCTB24':0.8,'TCTB30':1.0,'TCTB36':1.2,
         'SB18':0.6,'SB24':0.8,'SB30':1.0,'SB36':1.2,
         'FP':0.1,'SMFOOT':0.12,'TFP':0.01,
@@ -655,8 +655,9 @@ def picking_from_costing(request, pk):
         # 3. Shelf beams (TFCV, TWB)
         if c.startswith('TFCV') or c.startswith('TWB'):
             return (3, c)
-        # 4. Boards/decks (e.g. 48X27, 48X27MFC — digit-starting codes)
-        if c[0].isdigit():
+        # 4. Boards/decks (e.g. 48X27, 48X27MFC — digit-starting codes),
+        # including NS2 non-stock board fallback lines
+        if c[0].isdigit() or c.startswith('NS2::'):
             return (4, c)
         # 5. Hanging rails (HRS, JWGR)
         if c.startswith('HRS') or c.startswith('JWGR'):
@@ -667,6 +668,20 @@ def picking_from_costing(request, pk):
     # Enrich stock items with descriptions and stock levels, in category order
     stock_items = []
     for code, qty in sorted(ref.items(), key=lambda x: picking_sort_key(x[0])):
+        ns2 = parse_ns2_key(code)
+        if ns2:
+            _, _, ns2_desc = ns2
+            ns2_prod = Product.objects.filter(code__iexact='NS2', is_active=True).first()
+            stock_items.append({
+                'type': 'stock',
+                'code': 'NS2',
+                'description': ns2_desc,
+                'quantity': qty,
+                'in_stock': float(ns2_prod.quantity) if ns2_prod else None,
+                'product_id': ns2_prod.pk if ns2_prod else None,
+                'found': bool(ns2_prod),
+            })
+            continue
         prod_any = Product.objects.filter(code__iexact=code).first()
         # If code exists but is inactive, skip it from picking list
         if prod_any and not prod_any.is_active:
@@ -818,9 +833,16 @@ def picking_from_costing_save(request, pk):
         if item['type'] == 'stock' and item.get('product_id'):
             prod = Product.objects.filter(pk=item['product_id'], is_active=True).first()
             if prod:
+                # ns_description carries a per-line description override — used
+                # by generic codes like NS2 where the product's own description
+                # ("NON-STOCK ITEM — THIS NEEDS OVERTYPED...") isn't specific
+                # enough. For a normal stock item this just duplicates
+                # product.description, which is harmless.
+                custom_desc = item.get('description', '')
                 PickingListItem.objects.create(
                     picking_list=pl, item_type='stock',
-                    product=prod, quantity=qty, sort_order=sort
+                    product=prod, quantity=qty, sort_order=sort,
+                    ns_description=custom_desc if custom_desc != prod.description else '',
                 )
                 sort += 1
                 added += 1

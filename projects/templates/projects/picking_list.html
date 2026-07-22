@@ -143,10 +143,10 @@
         </td>
       </tr>
       {% else %}
-      <tr {% if item.picked %}class="picked"{% endif %} id="row-{{ item.pk }}" data-item-pk="{{ item.pk }}" data-product-pk="{{ item.product.pk }}" data-qty="{{ item.quantity }}" data-code="{{ item.product.code|upper }}" data-desc="{{ item.product.description }}">
+      <tr {% if item.picked %}class="picked"{% endif %} id="row-{{ item.pk }}" data-item-pk="{{ item.pk }}" data-product-pk="{{ item.product.pk }}" data-qty="{{ item.quantity }}" data-code="{{ item.product.code|upper }}" data-desc="{{ item.ns_description|default:item.product.description }}">
         <td><input type="checkbox" class="form-checkbox" {% if item.picked %}checked{% endif %} onchange="togglePicked({{ item.pk }}, this.checked)"></td>
         <td><span class="code">{{ item.product.code }}</span>{% if item.is_short %} <span title="Stock short by {{ item.short_by }}" style="color:var(--red);font-weight:700;cursor:help;">⚠</span>{% endif %}</td>
-        <td style="font-size:.95rem;">{{ item.product.description }}</td>
+        <td style="font-size:.95rem;">{{ item.ns_description|default:item.product.description }}</td>
         <td class="qty-cell">
           {% if item.item_type != 'message' %}
           <input type="number" value="{{ item.quantity|floatformat:0 }}" min="1" step="1" {% if pl.allocated %}disabled title="Locked — release stock to edit"{% endif %}
@@ -292,7 +292,7 @@ const ITEM_WEIGHTS = {
   'TFCL36':1.6,'TFCL39.5':1.6,'TFCL48':2.0,
   'TFCV24':1.4,'TFCV30':1.4,'TFCV36':1.5,'TFCV39.5':1.6,'TFCV43.5':1.8,'TFCV48':2.0,
   'TBC36':1.5,'TBC39.5':1.8,'TBC48':2.0,
-  'TWB36':2.2,'TWB39.5':3.2,'TWB48':3.2,'TWB60':3.8,'TWB72':4.6,
+  'TWB36':2.2,'TWB39.5':3.2,'TWB48':3.2,'TWB60':3.8,'TWB66':4.2,'TWB72':4.6,
   'TCTB18':0.6,'TCTB24':0.8,'TCTB30':1.0,'TCTB36':1.2,
   'SB18':0.6,'SB24':0.8,'SB30':1.0,'SB36':1.2,
   'FP':0.1,'SMFOOT':0.12,'TFP':0.01,

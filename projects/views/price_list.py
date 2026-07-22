@@ -40,7 +40,8 @@ def price_list(request):
                     'STM-SHIM','DTM-SHIM','LSCASTBRKTS','LSCASTBRKT600','LSCASTBRKT900',
                     'LSP3500','LSP4500','LSDB1294','LSCB1000','LSB1150','LSB1500','LSB1800','LSB2700']
     needs_code_fix = PriceListItem.objects.filter(code__in=stale_codes).exists()
-    if not PriceListItem.objects.exists() or old_format or not has_trimline or not has_longspan or needs_code_fix:
+    missing_twb66 = not PriceListItem.objects.filter(code='TWB66').exists()
+    if not PriceListItem.objects.exists() or old_format or not has_trimline or not has_longspan or needs_code_fix or missing_twb66:
         from django.db import transaction
         with transaction.atomic():
             PriceListItem.objects.all().delete()
@@ -134,7 +135,7 @@ def _seed_price_list():
         'TP48':2.0,'TP60':2.3,'TP72':2.7,'TP84':3.2,'TP96':3.6,'TP108':4.1,'TP120':4.5,
         'TPC12':0.5,'TPC15':0.5,'TPC18':0.6,'TPC21':0.8,'TPC24':0.9,'TPC27':1.0,'TPC30':1.2,'TPC36':1.3,
         'TFCV24':1.4,'TFCV30':1.4,'TFCV36':1.5,'TFCV39.5':1.6,'TFCV43.5':1.8,'TFCV48':2.0,
-        'TWB36':2.2,'TWB48':3.2,'TWB60':3.8,'TWB72':4.6,
+        'TWB36':2.2,'TWB48':3.2,'TWB60':3.8,'TWB66':4.2,'TWB72':4.6,
         'TCTB18':0.6,'TCTB24':0.8,'TCTB30':1.0,'TCTB36':1.2,
         'SB18':0.6,'SB24':0.8,'SB30':1.0,'SB36':1.2,
         'TSR':0.0,'TPS':0.1,'TCLC':0.0,'FP':0.1,'TTC':0.0,'TFP':0.01,

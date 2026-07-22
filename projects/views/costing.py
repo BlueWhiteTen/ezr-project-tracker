@@ -130,6 +130,17 @@ def project_cost(request, pk, cost_pk=None):
     # Enrich with product descriptions
     picking_ref_enriched = []
     for code, qty in sorted(picking_ref.items()):
+        ns2 = parse_ns2_key(code)
+        if ns2:
+            _, _, ns2_desc = ns2
+            ns2_prod = Product.objects.filter(code__iexact='NS2', is_active=True).first()
+            picking_ref_enriched.append({
+                'code': 'NS2',
+                'qty': qty,
+                'description': ns2_desc,
+                'in_stock': float(ns2_prod.quantity) if ns2_prod else None,
+            })
+            continue
         prod = Product.objects.filter(code__iexact=code).first()
         # Skip if product exists but is deactivated
         if prod and not prod.is_active:
@@ -148,7 +159,7 @@ def project_cost(request, pk, cost_pk=None):
         'TFCL36':1.6,'TFCL39.5':1.6,'TFCL48':2.0,
         'TFCV24':1.4,'TFCV30':1.4,'TFCV36':1.5,'TFCV39.5':1.6,'TFCV43.5':1.8,'TFCV48':2.0,
         'TBC36':1.5,'TBC39.5':1.8,'TBC48':2.0,
-        'TWB36':2.2,'TWB39.5':3.2,'TWB48':3.2,'TWB60':3.8,'TWB72':4.6,
+        'TWB36':2.2,'TWB39.5':3.2,'TWB48':3.2,'TWB60':3.8,'TWB66':4.2,'TWB72':4.6,
         'TCTB18':0.6,'TCTB24':0.8,'TCTB30':1.0,'TCTB36':1.2,
         'SB18':0.6,'SB24':0.8,'SB30':1.0,'SB36':1.2,
         'FP':0.1,'SMFOOT':0.12,'TFP':0.01,
@@ -811,9 +822,16 @@ def generate_picking_reference(lines, selected_accessories=None, wall_fixings=0,
                 stype, w, d = size_parts
                 stype = stype.lower()
                 melamine = line.melamine
-                # Board code: WxD for chipboard, WxDMFC for melamine
-                board_code = f'{w}X{d}MFC' if melamine else f'{w}X{d}'
-                items[board_code] += qty
+                # Board: use the real Stock code if this size/material is
+                # actually stocked; otherwise a synthetic NS2::WxD[MFC] key
+                # that the enrichment step turns into a generic NS2
+                # non-stock line with the size and material spelled out.
+                real_code = board_stock_code(w, d, melamine)
+                if real_code:
+                    items[real_code] += qty
+                else:
+                    ns2_key = f'NS2::{w}X{d}{"MFC" if melamine else ""}'
+                    items[ns2_key] += qty
                 # Connector/beam
                 if stype == 'tfcv':
                     items[f'TFCV{w}'] += qty
@@ -924,7 +942,7 @@ DEPTH_MAP  = {'12':'TPC12','15':'TPC15','18':'TPC18','21':'TPC21',
 # TFCV connector prices (depth -> price)
 TFCV_CONN  = {'24':3.50,'30':3.50,'36':4.25,'39.5':4.99,'43.5':5.58,'48':5.58}
 # TWB prices (width"xdepth" -> price) - beams only, no deck included
-TWB_PRICES = {'36':5.74,'48':7.57,'60':10.38,'72':12.20}
+TWB_PRICES = {'36':5.74,'48':7.57,'60':10.38,'66':11.29,'72':12.20}
 TFCL_PRICES= {'36':4.58,'39.5':5.39,'48':5.90}
 
 # Inboard hanging: (width, depth) -> price
@@ -971,8 +989,114 @@ TOP_TIE_PRICE = 3.0
 FRAME_HEIGHTS = ['48','60','72','84','96','108','120']
 FRAME_DEPTHS  = ['12','15','18','21','24','27','30','36']
 TFCV_WIDTHS   = ['24','30','36','39.5','43.5','48']
-TWB_WIDTHS    = ['36','48','60','72']
+TWB_WIDTHS    = ['36','48','60','66','72']
 SHELF_DEPTHS  = ['12','15','18','21','24','27','30','36']
+
+# Board (chipboard/melamine) Stock codes by (width, depth), from Tasos's
+# mapping (Jul 2026). None = not a real Stock item at that size — the
+# picking list falls back to a generic NS2 "non-stock, order this" line
+# with the size and material spelled out, instead of a code that won't
+# exist. Costing/pricing is unaffected either way (still £/sqft x board rate).
+BOARD_STOCK_CODES = {
+    ('24','12'):   {'chipboard': '24X12',        'melamine': None},
+    ('24','15'):   {'chipboard': None,           'melamine': '24X15MFC2SE'},
+    ('24','18'):   {'chipboard': None,           'melamine': None},
+    ('24','21'):   {'chipboard': None,           'melamine': None},
+    ('24','24'):   {'chipboard': '24X24',        'melamine': None},
+    ('24','27'):   {'chipboard': None,           'melamine': None},
+    ('24','30'):   {'chipboard': None,           'melamine': None},
+    ('24','36'):   {'chipboard': None,           'melamine': None},
+    ('30','12'):   {'chipboard': '30X12',        'melamine': None},
+    ('30','15'):   {'chipboard': None,           'melamine': '30X15MFC2SE'},
+    ('30','18'):   {'chipboard': None,           'melamine': None},
+    ('30','21'):   {'chipboard': None,           'melamine': None},
+    ('30','24'):   {'chipboard': '30X24',        'melamine': None},
+    ('30','27'):   {'chipboard': None,           'melamine': None},
+    ('30','30'):   {'chipboard': None,           'melamine': None},
+    ('30','36'):   {'chipboard': None,           'melamine': None},
+    ('36','12'):   {'chipboard': '36X12',        'melamine': '36X12MFC'},
+    ('36','15'):   {'chipboard': '36X15',        'melamine': '36X15MFC'},
+    ('36','18'):   {'chipboard': '36X18',        'melamine': '36X18MFC'},
+    ('36','21'):   {'chipboard': '36X21',        'melamine': None},
+    ('36','24'):   {'chipboard': '36X24',        'melamine': '36X24MFC'},
+    ('36','27'):   {'chipboard': '36X27',        'melamine': None},
+    ('36','30'):   {'chipboard': '36X30',        'melamine': '36X30MFC'},
+    ('36','36'):   {'chipboard': '36X36',        'melamine': '36X36MFC2LE'},
+    ('39.5','12'): {'chipboard': '39.5X12',      'melamine': '39.5X12MFC/L2SE'},
+    ('39.5','15'): {'chipboard': '39.5X15',      'melamine': '39.5X15MFC/L2SE'},
+    ('39.5','18'): {'chipboard': '39.5X18',      'melamine': '39.5X18MFC/L2SE'},
+    ('39.5','21'): {'chipboard': '39.5X21',      'melamine': None},
+    ('39.5','24'): {'chipboard': '39.5X24',      'melamine': '39.5X24MFCL2SEWHITE'},
+    ('39.5','27'): {'chipboard': '39.5X27',      'melamine': '39.5X27MFC1SE'},
+    ('39.5','30'): {'chipboard': '39.5X30',      'melamine': None},
+    ('39.5','36'): {'chipboard': '39.5X36',      'melamine': '39.5X36MFC/2SE'},
+    ('43.5','12'): {'chipboard': None,           'melamine': None},
+    ('43.5','15'): {'chipboard': None,           'melamine': '43.5X15MFC2SE'},
+    ('43.5','18'): {'chipboard': None,           'melamine': None},
+    ('43.5','21'): {'chipboard': None,           'melamine': None},
+    ('43.5','24'): {'chipboard': None,           'melamine': None},
+    ('43.5','27'): {'chipboard': None,           'melamine': None},
+    ('43.5','30'): {'chipboard': None,           'melamine': '43.5X30MFC2SE'},
+    ('43.5','36'): {'chipboard': None,           'melamine': None},
+    ('48','12'):   {'chipboard': '48X12',        'melamine': '48X12MFC/L2SE'},
+    ('48','15'):   {'chipboard': '48X15',        'melamine': '48X15MFC/L2SE'},
+    ('48','18'):   {'chipboard': '48X18',        'melamine': '48X18MFC2SE'},
+    ('48','21'):   {'chipboard': '48X21C',       'melamine': '48X21'},
+    ('48','24'):   {'chipboard': '48X24',        'melamine': '48X24MFC2SE'},
+    ('48','27'):   {'chipboard': '48X27',        'melamine': '48X27MFC2SE'},
+    ('48','30'):   {'chipboard': '48X30',        'melamine': '48X30MFC2SE'},
+    ('48','36'):   {'chipboard': '48X36',        'melamine': '48X36MFC'},
+    ('60','12'):   {'chipboard': '60X12',        'melamine': None},
+    ('60','15'):   {'chipboard': '60X15',        'melamine': '60X15MFCEAR'},
+    ('60','18'):   {'chipboard': '60X18',        'melamine': None},
+    ('60','21'):   {'chipboard': None,           'melamine': None},
+    ('60','24'):   {'chipboard': '60X24',        'melamine': None},
+    ('60','27'):   {'chipboard': None,           'melamine': None},
+    ('60','30'):   {'chipboard': '60X30',        'melamine': None},
+    ('60','36'):   {'chipboard': '60X36',        'melamine': None},
+    ('72','12'):   {'chipboard': '72X12',        'melamine': None},
+    ('72','15'):   {'chipboard': '72X15',        'melamine': None},
+    ('72','18'):   {'chipboard': '72X18',        'melamine': None},
+    ('72','21'):   {'chipboard': None,           'melamine': None},
+    ('72','24'):   {'chipboard': '72X24',        'melamine': None},
+    ('72','27'):   {'chipboard': None,           'melamine': None},
+    ('72','30'):   {'chipboard': '72X30',        'melamine': '72X30MFC'},
+    ('72','36'):   {'chipboard': '72X36',        'melamine': None},
+    # 66" width: TWB beam is stocked (TWB66) but no board size is — every
+    # depth falls through to the NS2 non-stock line automatically.
+}
+
+
+def board_stock_code(width, depth, melamine):
+    """Real Stock code for a board size/material, or None if not stocked."""
+    entry = BOARD_STOCK_CODES.get((width, depth))
+    if not entry:
+        return None
+    return entry['melamine' if melamine else 'chipboard']
+
+
+def board_material_label(width, depth, melamine, chipboard_18mm_threshold=27):
+    """Human label for the material actually used, matching calc_shelf_price's
+    own board-rate logic, for the NS2 non-stock description."""
+    if melamine:
+        return 'Melamine'
+    return '18mm Chipboard' if float(depth) >= chipboard_18mm_threshold else 'Chipboard'
+
+
+import re as _re_ns2
+_NS2_KEY_RE = _re_ns2.compile(r'^NS2::([\d.]+)X([\d.]+)(MFC)?$')
+
+
+def parse_ns2_key(code):
+    """If `code` is a synthetic 'NS2::WxD[MFC]' key from generate_picking_reference,
+    return (width, depth, description) for the non-stock picking line. Otherwise None."""
+    m = _NS2_KEY_RE.match(code or '')
+    if not m:
+        return None
+    width, depth, mfc = m.group(1), m.group(2), bool(m.group(3))
+    material = board_material_label(width, depth, mfc)
+    description = f'{width}" x {depth}" {material} — board not stocked, order to size'
+    return width, depth, description
 
 
 
