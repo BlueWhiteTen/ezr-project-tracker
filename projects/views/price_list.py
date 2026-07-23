@@ -38,7 +38,8 @@ def price_list(request):
     # several renamed/removed. Force a reseed once if any stale code remains.
     stale_codes = ['TP144','TCTB12','TCTB15','SB27','STM','DTM','SM','SM-SHIM',
                     'STM-SHIM','DTM-SHIM','LSCASTBRKTS','LSCASTBRKT600','LSCASTBRKT900',
-                    'LSP3500','LSP4500','LSDB1294','LSCB1000','LSB1150','LSB1500','LSB1800','LSB2700']
+                    'LSP3500','LSP4500','LSDB1294','LSCB1000','LSB1150','LSB1500','LSB1800','LSB2700',
+                    'LSP2000','LSP2500','LSP3000','LSP4000','LSP5000']
     needs_code_fix = PriceListItem.objects.filter(code__in=stale_codes).exists()
     missing_twb66 = not PriceListItem.objects.filter(code='TWB66').exists()
     if not PriceListItem.objects.exists() or old_format or not has_trimline or not has_longspan or needs_code_fix or missing_twb66:
@@ -203,7 +204,7 @@ def _seed_price_list():
     sort = 0
     for h in LS_FRAME_HEIGHTS:
         PriceListItem.objects.create(product_line='longspan', category='Posts',
-            code=f'LSP{h}', label=f'Post LSP{h}', price=ls_post_prices.get(h,0), sort_order=sort); sort += 1
+            code=f'LSP{h}-G', label=f'Post LSP{h}-G (Galvanised)', price=ls_post_prices.get(h,0), sort_order=sort); sort += 1
     # Horizontal braces by depth
     ls_horiz = {600:'LSHB565', 900:'LSHB865', 1000:'LSHB965', 1200:'LSHB1165'}
     horiz_price = {600:3.0, 900:3.8, 1000:4.0, 1200:4.5}

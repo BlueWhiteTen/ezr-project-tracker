@@ -77,7 +77,8 @@ LS_FRAME_BREAKDOWN_GALV = {
 
 # ── Component codes ──
 def ls_post_code(height):
-    return f'LSP{height}'
+    # Galvanised posts — real Stock code has a -G suffix (Jul 2026)
+    return f'LSP{height}-G'
 
 # Horizontal brace code by depth (exact codes from stock)
 LS_HORIZONTAL_BY_DEPTH = {600: 'LSHB565', 900: 'LSHB865', 1000: 'LSHB965', 1200: 'LSHB1165'}
