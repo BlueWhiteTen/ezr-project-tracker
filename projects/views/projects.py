@@ -113,6 +113,12 @@ def project_edit(request, pk):
             if old_status_val == 'completed' and edited.status != 'completed' and not request.user.is_staff:
                 messages.error(request, 'Only an administrator can revert a project from Completed status.')
                 return redirect('project_edit', pk=project.pk)
+            # Once a project has left Enquiry, it can never go back — a price
+            # has already been (or may be about to be) communicated to the
+            # customer, so re-opening it as a fresh enquiry isn't allowed.
+            if old_status_val != 'enquiry' and edited.status == 'enquiry':
+                messages.error(request, "This project has already moved past Enquiry and can't be set back to it.")
+                return redirect('project_edit', pk=project.pk)
             edited.save()
             if old_status_val != edited.status:
                 _handle_quoted_status_reminders(edited, old_status_val, edited.status, request.user)
@@ -226,6 +232,9 @@ def project_quick_status(request, pk):
     # Reverting from Completed is restricted to staff/admins
     if p.status == 'completed' and new_status != 'completed' and not request.user.is_staff:
         return JsonResponse({'error': 'Only an administrator can revert a project from Completed status.'}, status=403)
+    # Once a project has left Enquiry, it can never go back
+    if p.status != 'enquiry' and new_status == 'enquiry':
+        return JsonResponse({'error': "This project has already moved past Enquiry and can't be set back to it."}, status=400)
     old_status = p.get_status_display()
     old_status_val = p.status
     p.status = new_status

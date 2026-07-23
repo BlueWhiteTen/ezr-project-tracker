@@ -83,6 +83,13 @@ class ProjectForm(forms.ModelForm):
         qs = User.objects.filter(is_active=True).order_by('first_name','last_name')
         self.fields['assigned_to'].queryset = qs
         self.fields['assigned_to'].empty_label = '— Unassigned —'
+        # Once a project has left Enquiry it can never go back — drop it from
+        # the dropdown entirely so there's nothing to pick that would just
+        # get rejected on save.
+        if self.instance and self.instance.pk and self.instance.status != 'enquiry':
+            self.fields['status'].choices = [
+                (v, l) for v, l in self.fields['status'].choices if v != 'enquiry'
+            ]
         # Show full name if available, otherwise email prefix
         self.fields['assigned_to'].label_from_instance = lambda u: u.get_full_name() if u.get_full_name().strip() else u.email.split('@')[0].replace('.',' ').title()
         for f in ['delivery_date','installation_date','installation_month','assigned_to','location','sales_order','drawing_number','installation_month_part']:

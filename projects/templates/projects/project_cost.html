@@ -102,6 +102,7 @@
         document.getElementById('doc-menu').classList.contains('show')));
     </script>
     <button class="btn btn-primary" onclick="generatePickingList()" style="background:#0f766e;box-shadow:none;">📦 Generate Picking List</button>
+    <button class="btn btn-ghost" onclick="refreshCostingPrices({{ cost.pk }})" title="Force this costing option's frame/shelf/trolley lines to today's prices">🔄 Refresh to Current Prices</button>
     <a href="{% url 'picking_list_view' project.pk %}" class="btn btn-ghost">→ Go to Picking List</a>
     <button class="btn btn-primary" onclick="saveHeader(false)" style="background:#7c3aed;">Save</button>
   </div>
@@ -1254,6 +1255,25 @@ document.getElementById('st-search')?.addEventListener('keydown',function(e){
 // ── Generate Picking List from Costing ───────────────────────────────────────
 let gplItems = [];
 
+async function refreshCostingPrices(costPk){
+  const ok = confirm(
+    "This will update Frame, Shelf, and Longspan line prices on this costing option to today's current prices.\n\n" +
+    "Any prices already sent to the customer may change. This can't be undone.\n\n" +
+    "Continue?"
+  );
+  if(!ok) return;
+  const r = await fetch(`/project/${PROJ_PK}/cost/${costPk}/refresh-prices/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken': CSRF},
+  });
+  const d = await r.json();
+  if(d.ok){
+    alert(`Updated ${d.updated} line(s) to current prices.`);
+    location.reload();
+  } else {
+    alert(d.error || 'Failed to refresh prices.');
+  }
+}
 async function generatePickingList(){
   const modal = document.getElementById('gpl-modal');
   const overlay = document.getElementById('gpl-overlay');

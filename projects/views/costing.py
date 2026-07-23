@@ -24,6 +24,78 @@ from django.contrib.auth.views import (
 )
 
 @login_required
+@require_POST
+def project_cost_refresh_prices(request, pk, cost_pk):
+    """Manually force frame/shelf/trolley lines to current prices, regardless
+    of project status — the deliberate escape hatch for an old costing that
+    genuinely needs re-pricing (e.g. re-quoting a stale enquiry)."""
+    project = get_object_or_404(Project, pk=pk)
+    cost = get_object_or_404(ProjectCost, pk=cost_pk, project=project)
+    from .price_list import ls_calc_frame_price, ls_calc_shelf_price, ls_calc_trolley_price
+    mat = {m.name: float(m.price_per_sqft) for m in MaterialPrice.objects.all()}
+    chipboard = mat.get('chipboard', 0.50)
+    melamine_p = mat.get('melamine', 0.75)
+    chip18 = mat.get('chipboard_18mm', melamine_p)
+
+    updated = 0
+    for line in cost.lines.all():
+        if line.line_type == 'frame':
+            parts = [p.strip() for p in line.size.replace('"', '').split('x')]
+            h = d = None
+            if len(parts) == 2:
+                h, d = parts[0], parts[1]
+            elif len(parts) == 4 and parts[0] == 'frame':
+                h, d = parts[1], parts[2]
+            if h and d:
+                line.unit_cost = calc_frame_price(h, d)
+                line.save()
+                updated += 1
+        elif line.line_type == 'shelf':
+            parts = line.size.replace('"', '').split('x')
+            if len(parts) == 3:
+                stype, w, d = parts[0].strip(), parts[1].strip(), parts[2].strip()
+                line.unit_cost = calc_shelf_price(stype, w, d, line.melamine, chipboard, melamine_p, chip18)
+                line.save()
+                updated += 1
+        elif line.line_type == 'ls_frame':
+            # Real format: "lsframe x H x D x galv" (4 parts)
+            parts = [p.strip() for p in line.size.replace('"', '').split('x')]
+            if len(parts) == 4:
+                try:
+                    line.unit_cost = ls_calc_frame_price(int(parts[1]), int(parts[2]))
+                    line.save()
+                    updated += 1
+                except (ValueError, TypeError):
+                    pass
+        elif line.line_type == 'ls_shelf':
+            # Real format: "lsshelf x W x D" (3 parts)
+            parts = [p.strip() for p in line.size.replace('"', '').split('x')]
+            if len(parts) == 3:
+                try:
+                    line.unit_cost = ls_calc_shelf_price(int(parts[1]), int(parts[2]))
+                    line.save()
+                    updated += 1
+                except (ValueError, TypeError):
+                    pass
+        elif line.line_type == 'ls_trolley':
+            # Real format: "lstrolley x D" (2 parts)
+            parts = [p.strip() for p in line.size.replace('"', '').split('x')]
+            if len(parts) == 2:
+                try:
+                    line.unit_cost = ls_calc_trolley_price(int(parts[1]))
+                    line.save()
+                    updated += 1
+                except (ValueError, TypeError):
+                    pass
+
+    ProjectLog.objects.create(
+        project=project, user=request.user,
+        field='Costing prices refreshed', old_value='', new_value=f'{cost.label}: {updated} line(s)',
+    )
+    return JsonResponse({'ok': True, 'updated': updated})
+
+
+@login_required
 def project_cost(request, pk, cost_pk=None):
     project = get_object_or_404(Project, pk=pk)
     # Get or create the first cost option
@@ -41,19 +113,31 @@ def project_cost(request, pk, cost_pk=None):
     melamine_p = mat.get('melamine', 0.75)
     chip18 = mat.get('chipboard_18mm', melamine_p)
 
-    # Recalculate dynamic prices for frame/shelf lines
-    for line in lines:
-        if line.line_type == 'frame':
-            parts = line.size.replace('"','').split('x')
-            if len(parts) == 2:
-                line.unit_cost = calc_frame_price(parts[0].strip(), parts[1].strip())
-                line.save()
-        elif line.line_type == 'shelf':
-            parts = line.size.replace('"','').split('x')
-            if len(parts) == 3:
-                stype, w, d = parts[0].strip(), parts[1].strip(), parts[2].strip()
-                line.unit_cost = calc_shelf_price(stype, w, d, line.melamine, chipboard, melamine_p, chip18)
-                line.save()
+    # Recalculate dynamic prices for frame/shelf lines — but only while the
+    # project is still in Enquiry. Once it's moved on (Quoted or later), a
+    # price may already be in front of the customer, so lines are frozen at
+    # whatever they were costed at; staff can still force a refresh via the
+    # "Refresh to current prices" button if genuinely needed.
+    if project.status == 'enquiry':
+        for line in lines:
+            if line.line_type == 'frame':
+                # Real format is "frame x H x D x PREFIX" (4 parts) — a bare
+                # "H x D" (2 parts) is supported too for any older rows.
+                parts = [p.strip() for p in line.size.replace('"', '').split('x')]
+                h = d = None
+                if len(parts) == 2:
+                    h, d = parts[0], parts[1]
+                elif len(parts) == 4 and parts[0] == 'frame':
+                    h, d = parts[1], parts[2]
+                if h and d:
+                    line.unit_cost = calc_frame_price(h, d)
+                    line.save()
+            elif line.line_type == 'shelf':
+                parts = line.size.replace('"','').split('x')
+                if len(parts) == 3:
+                    stype, w, d = parts[0].strip(), parts[1].strip(), parts[2].strip()
+                    line.unit_cost = calc_shelf_price(stype, w, d, line.melamine, chipboard, melamine_p, chip18)
+                    line.save()
 
     lines = cost.lines.select_related('product').all()
 
@@ -261,6 +345,9 @@ def cost_line_add(request, pk):
     chip18 = mat.get('chipboard_18mm', melamine_p)
 
     ltype = data.get('line_type')
+    # Local import avoids a circular import — price_list.py imports from
+    # this module at the top level, so this can't be a module-level import.
+    from .price_list import ls_calc_frame_price, ls_calc_shelf_price, ls_calc_trolley_price
     qty   = float(data.get('quantity', 1))
     sort  = cost.lines.count()
 

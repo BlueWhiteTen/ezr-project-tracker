@@ -119,6 +119,7 @@ urlpatterns = [
     path('project/<int:pk>/cost/<int:cost_pk>/delete/', views.cost_option_delete,   name='cost_option_delete'),
     path('project/<int:pk>/cost/<int:cost_pk>/accept/', views.cost_option_accept,   name='cost_option_accept'),
     path('project/<int:pk>/cost/<int:cost_pk>/rename/', views.cost_option_rename,   name='cost_option_rename'),
+    path('project/<int:pk>/cost/<int:cost_pk>/refresh-prices/', views.project_cost_refresh_prices, name='project_cost_refresh_prices'),
     path('project/<int:pk>/cost/<int:cost_pk>/quote/', views.customer_quote,        name='customer_quote_option'),
     path('project/<int:pk>/cost/<int:cost_pk>/quote/pdf/', views.quote_pdf,           name='quote_pdf_option'),
     path('project/<int:pk>/cost/<int:cost_pk>/quote/refresh-price/', views.quote_refresh_price, name='quote_refresh_price_option'),
