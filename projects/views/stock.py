@@ -194,7 +194,14 @@ def product_search_api(request):
 @login_required
 def stock_activity(request, pk):
     product = get_object_or_404(Product, pk=pk)
-    movements = product.movements.select_related('project', 'purchase_order', 'user').all()[:200]
+    movements = product.movements.select_related('project', 'purchase_order', 'user').all()
+    from_date = request.GET.get('from', '').strip()
+    to_date = request.GET.get('to', '').strip()
+    if from_date:
+        movements = movements.filter(created_at__date__gte=from_date)
+    if to_date:
+        movements = movements.filter(created_at__date__lte=to_date)
+    movements = movements[:500 if (from_date or to_date) else 200]
     rows = []
     for mv in movements:
         proj = mv.project

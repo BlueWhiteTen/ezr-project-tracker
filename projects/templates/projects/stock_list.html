@@ -176,7 +176,22 @@ td:nth-child(3){white-space:normal;word-break:break-word;}
     <div class="form-group" style="margin-bottom:0;margin-top:.7rem;"><label class="form-label">Reason for change <span style="font-weight:400;color:var(--mut2)">(only needed if adjusting quantity)</span></label><input class="form-input" type="text" id="eq-reason" placeholder="e.g. Stocktake correction, damaged stock, found in warehouse…"></div>
 
     <div style="margin-top:1.2rem;border-top:1px solid var(--bdr);padding-top:.9rem;">
-      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-bottom:.5rem;">Stock Activity</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;flex-wrap:wrap;gap:.5rem;">
+        <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);">Stock Activity</div>
+        <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;">
+          <select id="eq-act-preset" class="form-input" style="font-size:.78rem;padding:3px 6px;width:auto;" onchange="applyActivityPreset()">
+            <option value="">All time</option>
+            <option value="this_month">This month</option>
+            <option value="last_month">Last month</option>
+            <option value="this_year">This year</option>
+            <option value="last_year">Last year</option>
+            <option value="custom">Custom range…</option>
+          </select>
+          <input type="date" id="eq-act-from" class="form-input" style="font-size:.78rem;padding:3px 6px;width:auto;display:none;" onchange="loadActivity(document.getElementById('eq-pk').value)">
+          <span id="eq-act-to-sep" style="display:none;color:var(--mut);font-size:.78rem;">to</span>
+          <input type="date" id="eq-act-to" class="form-input" style="font-size:.78rem;padding:3px 6px;width:auto;display:none;" onchange="loadActivity(document.getElementById('eq-pk').value)">
+        </div>
+      </div>
       <div id="eq-activity" style="max-height:260px;overflow-y:auto;font-size:.8rem;">
         <div style="color:var(--mut);padding:.5rem 0;">Loading…</div>
       </div>
@@ -290,20 +305,68 @@ function editProduct(pk, code, desc, qty, reorder, cost, weight, category, reord
   document.getElementById('eq-cost').value = cost || '';
   document.getElementById('eq-weight').value = (weight === null || weight === undefined) ? '' : weight;
   document.getElementById('eq-reason').value = '';
+  document.getElementById('eq-act-preset').value = '';
+  document.getElementById('eq-act-from').value = '';
+  document.getElementById('eq-act-from').style.display = 'none';
+  document.getElementById('eq-act-to').value = '';
+  document.getElementById('eq-act-to').style.display = 'none';
+  document.getElementById('eq-act-to-sep').style.display = 'none';
   document.getElementById('eq-overlay').classList.add('open');
   document.getElementById('eq-modal').classList.add('open');
   document.getElementById('eq-code-inp').focus();
   document.getElementById('eq-code-inp').select();
   loadActivity(pk);
 }
+function applyActivityPreset(){
+  const preset = document.getElementById('eq-act-preset').value;
+  const fromEl = document.getElementById('eq-act-from');
+  const toEl = document.getElementById('eq-act-to');
+  const sepEl = document.getElementById('eq-act-to-sep');
+  const pk = document.getElementById('eq-pk').value;
+  const fmt = d => d.toISOString().slice(0, 10);
+  const now = new Date();
+
+  if(preset === 'custom'){
+    fromEl.style.display = 'inline-block';
+    toEl.style.display = 'inline-block';
+    sepEl.style.display = 'inline';
+    return; // wait for the user to actually pick dates
+  }
+  fromEl.style.display = 'none';
+  toEl.style.display = 'none';
+  sepEl.style.display = 'none';
+
+  let from = '', to = '';
+  if(preset === 'this_month'){
+    from = fmt(new Date(now.getFullYear(), now.getMonth(), 1));
+    to = fmt(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+  } else if(preset === 'last_month'){
+    from = fmt(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+    to = fmt(new Date(now.getFullYear(), now.getMonth(), 0));
+  } else if(preset === 'this_year'){
+    from = fmt(new Date(now.getFullYear(), 0, 1));
+    to = fmt(new Date(now.getFullYear(), 11, 31));
+  } else if(preset === 'last_year'){
+    from = fmt(new Date(now.getFullYear() - 1, 0, 1));
+    to = fmt(new Date(now.getFullYear() - 1, 11, 31));
+  }
+  fromEl.value = from;
+  toEl.value = to;
+  loadActivity(pk);
+}
 async function loadActivity(pk){
   const box = document.getElementById('eq-activity');
   box.innerHTML = '<div style="color:var(--mut);padding:.5rem 0;">Loading…</div>';
+  const from = document.getElementById('eq-act-from').value;
+  const to = document.getElementById('eq-act-to').value;
+  const params = new URLSearchParams();
+  if(from) params.set('from', from);
+  if(to) params.set('to', to);
   try{
-    const r = await fetch(`/stock/${pk}/activity/`);
+    const r = await fetch(`/stock/${pk}/activity/?${params.toString()}`);
     const d = await r.json();
     if(!d.ok || !d.movements.length){
-      box.innerHTML = '<div style="color:var(--mut);padding:.5rem 0;">No activity recorded yet.</div>';
+      box.innerHTML = '<div style="color:var(--mut);padding:.5rem 0;">No activity in this period.</div>';
       return;
     }
     let html = `<div style="display:flex;gap:1rem;font-size:.78rem;color:var(--mut);margin-bottom:.5rem;">
