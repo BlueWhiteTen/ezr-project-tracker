@@ -884,6 +884,9 @@ def cost_wall_fixings_save(request, pk):
 
 def generate_picking_reference(lines, selected_accessories=None, wall_fixings=0, back_to_back=0, mobile_bases=0):
     from collections import defaultdict
+    # Local import avoids a circular import — picking.py imports from this
+    # module at the top level, so this can't be a module-level import.
+    from .picking import BACK_TO_BACK_KIT, MOBILE_BASE_KIT, SM_FOOT_FIXINGS
     items = defaultdict(float)
     selected_accessories = selected_accessories or []
     for line in lines:
