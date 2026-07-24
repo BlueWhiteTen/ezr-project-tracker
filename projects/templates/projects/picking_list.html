@@ -2,7 +2,7 @@
 {% block title %}Picking List — {{ project.project_name }}{% endblock %}
 {% block extra_style %}
 
-.pl-page{max-width:1100px;}
+.pl-page{max-width:1320px;}
 .pl-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem;flex-wrap:wrap;gap:1rem;}
 .pl-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow);overflow:visible;}
 .pl-top{padding:1.1rem 1.5rem;border-bottom:1px solid var(--bdr);background:var(--surf2);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;border-radius:var(--rad-lg) var(--rad-lg) 0 0;}
@@ -111,6 +111,7 @@
         <th>Description</th>
         <th style="text-align:right;">Qty Needed</th>
         <th style="text-align:right;">In Stock</th>
+        <th style="text-align:right;">Free Stock</th>
         <th style="width:40px;"></th>
       </tr></thead>
       <tbody id="items-tbody">
@@ -118,7 +119,7 @@
       {% if item.item_type == 'message' %}
       <tr id="row-{{ item.pk }}" style="background:var(--surf2);">
         <td></td>
-        <td colspan="3" style="font-style:italic;color:var(--mut);font-size:.88rem;">📝 {{ item.message|default:item.ns_description }}</td>
+        <td colspan="4" style="font-style:italic;color:var(--mut);font-size:.88rem;">📝 {{ item.message|default:item.ns_description }}</td>
         <td></td>
         <td><button onclick="removeItem({{ item.pk }})" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;">✕</button></td>
       </tr>
@@ -136,6 +137,7 @@
             onkeydown="if(event.key==='Enter')this.blur()">
           {% endif %}
         </td>
+        <td class="qty-cell" style="color:var(--mut);">—</td>
         <td class="qty-cell" style="color:var(--mut);">—</td>
         <td style="white-space:nowrap;">
           <button onclick="addMsgAfter({{ item.pk }})" style="background:none;border:none;color:var(--acc);cursor:pointer;font-size:1.1rem;padding:2px 5px;border-radius:4px;font-weight:700;" title="Add note below">+</button>
@@ -157,6 +159,7 @@
           {% endif %}
         </td>
         <td class="qty-cell {% if item.product.quantity >= item.quantity %}stock-ok{% else %}stock-low{% endif %}">{{ item.product.quantity|floatformat:0 }}</td>
+        <td class="qty-cell {% if item.product.free_stock >= item.quantity %}stock-ok{% else %}stock-low{% endif %}">{{ item.product.free_stock|floatformat:0 }}</td>
         <td style="white-space:nowrap;">
           {% if not pl.allocated %}
           <button onclick="addMsgAfter({{ item.pk }})" style="background:none;border:none;color:var(--acc);cursor:pointer;font-size:1.1rem;padding:2px 5px;border-radius:4px;font-weight:700;" title="Add note below">+</button>
@@ -168,7 +171,7 @@
       </tr>
       {% endif %}
       {% empty %}
-      <tr id="empty-row"><td colspan="6" class="empty-msg">No items yet — add products below</td></tr>
+      <tr id="empty-row"><td colspan="7" class="empty-msg">No items yet — add products below</td></tr>
       {% endfor %}
       </tbody>
     </table>
@@ -362,16 +365,16 @@ async function searchProds(q){
   const items = await r.json();
   if(!items.length){ dd.style.display='none'; return; }
   dd.innerHTML = items.map((p,i)=>`
-    <div class="pdd-item" id="pdd-${i}" onmousedown="event.preventDefault();selectProd(${p.id},'${p.code.replace(/'/g,"\\'")}','${p.description.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${p.quantity})">
+    <div class="pdd-item" id="pdd-${i}" onmousedown="event.preventDefault();selectProd(${p.id},'${p.code.replace(/'/g,"\\'")}','${p.description.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${p.quantity},${p.free_stock})">
       <div class="pdd-code">${p.code}</div>
       <div class="pdd-desc">${p.description}</div>
-      <div class="pdd-stock">In stock: <strong>${p.quantity}</strong></div>
+      <div class="pdd-stock">In stock: <strong>${p.quantity}</strong> · Free: <strong>${p.free_stock}</strong></div>
     </div>`).join('');
   dd.style.display = 'block';
 }
 
-function selectProd(id, code, desc, qty){
-  selProduct = {id, code, desc, qty};
+function selectProd(id, code, desc, qty, free){
+  selProduct = {id, code, desc, qty, free};
   document.getElementById('prod-search').value = code;
   document.getElementById('prod-dd').style.display = 'none';
   document.getElementById('sel-info').textContent = desc + ' — In stock: ' + qty;
@@ -434,6 +437,7 @@ async function addItem(){
       <td style="font-size:.95rem;">${selProduct.desc}</td>
       <td class="qty-cell">${d.quantity}</td>
       <td class="qty-cell ${selProduct.qty >= qty ? 'stock-ok':'stock-low'}">${selProduct.qty}</td>
+      <td class="qty-cell ${selProduct.free >= qty ? 'stock-ok':'stock-low'}">${selProduct.free}</td>
       <td><button onclick="removeItem(${d.item_pk})" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;">✕</button></td>`;
     tbody.appendChild(tr);
   }
@@ -491,6 +495,7 @@ async function addNS(){
     <td style="font-size:.95rem;">${desc}</td>
     <td class="qty-cell">${qty}</td>
     <td class="qty-cell" style="color:var(--mut);">—</td>
+    <td class="qty-cell" style="color:var(--mut);">—</td>
     <td><button onclick="removeItem(${d.item_pk})" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;">✕</button></td>`;
   tbody.appendChild(tr);
   document.getElementById('ns-desc').value = '';
@@ -520,7 +525,7 @@ async function addMsg(){
   tr.style.background = 'var(--surf2)';
   tr.innerHTML = `
     <td></td>
-    <td colspan="3" style="font-style:italic;color:var(--mut);font-size:.88rem;">📝 ${msg}</td>
+    <td colspan="4" style="font-style:italic;color:var(--mut);font-size:.88rem;">📝 ${msg}</td>
     <td></td>
     <td><button onclick="removeItem(${d.item_pk})" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;">✕</button></td>`;
   tbody.appendChild(tr);

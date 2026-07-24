@@ -1300,6 +1300,7 @@ document.getElementById('st-search')?.addEventListener('keydown',function(e){
 
 // ── Generate Picking List from Costing ───────────────────────────────────────
 let gplItems = [];
+let gplTemplatesUsed = [];
 
 async function refreshCostingPrices(costPk){
   const ok = confirm(
@@ -1334,6 +1335,7 @@ async function generatePickingList(){
   if(!d.ok){ document.getElementById('gpl-body').innerHTML = `<div style="color:var(--red);padding:1rem;">${d.error}</div>`; return; }
 
   gplItems = [...d.stock_items, ...d.ns_lines];
+  gplTemplatesUsed = d.templates_used || [];
   renderGPL(gplItems);
 }
 
@@ -1402,7 +1404,7 @@ async function savePickingList(){
   const r = await fetch(`/project/${PROJ_PK}/picking-from-costing/save/`, {
     method:'POST',
     headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-    body: JSON.stringify({items, replace})
+    body: JSON.stringify({items, replace, templates_used: gplTemplatesUsed})
   });
   const d = await r.json();
   if(d.ok){

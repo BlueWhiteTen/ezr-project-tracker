@@ -648,8 +648,10 @@ def picking_from_costing(request, pk):
     # Expand Picking Template lines into their real items, scaled by the
     # costing line's quantity — same items a template adds when applied
     # directly to a picking list.
+    templates_used_ids = []
     for line in lines:
         if line.line_type == 'template' and line.picking_template:
+            templates_used_ids.append(line.picking_template.pk)
             mult = float(line.quantity) or 1
             ns_lines.append({
                 'type': 'message',
@@ -826,6 +828,7 @@ def picking_from_costing(request, pk):
         'ok': True,
         'stock_items': stock_items,
         'ns_lines': ns_lines,
+        'templates_used': templates_used_ids,
     })
 
 
@@ -839,11 +842,15 @@ def picking_from_costing_save(request, pk):
     data = json.loads(request.body)
     items = data.get('items', [])
     replace = data.get('replace', False)
+    templates_used_ids = data.get('templates_used', [])
 
     pl, _ = PickingList.objects.get_or_create(
         project=project,
         defaults={'created_by': request.user, 'status': 'draft'}
     )
+
+    if templates_used_ids:
+        pl.templates_used.add(*templates_used_ids)
 
     if replace:
         pl.items.all().delete()

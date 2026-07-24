@@ -938,12 +938,16 @@ def generate_picking_reference(lines, selected_accessories=None, wall_fixings=0,
         elif line.line_type == 'inhang':
             # Description: "Inboard Hanging 48" x 18""
             # 2 rails (HRS{depth}) + 1 foot (SMFOOT) per set
+            # HRS21/HRS27 use different real Stock codes (HRS21/3N, HRS27/3N)
+            # — matches the same override in price_list.py's _seed_price_list().
+            hrs_code_override = {'21': 'HRS21/3N', '27': 'HRS27/3N'}
             parts = line.description.replace('"','').split('x')
             if len(parts) >= 2:
                 depth_str = parts[-1].strip().split()[0]  # last number
                 try:
                     depth = str(int(float(depth_str)))
-                    items[f'HRS{depth}'] += qty * 2
+                    hrs_code = hrs_code_override.get(depth, f'HRS{depth}')
+                    items[hrs_code] += qty * 2
                     items['SMFOOT'] += qty
                     items['25MMFLOCOATTUBE1MM'] += qty
                 except (ValueError, IndexError):
