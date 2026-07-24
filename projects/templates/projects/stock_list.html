@@ -11,8 +11,9 @@ td{padding:.4rem .8rem;font-size:.875rem;border-bottom:.5px solid var(--bdr);col
 tr:last-child td{border-bottom:none;}
 tr:hover td{background:var(--surf2);}
 .code{font-family:var(--fm);font-size:.82rem;font-weight:600;color:var(--acc);white-space:normal;word-break:break-word;}
-th:first-child, td:first-child{max-width:140px;width:140px;}
-td:nth-child(2){white-space:normal;word-break:break-word;}
+th:first-child, td:first-child{width:32px;}
+th:nth-child(2), td:nth-child(2){max-width:140px;width:140px;}
+td:nth-child(3){white-space:normal;word-break:break-word;}
 .qty-low{color:var(--red);font-weight:600;}
 .qty-ok{color:var(--grn);font-weight:600;}
 .qty-zero{color:var(--mut2);}
@@ -80,6 +81,7 @@ td:nth-child(2){white-space:normal;word-break:break-word;}
 <div class="stock-table-wrap" style="overflow-x:auto;">
   <table>
     <thead><tr>
+      <th style="width:32px;"><input type="checkbox" id="sel-all" onchange="toggleAll(this)" title="Select all"></th>
       {% for col in columns %}
       <th {% if col.right %}style="text-align:right;"{% endif %}>
         {% if sort == col.key %}
@@ -96,6 +98,7 @@ td:nth-child(2){white-space:normal;word-break:break-word;}
     <tbody>
     {% for p in products %}
     <tr id="prod-row-{{ p.pk }}" {% if not p.is_active %}class="prod-inactive"{% endif %}>
+      <td><input type="checkbox" class="row-sel-cb" value="{{ p.pk }}" onchange="updateBulkBar()"></td>
       <td><span class="code" style="cursor:pointer;" onclick="editProduct({{ p.pk }},'{{ p.code|escapejs }}','{{ p.description|escapejs }}',{{ p.quantity }},{{ p.reorder_level }},{{ p.cost_price }},{% if p.weight is not None %}{{ p.weight }}{% else %}null{% endif %},'{{ p.category|escapejs }}',{{ p.reorder_qty }})">{{ p.code }}</span></td>
       <td>{{ p.description }}{% if not p.is_active %} <span style="font-size:.7rem;color:var(--mut);font-style:italic;">(inactive)</span>{% endif %}</td>
       <td style="text-align:right;">
@@ -125,10 +128,22 @@ td:nth-child(2){white-space:normal;word-break:break-word;}
       </td>
     </tr>
     {% empty %}
-    <tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--mut);">No products found — import your Excel file to get started</td></tr>
+    <tr><td colspan="12" style="text-align:center;padding:2rem;color:var(--mut);">No products found — import your Excel file to get started</td></tr>
     {% endfor %}
     </tbody>
   </table>
+</div>
+
+<div id="bulk-bar" style="display:none;position:sticky;bottom:1rem;margin-top:1rem;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow-md);padding:.8rem 1.1rem;align-items:center;gap:.9rem;">
+  <span id="bulk-count" style="font-size:.85rem;font-weight:600;"></span>
+  <select id="bulk-category-sel" class="form-input" style="max-width:240px;">
+    <option value="">— Select category —</option>
+    {% for val, label in category_choices %}
+    <option value="{{ val }}">{{ label }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn btn-primary btn-sm" onclick="applyBulkCategory()">Apply Category</button>
+  <button class="btn btn-ghost btn-sm" onclick="clearSelection()">Clear Selection</button>
 </div>
 
 <!-- Edit modal -->
@@ -354,6 +369,42 @@ function openNewProduct(){
 function closeNewProduct(){
   document.getElementById('np-overlay').classList.remove('open');
   document.getElementById('np-modal').classList.remove('open');
+}
+// ── Bulk category ────────────────────────────────────────────────────────────
+function toggleAll(cb){
+  document.querySelectorAll('.row-sel-cb').forEach(c => c.checked = cb.checked);
+  updateBulkBar();
+}
+function updateBulkBar(){
+  const checked = [...document.querySelectorAll('.row-sel-cb:checked')];
+  const bar = document.getElementById('bulk-bar');
+  if(checked.length > 0){
+    bar.style.display = 'flex';
+    document.getElementById('bulk-count').textContent = `${checked.length} item${checked.length>1?'s':''} selected`;
+  } else {
+    bar.style.display = 'none';
+    document.getElementById('sel-all').checked = false;
+  }
+}
+function clearSelection(){
+  document.querySelectorAll('.row-sel-cb').forEach(c => c.checked = false);
+  document.getElementById('sel-all').checked = false;
+  updateBulkBar();
+}
+async function applyBulkCategory(){
+  const ids = [...document.querySelectorAll('.row-sel-cb:checked')].map(c => c.value);
+  const category = document.getElementById('bulk-category-sel').value;
+  if(!ids.length) return;
+  if(!category){ alert('Choose a category first.'); return; }
+  const label = document.querySelector(`#bulk-category-sel option[value="${category}"]`).textContent;
+  if(!confirm(`Set ${ids.length} item(s) to "${label}"?`)) return;
+  const r = await fetch('/stock/bulk-category/', {
+    method: 'POST', headers: {'Content-Type':'application/json','X-CSRFToken':CSRF},
+    body: JSON.stringify({ids, category}),
+  });
+  const d = await r.json();
+  if(d.ok) location.reload();
+  else alert(d.error || 'Failed to update category.');
 }
 function openPrintStock(){
   document.getElementById('pr-overlay').classList.add('open');

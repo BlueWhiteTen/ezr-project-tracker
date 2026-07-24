@@ -74,6 +74,7 @@ urlpatterns = [
     path('stock/',                           views.stock_list,            name='stock_list'),
     path('stock/create/',                    views.stock_create,          name='stock_create'),
     path('stock/print/',                     views.stock_print,           name='stock_print'),
+    path('stock/bulk-category/',              views.stock_bulk_category,   name='stock_bulk_category'),
     path('stock/import/',                  views.stock_import,          name='stock_import'),
     path('stock/<int:pk>/adjust/',           views.stock_adjust,          name='stock_adjust'),
     path('stock/<int:pk>/activity/',         views.stock_activity,        name='stock_activity'),

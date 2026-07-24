@@ -233,6 +233,21 @@ def stock_activity(request, pk):
 
 
 @login_required
+@require_POST
+def stock_bulk_category(request):
+    data = json.loads(request.body)
+    ids = data.get('ids') or []
+    category = data.get('category', '')
+    valid_categories = [v for v, l in Product.CATEGORY_CHOICES]
+    if category not in valid_categories:
+        return JsonResponse({'error': 'Invalid category.'}, status=400)
+    if not ids:
+        return JsonResponse({'error': 'No products selected.'}, status=400)
+    updated = Product.objects.filter(pk__in=ids).update(category=category)
+    return JsonResponse({'ok': True, 'updated': updated})
+
+
+@login_required
 def stock_print(request):
     selected_cats = request.GET.getlist('cat')
     selected_cols = request.GET.getlist('col')
