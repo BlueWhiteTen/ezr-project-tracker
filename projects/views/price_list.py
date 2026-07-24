@@ -39,7 +39,7 @@ def price_list(request):
     stale_codes = ['TP144','TCTB12','TCTB15','SB27','STM','DTM','SM','SM-SHIM',
                     'STM-SHIM','DTM-SHIM','LSCASTBRKTS','LSCASTBRKT600','LSCASTBRKT900',
                     'LSP3500','LSP4500','LSDB1294','LSCB1000','LSB1150','LSB1500','LSB1800','LSB2700',
-                    'LSP2000','LSP2500','LSP3000','LSP4000','LSP5000']
+                    'LSP2000','LSP2500','LSP3000','LSP4000','LSP5000','LSP4000-G','LSP5000-G']
     needs_code_fix = PriceListItem.objects.filter(code__in=stale_codes).exists()
     missing_twb66 = not PriceListItem.objects.filter(code='TWB66').exists()
     if not PriceListItem.objects.exists() or old_format or not has_trimline or not has_longspan or needs_code_fix or missing_twb66:
@@ -200,7 +200,7 @@ def _seed_price_list():
 
     # ── LONGSPAN components ──
     # Posts by height
-    ls_post_prices = {2000:7.5, 2500:9.0, 3000:10.5, 4000:13.5, 5000:16.5}
+    ls_post_prices = {2000:7.5, 2500:9.0, 3000:10.5}
     sort = 0
     for h in LS_FRAME_HEIGHTS:
         PriceListItem.objects.create(product_line='longspan', category='Posts',

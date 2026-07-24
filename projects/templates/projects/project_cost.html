@@ -195,8 +195,8 @@
     </div>
   </div>
 
-  <!-- PROJECT ACCESSORIES -->
-  <div class="cost-card" style="margin-bottom:1.2rem;">
+  <!-- PROJECT ACCESSORIES (Trimline only) -->
+  <div class="cost-card" id="project-accessories-card" style="margin-bottom:1.2rem;">
     <div class="cost-card-head" style="display:flex;align-items:center;justify-content:space-between;">
       <span>Project Accessories</span>
       <span style="font-size:.72rem;color:var(--mut);font-weight:400;text-transform:none;letter-spacing:0;" id="upright-count">{{ total_uprights }} upright{{ total_uprights|pluralize }} detected</span>
@@ -708,6 +708,7 @@ function showProduct(line){
   const isLs = line === 'longspan';
   document.getElementById('trimline-tabs').style.display = isLs ? 'none':'block';
   document.getElementById('longspan-tabs').style.display = isLs ? 'block':'none';
+  document.getElementById('project-accessories-card').style.display = isLs ? 'none' : 'block';
   document.getElementById('pt-trimline').className = 'prod-toggle' + (isLs?'':' active');
   document.getElementById('pt-longspan').className = 'prod-toggle' + (isLs?' active':'');
   document.getElementById('pt-trimline').style.cssText = isLs
@@ -724,7 +725,7 @@ function showProduct(line){
 }
 
 // ── Longspan multi-row ──
-const LS_HEIGHTS = ['2000','2500','3000','4000','5000'];
+const LS_HEIGHTS = ['2000','2500','3000'];
 const LS_FRAME_DEPTHS = ['600','900','1000','1200'];
 const LS_WIDTHS = ['950','1150','1500','1800','1850','2250','2400','2700'];
 const LS_SHELF_DEPTHS = ['600','900','1000','1200'];

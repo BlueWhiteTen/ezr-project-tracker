@@ -340,6 +340,8 @@ def stock_adjust(request, pk):
     if request.method == 'POST':
         data = json.loads(request.body)
         if data.get('delete'):
+            if not request.user.is_staff:
+                return JsonResponse({'error': 'Only staff can delete products.'}, status=403)
             product.delete()
             return JsonResponse({'ok': True, 'deleted': True})
         product.code        = data.get('code', product.code).strip()

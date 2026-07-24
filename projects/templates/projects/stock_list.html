@@ -198,7 +198,11 @@ td:nth-child(3){white-space:normal;word-break:break-word;}
     </div>
   </div>
   <div class="eq-foot" style="justify-content:space-between;">
+    {% if request.user.is_staff %}
     <button onclick="deleteProduct()" class="btn btn-danger btn-sm">Delete Product</button>
+    {% else %}
+    <div></div>
+    {% endif %}
     <div style="display:flex;gap:.5rem;">
       <button onclick="closeEdit()" class="btn btn-ghost btn-sm">Cancel</button>
       <button onclick="saveEdit()" class="btn btn-primary btn-sm">Save</button>
@@ -539,7 +543,12 @@ async function deleteProduct(){
   const pk = document.getElementById('eq-pk').value;
   const code = document.getElementById('eq-code').textContent;
   if(!confirm(`Delete product ${code}? This cannot be undone.`)) return;
-  await fetch(`/stock/${pk}/adjust/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({delete:true})});
+  const r = await fetch(`/stock/${pk}/adjust/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({delete:true})});
+  if(!r.ok){
+    const d = await r.json().catch(()=>({}));
+    alert(d.error || 'Failed to delete product.');
+    return;
+  }
   closeEdit();
   location.reload();
 }
