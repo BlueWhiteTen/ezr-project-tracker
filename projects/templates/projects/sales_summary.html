@@ -1,0 +1,170 @@
+{% extends 'projects/base.html' %}
+{% block title %}Sales Summary{% endblock %}
+{% block extra_style %}
+.ss-toolbar{display:flex;align-items:center;gap:.6rem;margin-bottom:1.4rem;flex-wrap:wrap;}
+.ss-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-bottom:1.6rem;}
+.ss-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1rem 1.2rem;}
+.ss-card-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-bottom:.35rem;}
+.ss-card-value{font-size:1.5rem;font-weight:800;font-family:var(--fm);}
+.ss-card-sub{font-size:.78rem;color:var(--mut);margin-top:.2rem;}
+.ss-section{margin-bottom:2.2rem;}
+.ss-section-title{font-size:1.05rem;font-weight:700;margin-bottom:.8rem;display:flex;align-items:center;gap:.6rem;}
+table.ss-table{width:100%;border-collapse:collapse;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;font-size:.84rem;}
+table.ss-table th{text-align:left;padding:.55rem .75rem;font-size:.71rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);background:var(--surf2);border-bottom:1px solid var(--bdr);white-space:nowrap;}
+table.ss-table td{padding:.55rem .75rem;border-bottom:1px solid var(--bdr);vertical-align:top;}
+table.ss-table tr:last-child td{border-bottom:none;}
+table.ss-table td.num{text-align:right;font-family:var(--fm);white-space:nowrap;}
+table.ss-table th.num{text-align:right;}
+.ss-empty{padding:1.2rem;text-align:center;color:var(--mut2);font-size:.85rem;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);}
+.ss-total-row td{font-weight:700;background:var(--surf2);border-top:2px solid var(--bdr);}
+{% endblock %}
+{% block content %}
+
+<div class="ss-toolbar">
+  <h1 style="font-size:1.5rem;font-weight:700;margin-right:.4rem;">Sales Summary</h1>
+  <select id="ss-preset" class="form-input" style="max-width:200px;" onchange="ssApplyPreset()">
+    <option value="this_month" {% if preset == 'this_month' %}selected{% endif %}>This month</option>
+    <option value="last_month" {% if preset == 'last_month' %}selected{% endif %}>Last month</option>
+    <option value="this_year" {% if preset == 'this_year' %}selected{% endif %}>This year</option>
+    <option value="last_year" {% if preset == 'last_year' %}selected{% endif %}>Last year</option>
+    <option value="custom" {% if preset == 'custom' %}selected{% endif %}>Custom range…</option>
+  </select>
+  <input type="date" id="ss-from" class="form-input" style="max-width:160px;{% if preset != 'custom' %}display:none;{% endif %}" value="{{ start|date:'Y-m-d' }}" onchange="ssGo()">
+  <span id="ss-to-sep" style="{% if preset != 'custom' %}display:none;{% endif %}color:var(--mut);">to</span>
+  <input type="date" id="ss-to" class="form-input" style="max-width:160px;{% if preset != 'custom' %}display:none;{% endif %}" value="{{ end|date:'Y-m-d' }}" onchange="ssGo()">
+  <span style="color:var(--mut);font-size:.85rem;">{{ start|date:"d M Y" }} – {{ end|date:"d M Y" }}</span>
+  <a href="{% url 'sales_summary_export' %}?preset={{ preset }}&from={{ start|date:'Y-m-d' }}&to={{ end|date:'Y-m-d' }}" class="btn btn-ghost btn-sm" style="margin-left:auto;">⬇ Export CSV</a>
+</div>
+
+<div class="ss-cards">
+  <div class="ss-card">
+    <div class="ss-card-label">Value of Jobs Added</div>
+    <div class="ss-card-value">£{{ added_totals.value|floatformat:2 }}</div>
+    <div class="ss-card-sub">{{ added_totals.count }} job{{ added_totals.count|pluralize }} · Margin £{{ added_totals.margin|floatformat:2 }}</div>
+  </div>
+  <div class="ss-card">
+    <div class="ss-card-label">Value of Jobs Invoiced</div>
+    <div class="ss-card-value">£{{ invoiced_totals.value|floatformat:2 }}</div>
+    <div class="ss-card-sub">{{ invoiced_totals.count }} job{{ invoiced_totals.count|pluralize }} · Margin £{{ invoiced_totals.margin|floatformat:2 }}</div>
+  </div>
+</div>
+
+<div class="ss-section">
+  <div class="ss-section-title">📥 Jobs Added</div>
+  {% if added_rows %}
+  <table class="ss-table">
+    <thead><tr><th>Date</th><th>Project</th><th>Customer</th><th class="num">Sell Price</th><th class="num">Margin</th><th class="num">Margin %</th></tr></thead>
+    <tbody>
+      {% for r in added_rows %}
+      <tr>
+        <td>{{ r.date|date:"d M Y" }}</td>
+        <td><a href="{% url 'project_edit' r.project.pk %}" style="color:var(--txt);text-decoration:none;">{{ r.project.project_name }}</a></td>
+        <td>{{ r.project.customer }}</td>
+        <td class="num">£{{ r.sell_price|floatformat:2 }}</td>
+        <td class="num">£{{ r.margin|floatformat:2 }}</td>
+        <td class="num">{{ r.margin_pct }}%</td>
+      </tr>
+      {% endfor %}
+      <tr class="ss-total-row">
+        <td colspan="3">Total</td>
+        <td class="num">£{{ added_totals.value|floatformat:2 }}</td>
+        <td class="num">£{{ added_totals.margin|floatformat:2 }}</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  {% else %}
+  <div class="ss-empty">No jobs added with an accepted costing in this period.</div>
+  {% endif %}
+</div>
+
+<div class="ss-section">
+  <div class="ss-section-title">📥 Jobs Added — by Customer</div>
+  {% if added_by_customer %}
+  <table class="ss-table">
+    <thead><tr><th>Customer</th><th class="num">Jobs</th><th class="num">Value</th><th class="num">Margin</th></tr></thead>
+    <tbody>
+      {% for r in added_by_customer %}
+      <tr><td>{{ r.customer }}</td><td class="num">{{ r.count }}</td><td class="num">£{{ r.value|floatformat:2 }}</td><td class="num">£{{ r.margin|floatformat:2 }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="ss-empty">No data for this period.</div>
+  {% endif %}
+</div>
+
+<div class="ss-section">
+  <div class="ss-section-title">✅ Jobs Invoiced (Completed)</div>
+  {% if invoiced_rows %}
+  <table class="ss-table">
+    <thead><tr><th>Date</th><th>Project</th><th>Customer</th><th class="num">Sell Price</th><th class="num">Margin</th><th class="num">Margin %</th></tr></thead>
+    <tbody>
+      {% for r in invoiced_rows %}
+      <tr>
+        <td>{{ r.date|date:"d M Y" }}</td>
+        <td><a href="{% url 'project_edit' r.project.pk %}" style="color:var(--txt);text-decoration:none;">{{ r.project.project_name }}</a></td>
+        <td>{{ r.project.customer }}</td>
+        <td class="num">£{{ r.sell_price|floatformat:2 }}</td>
+        <td class="num">£{{ r.margin|floatformat:2 }}</td>
+        <td class="num">{{ r.margin_pct }}%</td>
+      </tr>
+      {% endfor %}
+      <tr class="ss-total-row">
+        <td colspan="3">Total</td>
+        <td class="num">£{{ invoiced_totals.value|floatformat:2 }}</td>
+        <td class="num">£{{ invoiced_totals.margin|floatformat:2 }}</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  {% else %}
+  <div class="ss-empty">No jobs completed in this period.</div>
+  {% endif %}
+</div>
+
+<div class="ss-section">
+  <div class="ss-section-title">✅ Jobs Invoiced — by Customer</div>
+  {% if invoiced_by_customer %}
+  <table class="ss-table">
+    <thead><tr><th>Customer</th><th class="num">Jobs</th><th class="num">Value</th><th class="num">Margin</th></tr></thead>
+    <tbody>
+      {% for r in invoiced_by_customer %}
+      <tr><td>{{ r.customer }}</td><td class="num">{{ r.count }}</td><td class="num">£{{ r.value|floatformat:2 }}</td><td class="num">£{{ r.margin|floatformat:2 }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="ss-empty">No data for this period.</div>
+  {% endif %}
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+function ssApplyPreset(){
+  const preset = document.getElementById('ss-preset').value;
+  const fromEl = document.getElementById('ss-from');
+  const toEl = document.getElementById('ss-to');
+  const sep = document.getElementById('ss-to-sep');
+  if(preset === 'custom'){
+    fromEl.style.display = 'inline-block';
+    toEl.style.display = 'inline-block';
+    sep.style.display = 'inline';
+    return;
+  }
+  fromEl.style.display = 'none';
+  toEl.style.display = 'none';
+  sep.style.display = 'none';
+  window.location.href = `{% url 'sales_summary' %}?preset=${preset}`;
+}
+function ssGo(){
+  const preset = document.getElementById('ss-preset').value;
+  const from = document.getElementById('ss-from').value;
+  const to = document.getElementById('ss-to').value;
+  if(preset === 'custom' && from && to){
+    window.location.href = `{% url 'sales_summary' %}?preset=custom&from=${from}&to=${to}`;
+  }
+}
+</script>
+{% endblock %}

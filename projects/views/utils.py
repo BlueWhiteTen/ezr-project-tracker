@@ -115,6 +115,32 @@ def _calc_sell_price(cost):
     return sell_price
 
 
+def _calc_cost_breakdown(cost):
+    """Full read-only cost/sell/margin breakdown for one costing option, for
+    reporting (Sales Summary). Margin = markup only — labour and delivery
+    are treated as pass-through costs, not profit, matching how the costing
+    screen itself presents them."""
+    lines = list(cost.lines.all())
+    buying_total = sum(l.line_total for l in lines)
+    total_uprights = sum(int(float(l.quantity)) * 2 for l in lines if l.line_type == 'frame')
+    if hasattr(cost, 'accessories'):
+        for acc in cost.accessories.all():
+            buying_total += float(acc.unit_price) * total_uprights
+    markup_amount = round(buying_total * float(cost.markup) / 100, 2)
+    labour = float(cost.labour)
+    delivery = float(cost.delivery)
+    sell_price = round(buying_total + markup_amount + labour + delivery, 2)
+    margin_pct = round((markup_amount / sell_price) * 100, 1) if sell_price else 0
+    return {
+        'buying_total': round(buying_total, 2),
+        'labour': labour,
+        'delivery': delivery,
+        'sell_price': sell_price,
+        'margin': markup_amount,
+        'margin_pct': margin_pct,
+    }
+
+
 def _initials(name):
     """First letter of first + last name."""
     parts = name.split()

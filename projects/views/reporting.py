@@ -14,7 +14,7 @@ import json
 
 from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence
 from ..forms import RegisterForm, ProjectForm
-from .utils import (_calc_sell_price)
+from .utils import (_calc_sell_price, _calc_cost_breakdown)
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -225,6 +225,143 @@ def week_view(request):
     return render(request, 'projects/week_view.html', {'days_data': days_data, 'today': today})
 
 
+
+
+def _sales_summary_data(request):
+    """Shared computation for the Sales Summary page and its CSV export."""
+    from collections import defaultdict
+
+    today = date.today()
+    preset = request.GET.get('preset', 'this_month')
+    from_str = request.GET.get('from', '')
+    to_str = request.GET.get('to', '')
+
+    def month_range(y, m):
+        start = date(y, m, 1)
+        end = date(y + 1, 1, 1) if m == 12 else date(y, m + 1, 1)
+        return start, end - timedelta(days=1)
+
+    if preset == 'custom' and from_str and to_str:
+        try:
+            start = date.fromisoformat(from_str)
+            end = date.fromisoformat(to_str)
+        except ValueError:
+            start, end = month_range(today.year, today.month)
+            preset = 'this_month'
+    elif preset == 'last_month':
+        y, m = (today.year, today.month - 1) if today.month > 1 else (today.year - 1, 12)
+        start, end = month_range(y, m)
+    elif preset == 'this_year':
+        start, end = date(today.year, 1, 1), date(today.year, 12, 31)
+    elif preset == 'last_year':
+        start, end = date(today.year - 1, 1, 1), date(today.year - 1, 12, 31)
+    else:
+        preset = 'this_month'
+        start, end = month_range(today.year, today.month)
+
+    # ── Jobs added: projects created in the period ──────────────────────────
+    added_rows = []
+    added_projects = Project.objects.filter(
+        created_at__date__gte=start, created_at__date__lte=end
+    ).exclude(status='cancelled').select_related()
+    for p in added_projects:
+        cost = p.cost
+        if not cost or not cost.lines.exists():
+            continue
+        bd = _calc_cost_breakdown(cost)
+        added_rows.append({'project': p, 'date': p.created_at.date(), **bd})
+
+    # ── Jobs invoiced: projects that became Completed in the period ─────────
+    invoiced_rows = []
+    seen = set()
+    completed_logs = (ProjectLog.objects
+        .filter(field='Status', new_value='Completed',
+                timestamp__date__gte=start, timestamp__date__lte=end)
+        .select_related('project').order_by('timestamp'))
+    for log in completed_logs:
+        if log.project_id in seen:
+            continue
+        seen.add(log.project_id)
+        p = log.project
+        cost = p.cost
+        if not cost or not cost.lines.exists():
+            continue
+        bd = _calc_cost_breakdown(cost)
+        invoiced_rows.append({'project': p, 'date': log.timestamp.date(), **bd})
+
+    def totals(rows):
+        return {
+            'count': len(rows),
+            'value': round(sum(r['sell_price'] for r in rows), 2),
+            'margin': round(sum(r['margin'] for r in rows), 2),
+        }
+
+    def by_customer(rows):
+        agg = defaultdict(lambda: {'count': 0, 'value': 0.0, 'margin': 0.0})
+        for r in rows:
+            key = r['project'].customer or '—'
+            agg[key]['count'] += 1
+            agg[key]['value'] += r['sell_price']
+            agg[key]['margin'] += r['margin']
+        out = [{'customer': k, 'count': v['count'], 'value': round(v['value'], 2), 'margin': round(v['margin'], 2)}
+               for k, v in agg.items()]
+        out.sort(key=lambda x: x['value'], reverse=True)
+        return out
+
+    return {
+        'preset': preset, 'start': start, 'end': end,
+        'added_rows': added_rows, 'invoiced_rows': invoiced_rows,
+        'added_totals': totals(added_rows), 'invoiced_totals': totals(invoiced_rows),
+        'added_by_customer': by_customer(added_rows), 'invoiced_by_customer': by_customer(invoiced_rows),
+    }
+
+
+@login_required
+def sales_summary(request):
+    d = _sales_summary_data(request)
+    return render(request, 'projects/sales_summary.html', d)
+
+
+@login_required
+def sales_summary_export(request):
+    import csv
+    d = _sales_summary_data(request)
+    response = HttpResponse(content_type='text/csv')
+    filename = f"sales-summary-{d['start']}-to-{d['end']}.csv"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    writer = csv.writer(response)
+    writer.writerow([f"Sales Summary — {d['start']} to {d['end']}"])
+    writer.writerow([])
+
+    writer.writerow(['JOBS ADDED'])
+    writer.writerow(['Date', 'Project', 'Customer', 'Sell Price', 'Margin', 'Margin %'])
+    for r in d['added_rows']:
+        writer.writerow([r['date'], r['project'].project_name, r['project'].customer or '',
+                          r['sell_price'], r['margin'], r['margin_pct']])
+    writer.writerow(['', '', 'TOTAL', d['added_totals']['value'], d['added_totals']['margin'], ''])
+    writer.writerow([])
+
+    writer.writerow(['JOBS ADDED — BY CUSTOMER'])
+    writer.writerow(['Customer', 'Jobs', 'Value', 'Margin'])
+    for r in d['added_by_customer']:
+        writer.writerow([r['customer'], r['count'], r['value'], r['margin']])
+    writer.writerow([])
+    writer.writerow([])
+
+    writer.writerow(['JOBS INVOICED (COMPLETED)'])
+    writer.writerow(['Date', 'Project', 'Customer', 'Sell Price', 'Margin', 'Margin %'])
+    for r in d['invoiced_rows']:
+        writer.writerow([r['date'], r['project'].project_name, r['project'].customer or '',
+                          r['sell_price'], r['margin'], r['margin_pct']])
+    writer.writerow(['', '', 'TOTAL', d['invoiced_totals']['value'], d['invoiced_totals']['margin'], ''])
+    writer.writerow([])
+
+    writer.writerow(['JOBS INVOICED — BY CUSTOMER'])
+    writer.writerow(['Customer', 'Jobs', 'Value', 'Margin'])
+    for r in d['invoiced_by_customer']:
+        writer.writerow([r['customer'], r['count'], r['value'], r['margin']])
+
+    return response
 
 
 @login_required
