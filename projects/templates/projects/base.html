@@ -114,6 +114,8 @@ select.form-input{cursor:pointer;}
   .main-content { margin-top: 58px; min-height: calc(100vh - 58px); }
   .main-content-no-sidebar { margin-top: 58px; min-height: calc(100vh - 58px); }
 
+  /* Presence banner sits lower under the shorter mobile nav */
+  #presence-banner { top: 68px !important; max-width: 94vw !important; }
   /* Hide nav links and search on mobile — keep logo + icons + hamburger */
   .nav-links { display: none; }
   .nav-so-wrap { display: none; }
@@ -411,7 +413,7 @@ function toggleMobileMenu(){
 </script>
 
 {% if project_pk %}
-<div id="presence-banner" style="display:none;position:sticky;top:0;z-index:200;background:#fff8ed;border-bottom:2px solid #f59e0b;padding:.6rem 1.2rem;font-size:.875rem;color:#92400e;align-items:center;gap:.6rem;">
+<div id="presence-banner" style="display:none;position:fixed;top:94px;left:50%;transform:translateX(-50%);z-index:999;background:#fff8ed;border:2px solid #f59e0b;border-radius:var(--rad-lg);padding:.6rem 1.2rem;font-size:.875rem;color:#92400e;align-items:center;gap:.6rem;box-shadow:0 4px 14px rgba(0,0,0,.15);max-width:min(600px,90vw);">
   <span style="font-size:1rem;">👥</span>
   <span id="presence-banner-text"></span>
 </div>
