@@ -281,6 +281,7 @@
         <div style="width:100%;height:0;flex-basis:100%;"></div>
         <button class="add-tab" onclick="showTab('stock',this)">📦 Stock Item</button>
         <button class="add-tab" onclick="showTab('ns',this)">✏ Non-Stock</button>
+        <button class="add-tab" onclick="showTab('tmpl',this)">📋 Template</button>
       </div>
       </div>
 
@@ -385,6 +386,28 @@
             <button class="btn btn-primary" onclick="addNS()">Add</button>
           </div>
         </div>
+      </div>
+
+      <!-- TEMPLATE -->
+      <div class="add-panel" id="panel-tmpl">
+        <div class="add-row">
+          <div style="flex:1;"><label class="form-label">Template</label>
+            <select class="form-input" id="tmpl-select" onchange="updateTmplPricePreview()">
+              <option value="">— Select a template —</option>
+              {% for t in picking_templates %}
+              <option value="{{ t.pk }}" data-price="{{ t.price|floatformat:2 }}">{{ t.name }}{% if t.customer %} ({{ t.customer }}){% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div><label class="form-label">Qty</label>
+            <input class="form-input" type="number" id="tmpl-qty" value="1" min="1" step="1" style="width:70px;">
+          </div>
+          <div style="padding-bottom:1px;">
+            <label class="form-label">&nbsp;</label>
+            <button class="btn btn-primary" onclick="addTemplateLine()">Add</button>
+          </div>
+        </div>
+        <div style="font-size:.8rem;color:var(--mut);margin-top:.4rem;" id="tmpl-info"></div>
       </div>
 
       <!-- INBOARD HANGING (multi-row) -->
@@ -989,6 +1012,28 @@ async function addNS(){
   const cost=parseFloat(document.getElementById('ns-cost').value)||0;
   await postLine({line_type:'ns',description:desc,quantity:qty,unit_cost:cost});
   document.getElementById('ns-desc').value=''; document.getElementById('ns-cost').value='0';
+}
+
+function updateTmplPricePreview(){
+  const sel = document.getElementById('tmpl-select');
+  const info = document.getElementById('tmpl-info');
+  const opt = sel.options[sel.selectedIndex];
+  const price = opt ? parseFloat(opt.dataset.price || 0) : 0;
+  if(sel.value && price === 0){
+    info.textContent = "⚠ This template hasn't been costed yet (£0.00) — set its price on the template's own page first.";
+    info.style.color = '#d97706';
+  } else if(sel.value){
+    info.textContent = `Price: £${price.toFixed(2)} each`;
+    info.style.color = 'var(--mut)';
+  } else {
+    info.textContent = '';
+  }
+}
+async function addTemplateLine(){
+  const sel = document.getElementById('tmpl-select');
+  if(!sel.value){ sel.focus(); return; }
+  const qty = parseFloat(document.getElementById('tmpl-qty').value) || 1;
+  await postLine({line_type:'template', template_id: sel.value, quantity: qty});
 }
 
 // Inboard hanging

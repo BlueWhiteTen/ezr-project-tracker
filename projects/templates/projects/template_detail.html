@@ -21,6 +21,11 @@
   <a href="{% url 'template_list' %}" class="btn btn-ghost btn-sm">← Templates</a>
   <h1 style="font-size:1.4rem;font-weight:600;letter-spacing:-.02em;">{{ tmpl.name }}</h1>
   {% if tmpl.customer %}<span style="font-size:.85rem;color:var(--mut);">{{ tmpl.customer }}</span>{% endif %}
+  <div style="display:flex;align-items:center;gap:.4rem;">
+    <label style="font-size:.82rem;color:var(--mut);">Price for costing:</label>
+    <span style="color:var(--mut);">£</span>
+    <input type="number" id="tmpl-price" class="form-input" style="width:100px;" step="0.01" min="0" value="{{ tmpl.price|floatformat:2 }}" onchange="saveTemplatePrice(this.value)">
+  </div>
   <div style="display:flex;gap:.5rem;margin-left:auto;">
     <button class="btn btn-primary btn-sm" onclick="saveTemplateName()">Save Template</button>
     <button class="btn btn-ghost btn-sm" onclick="saveAsNew()">Save as New</button>
@@ -221,6 +226,9 @@ async function saveQty(inp){
   else { inp.style.borderColor='#dc2626'; }
 }
 
+async function saveTemplatePrice(value){
+  await fetch(`/templates/${TMPL_PK}/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({action:'update_price', price: value})});
+}
 async function saveTemplateName(){
   const name = document.querySelector('h1').textContent.trim();
   await fetch(`/templates/${TMPL_PK}/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({action:'update_name',name})});

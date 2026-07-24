@@ -345,6 +345,13 @@ def template_detail(request, pk):
             tmpl.customer = data.get('customer', tmpl.customer).strip()
             tmpl.save()
             return JsonResponse({'ok': True})
+        if action == 'update_price':
+            try:
+                tmpl.price = float(data.get('price', 0) or 0)
+            except (ValueError, TypeError):
+                return JsonResponse({'ok': False, 'error': 'Invalid price'}, status=400)
+            tmpl.save(update_fields=['price'])
+            return JsonResponse({'ok': True, 'price': float(tmpl.price)})
         if action == 'delete':
             tmpl.delete()
             return JsonResponse({'ok': True, 'deleted': True})
@@ -637,6 +644,35 @@ def picking_from_costing(request, pk):
                 'description': line.description,
                 'quantity': int(float(line.quantity)),
             })
+
+    # Expand Picking Template lines into their real items, scaled by the
+    # costing line's quantity — same items a template adds when applied
+    # directly to a picking list.
+    for line in lines:
+        if line.line_type == 'template' and line.picking_template:
+            mult = float(line.quantity) or 1
+            ns_lines.append({
+                'type': 'message',
+                'description': f'📋 {line.picking_template.name}' + (f' × {int(mult)}' if mult != 1 else ''),
+                'quantity': None,
+            })
+            for titem in line.picking_template.items.select_related('product').all():
+                if titem.item_type == 'message':
+                    ns_lines.append({'type': 'message', 'description': titem.message, 'quantity': None})
+                elif titem.item_type == 'stock' and titem.product:
+                    ns_lines.append({
+                        'type': 'stock', 'code': titem.product.code,
+                        'description': titem.product.description,
+                        'quantity': float(titem.quantity) * mult,
+                        'in_stock': float(titem.product.quantity),
+                        'product_id': titem.product.pk,
+                        'found': True,
+                    })
+                else:
+                    ns_lines.append({
+                        'type': 'ns', 'description': titem.ns_description,
+                        'quantity': float(titem.quantity) * mult,
+                    })
 
     # Add accessories
     uprights = sum(int(float(l.quantity)) * 2 for l in lines if l.line_type == 'frame')

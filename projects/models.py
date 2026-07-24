@@ -541,6 +541,7 @@ class PickingTemplate(models.Model):
     name       = models.CharField(max_length=200)
     customer   = models.CharField(max_length=200, blank=True)
     notes      = models.TextField(blank=True)
+    price      = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text='Set manually — templates often include bespoke items, so this is not auto-summed from Stock prices')
     created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -655,6 +656,7 @@ class ProjectCostLine(models.Model):
         ('ls_frame','LS Frame'),
         ('ls_shelf','LS Shelf'),
         ('ls_trolley','LS Trolley'),
+        ('template', 'Picking Template'),
     ]
     PRODUCT_LINES = [
         ('trimline', 'Trimline'),
@@ -669,6 +671,9 @@ class ProjectCostLine(models.Model):
     melamine   = models.BooleanField(default=False)             # shelf: chipboard or melamine
     # Stock link
     product    = models.ForeignKey(Product, null=True, blank=True, on_delete=models.SET_NULL)
+    # Picking Template link — set when line_type='template', used to expand
+    # into real picking-list items when the picking list is generated.
+    picking_template = models.ForeignKey('PickingTemplate', null=True, blank=True, on_delete=models.SET_NULL, related_name='cost_lines')
     # Pricing
     quantity   = models.DecimalField(max_digits=10, decimal_places=2, default=1)
     unit_cost  = models.DecimalField(max_digits=10, decimal_places=4, default=0)

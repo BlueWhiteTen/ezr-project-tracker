@@ -267,6 +267,7 @@ def project_cost(request, pk, cost_pk=None):
         'project': project, 'cost': cost, 'lines': lines,
         'all_costs': all_costs,
         'has_quote': hasattr(cost, 'quote') and cost.quote is not None,
+        'picking_templates': PickingTemplate.objects.all().order_by('name'),
         'picking_ref': picking_ref_enriched,
         'accessories': acc_data,
         'total_uprights': total_uprights,
@@ -576,6 +577,13 @@ def cost_line_add(request, pk):
             ProjectCostLine.objects.create(cost=cost, line_type='ls_trolley', product_line='longspan',
                 description=desc, size=f'lstrolley x {d}',
                 quantity=tqty, unit_cost=unit_cost, sort_order=sort)
+
+    elif ltype == 'template':
+        tmpl_id = data.get('template_id')
+        tmpl = get_object_or_404(PickingTemplate, pk=tmpl_id)
+        ProjectCostLine.objects.create(cost=cost, line_type='template', product_line='trimline',
+            description=f'📋 {tmpl.name}', picking_template=tmpl,
+            quantity=qty, unit_cost=float(tmpl.price), sort_order=sort)
 
     return JsonResponse({'ok': True})
 
