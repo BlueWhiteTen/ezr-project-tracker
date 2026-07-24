@@ -39,10 +39,12 @@ def price_list(request):
     stale_codes = ['TP144','TCTB12','TCTB15','SB27','STM','DTM','SM','SM-SHIM',
                     'STM-SHIM','DTM-SHIM','LSCASTBRKTS','LSCASTBRKT600','LSCASTBRKT900',
                     'LSP3500','LSP4500','LSDB1294','LSCB1000','LSB1150','LSB1500','LSB1800','LSB2700',
-                    'LSP2000','LSP2500','LSP3000','LSP4000','LSP5000','LSP4000-G','LSP5000-G']
+                    'LSP2000','LSP2500','LSP3000','LSP4000','LSP5000','LSP4000-G','LSP5000-G','LSHB965']
     needs_code_fix = PriceListItem.objects.filter(code__in=stale_codes).exists()
     missing_twb66 = not PriceListItem.objects.filter(code='TWB66').exists()
-    if not PriceListItem.objects.exists() or old_format or not has_trimline or not has_longspan or needs_code_fix or missing_twb66:
+    stale_pair_label = PriceListItem.objects.filter(category__in=['Beams (pair)', 'TFCV Beams', 'TWB Beams']).exists()
+    stale_post_label = PriceListItem.objects.filter(category='Posts', product_line='trimline').exclude(label__startswith='Trimline Posts').exists()
+    if not PriceListItem.objects.exists() or old_format or not has_trimline or not has_longspan or needs_code_fix or missing_twb66 or stale_pair_label or stale_post_label:
         from django.db import transaction
         with transaction.atomic():
             PriceListItem.objects.all().delete()
@@ -147,19 +149,21 @@ def _seed_price_list():
     # ── TRIMLINE components (in display order) ──
     sort = 0
     for code, price in POSTS.items():
+        num = code[2:]  # strip 'TP' prefix
         PriceListItem.objects.create(product_line='trimline', category='Posts',
-            code=code, label=code, price=price, weight=w(code), sort_order=sort); sort += 1
+            code=code, label=f'Trimline Posts {num}', price=price, weight=w(code), sort_order=sort); sort += 1
     sort = 0
     for code, price in TPCS.items():
+        num = code[3:]  # strip 'TPC' prefix
         PriceListItem.objects.create(product_line='trimline', category='Post Connectors',
-            code=code, label=code, price=price, weight=w(code), sort_order=sort); sort += 1
+            code=code, label=f'Trimline Post Connectors {num}', price=price, weight=w(code), sort_order=sort); sort += 1
     sort = 0
     for wd, price in TFCV_CONN.items():
-        PriceListItem.objects.create(product_line='trimline', category='TFCV Beams',
+        PriceListItem.objects.create(product_line='trimline', category='TFCV Beams (pairs)',
             code=f'TFCV{wd}', label=f'TFCV {wd}"', price=price, weight=w(f'TFCV{wd}'), sort_order=sort); sort += 1
     sort = 0
     for wd, price in TWB_PRICES.items():
-        PriceListItem.objects.create(product_line='trimline', category='TWB Beams',
+        PriceListItem.objects.create(product_line='trimline', category='TWB Beams (pairs)',
             code=f'TWB{wd}', label=f'TWB {wd}"', price=price, weight=w(f'TWB{wd}'), sort_order=sort); sort += 1
     # Inboard Hanging Rail Support (a set = a pair of these + a 25mm tube)
     # HRS21/HRS27 use different Stock codes (HRS21/3N, HRS27/3N) — everything
@@ -205,17 +209,19 @@ def _seed_price_list():
     for h in LS_FRAME_HEIGHTS:
         PriceListItem.objects.create(product_line='longspan', category='Posts',
             code=f'LSP{h}-G', label=f'Post LSP{h}-G (Galvanised)', price=ls_post_prices.get(h,0), sort_order=sort); sort += 1
-    # Horizontal braces by depth
-    ls_horiz = {600:'LSHB565', 900:'LSHB865', 1000:'LSHB965', 1200:'LSHB1165'}
-    horiz_price = {600:3.0, 900:3.8, 1000:4.0, 1200:4.5}
+    # Horizontal braces by depth. 1000D reuses the 900D part (LSHB865) — no
+    # separate row shown, same code as 900D.
+    ls_horiz = {600:'LSHB565', 900:'LSHB865', 1200:'LSHB1165'}
+    horiz_price = {600:3.0, 900:3.8, 1200:4.5}
     sort = 0
     for d, code in ls_horiz.items():
         PriceListItem.objects.create(product_line='longspan', category='Horizontal Braces',
             code=code, label=f'{code} ({d}D)', price=horiz_price.get(d,0), sort_order=sort); sort += 1
-    # Diagonal braces by depth (galv). 1000D reuses the 900D part — see note
-    # in longspan_data.py's LS_DIAGONAL_BY_DEPTH.
-    ls_diag = {600:'LSDB835-G', 900:'LSDB1058-G', 1000:'LSDB1058-G', 1200:'LSDB1312-G'}
-    diag_price = {600:3.5, 900:4.2, 1000:4.6, 1200:5.0}
+    # Diagonal braces by depth (galv). 1000D reuses the 900D part (LSDB1058-G)
+    # — no separate row shown, same code as 900D. See note in
+    # longspan_data.py's LS_DIAGONAL_BY_DEPTH.
+    ls_diag = {600:'LSDB835-G', 900:'LSDB1058-G', 1200:'LSDB1312-G'}
+    diag_price = {600:3.5, 900:4.2, 1200:5.0}
     sort = 0
     for d, code in ls_diag.items():
         PriceListItem.objects.create(product_line='longspan', category='Diagonal Braces',
@@ -227,7 +233,7 @@ def _seed_price_list():
     sort = 0
     for wd, price in ls_beams.items():
         code = ls_beam_code_override.get(wd, f'LSB{wd}')
-        PriceListItem.objects.create(product_line='longspan', category='Beams (pair)',
+        PriceListItem.objects.create(product_line='longspan', category='Beams (single)',
             code=code, label=f'LSB{wd}', price=price, sort_order=sort); sort += 1
     # Chipboard supports by depth. 1000D reuses the 900D part.
     ls_cbs = {600:'LSCB600', 900:'LSCB900', 1000:'LSCB900', 1200:'LSCB1200'}

@@ -40,7 +40,12 @@
     {% for mat in board_materials %}
     <tr>
       <td>{{ mat.label }}</td>
-      <td style="text-align:right;width:130px;"><input class="pl-price" type="number" step="0.0001" value="{{ mat.price|floatformat:4 }}" data-material="{{ mat.name }}" {% if not can_edit %}disabled{% endif %} onchange="saveMaterial(this)"></td>
+      <td style="text-align:right;width:130px;">
+        <div style="display:inline-flex;align-items:center;gap:.3rem;">
+          <span style="color:var(--mut);">£</span>
+          <input class="pl-price" type="number" step="0.01" value="{{ mat.price|floatformat:2 }}" data-material="{{ mat.name }}" {% if not can_edit %}disabled{% endif %} onchange="saveMaterial(this)">
+        </div>
+      </td>
     </tr>
     {% endfor %}
   </table>

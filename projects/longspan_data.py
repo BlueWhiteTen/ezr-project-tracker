@@ -13,7 +13,7 @@ LS_FRAME_PRICES = {
 }
 
 LS_FRAME_HEIGHTS = [2000, 2500, 3000]
-LS_FRAME_DEPTHS = [600, 900, 1000, 1200]
+LS_FRAME_DEPTHS = [600, 900, 1200]
 
 # ── Complete shelf level prices: "WIDTHxDEPTH" -> {price, cbs} ──
 # cbs = number of chipboard supports included for that level size
@@ -79,7 +79,9 @@ def ls_post_code(height):
     return f'LSP{height}-G'
 
 # Horizontal brace code by depth (exact codes from stock)
-LS_HORIZONTAL_BY_DEPTH = {600: 'LSHB565', 900: 'LSHB865', 1000: 'LSHB965', 1200: 'LSHB1165'}
+LS_HORIZONTAL_BY_DEPTH = {600: 'LSHB565', 900: 'LSHB865', 1000: 'LSHB865', 1200: 'LSHB1165'}
+# 1000D reuses the 900D part (LSHB865) — same reasoning as the diagonal
+# brace and chipboard support above; per Tasos, Jul 2026.
 
 # Galvanised diagonal brace code by DEPTH (galv is the only system now)
 # 600/900/1200 confirmed real Stock codes. 1000D has no distinct Stock code of
