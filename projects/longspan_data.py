@@ -180,7 +180,7 @@ def ls_explode_shelf(width, depth, qty):
     cbs_code = LS_CBS_BY_DEPTH.get(depth, f'LSCBS{depth}')
     board = ls_board_code(width, depth)
 
-    items[beam] = items.get(beam, 0) + 1 * qty          # 1 pair of beams per level
+    items[beam] = items.get(beam, 0) + 2 * qty          # 2 single beams per level (front + back)
     items['LSLP'] = items.get('LSLP', 0) + 4 * qty      # 4 locking pins per level
     # 2700mm levels = board in 2 pieces
     board_qty = 2 if width == 2700 else 1
