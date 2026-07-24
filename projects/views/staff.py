@@ -45,6 +45,10 @@ def staff_profile(request, user_id):
         colour = request.POST.get('colour', '').strip()
         if colour in [c[0] for c in StaffProfile.COLOUR_CHOICES]:
             profile.colour = colour
+        # Report access is a permission grant, not a personal preference —
+        # only a superuser can change it, and only for someone else's profile.
+        if request.user.is_superuser:
+            profile.can_view_reports = request.POST.get('can_view_reports') == 'on'
         member.first_name = request.POST.get('first_name', '').strip()
         member.last_name  = request.POST.get('last_name', '').strip()
         member.save()

@@ -102,6 +102,16 @@ def _log_po_event(po, user, field, old_value='', new_value=''):
         )
 
 
+def _can_view_reports(user):
+    """Sales Summary / Daily Accounts Report access — separate from is_staff.
+    Superusers always have it; everyone else needs it explicitly ticked on
+    their Staff Profile."""
+    if user.is_superuser:
+        return True
+    profile = getattr(user, 'profile', None)
+    return bool(profile and profile.can_view_reports)
+
+
 def _calc_sell_price(cost):
     """Read-only sell-price calculation from already-saved cost lines."""
     lines = list(cost.lines.all())

@@ -14,7 +14,7 @@ import json
 
 from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence
 from ..forms import RegisterForm, ProjectForm
-from .utils import (_calc_sell_price, _calc_cost_breakdown)
+from .utils import (_calc_sell_price, _calc_cost_breakdown, _can_view_reports)
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -86,6 +86,9 @@ def daily_accounts_report(request):
     """Printable end-of-day report for the accountant: projects that became
     Completed today (ready to invoice) and POs received today (ready to pay).
     Also supports a monthly history view."""
+    if not _can_view_reports(request.user):
+        messages.error(request, "You don't have access to this report. Ask an administrator to enable report access on your Staff Profile.")
+        return redirect('dashboard')
     mode = request.GET.get('mode', 'daily')
 
     # ── Monthly history mode ──────────────────────────────────────────────────
@@ -318,12 +321,18 @@ def _sales_summary_data(request):
 
 @login_required
 def sales_summary(request):
+    if not _can_view_reports(request.user):
+        messages.error(request, "You don't have access to this report. Ask an administrator to enable report access on your Staff Profile.")
+        return redirect('dashboard')
     d = _sales_summary_data(request)
     return render(request, 'projects/sales_summary.html', d)
 
 
 @login_required
 def sales_summary_export(request):
+    if not _can_view_reports(request.user):
+        messages.error(request, "You don't have access to this report. Ask an administrator to enable report access on your Staff Profile.")
+        return redirect('dashboard')
     import csv
     d = _sales_summary_data(request)
     response = HttpResponse(content_type='text/csv')

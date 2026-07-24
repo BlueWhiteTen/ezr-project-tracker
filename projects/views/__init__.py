@@ -6,7 +6,7 @@ without any changes.
 from .utils import (
     _snap, _log_changes, _add_working_days, _handle_quoted_status_reminders,
     _log_po_event, _calc_sell_price, _initials, _next_project_number,
-    _po_locked_response, _picking_locked_response, _can_edit_prices,
+    _po_locked_response, _picking_locked_response, _can_edit_prices, _can_view_reports,
 )
 from .auth import (
     login_view, register_view, logout_view, create_superuser_once,

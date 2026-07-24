@@ -267,6 +267,7 @@ class StaffProfile(models.Model):
     phone  = models.CharField(max_length=20, blank=True)
     bio    = models.TextField(blank=True)
     colour = models.CharField(max_length=7, blank=True, help_text='Hex colour for avatar')
+    can_view_reports = models.BooleanField(default=False, help_text='Can view Sales Summary and Daily Accounts Report, independent of Staff status')
 
     def __str__(self):
         return f"{self.user.get_full_name()} — {self.role}"
