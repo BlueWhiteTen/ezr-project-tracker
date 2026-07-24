@@ -254,7 +254,7 @@ select.form-input{cursor:pointer;}
       <span id="reports-arrow" style="transition:transform .15s;">▸</span>
     </button>
     <div id="reports-submenu" style="display:none;padding-left:.6rem;">
-      <a href="{% url 'monthly_summary' %}" class="{% if request.resolver_match.url_name == 'monthly_summary' %}sb-active{% endif %}" style="display:block;padding:.5rem .85rem;margin-bottom:.3rem;border-radius:var(--rad);font-size:.82rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">Summary</a>
+      <a href="{% url 'monthly_summary' %}" class="{% if request.resolver_match.url_name == 'monthly_summary' %}sb-active{% endif %}" style="display:block;padding:.5rem .85rem;margin-bottom:.3rem;border-radius:var(--rad);font-size:.82rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">Projects Summary</a>
       {% if request.user.is_superuser or request.user.profile.can_view_reports %}
       <a href="{% url 'sales_summary' %}" class="{% if request.resolver_match.url_name == 'sales_summary' %}sb-active{% endif %}" style="display:block;padding:.5rem .85rem;margin-bottom:.3rem;border-radius:var(--rad);font-size:.82rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">Sales Summary</a>
       {% endif %}

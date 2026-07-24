@@ -1,5 +1,5 @@
 {% extends 'projects/base.html' %}
-{% block title %}Monthly Summary — Project Tracker{% endblock %}
+{% block title %}Projects Summary — Project Tracker{% endblock %}
 {% block extra_style %}
 .page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.6rem;flex-wrap:wrap;gap:1rem;}
 .page-title{font-size:1.5rem;font-weight:600;letter-spacing:-.02em;}
@@ -24,10 +24,31 @@
 .legend{display:flex;gap:1.2rem;margin-bottom:1.2rem;}
 .leg-item{display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--txt2);}
 .leg-dot{width:10px;height:10px;border-radius:2px;}
+.ps-section{margin-top:2.2rem;}
+.ps-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.6rem;}
+.ps-section-title{font-size:1.05rem;font-weight:700;}
+table.ps-table{width:100%;border-collapse:collapse;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;font-size:.84rem;}
+table.ps-table th{text-align:left;padding:.55rem .75rem;font-size:.71rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);background:var(--surf2);border-bottom:1px solid var(--bdr);white-space:nowrap;}
+table.ps-table td{padding:.55rem .75rem;border-bottom:1px solid var(--bdr);vertical-align:top;}
+table.ps-table tr:last-child td{border-bottom:none;}
+table.ps-table td.num{text-align:right;font-family:var(--fm);white-space:nowrap;}
+table.ps-table th.num{text-align:right;}
+.ps-empty{padding:1.2rem;text-align:center;color:var(--mut2);font-size:.85rem;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);}
+.ps-status-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);margin-bottom:.7rem;overflow:hidden;}
+.ps-status-head{display:flex;align-items:center;justify-content:space-between;padding:.8rem 1.1rem;cursor:pointer;user-select:none;}
+.ps-status-head:hover{background:var(--surf2);}
+.ps-status-count{font-weight:700;font-family:var(--fm);color:var(--acc);}
+.ps-status-body{display:none;border-top:1px solid var(--bdr);padding:.4rem 0;}
+.ps-status-body.open{display:block;}
+.ps-proj-row{display:flex;justify-content:space-between;padding:.5rem 1.1rem;font-size:.82rem;border-bottom:.5px solid var(--bdr);}
+.ps-proj-row:last-child{border-bottom:none;}
+.ps-proj-row a{color:var(--txt);text-decoration:none;}
+.ps-proj-meta{color:var(--mut);font-size:.78rem;}
+.ps-arrow{transition:transform .15s;color:var(--mut);}
 {% endblock %}
 {% block content %}
 <div class="page-hdr">
-  <h1 class="page-title">Monthly Summary — {{ year }}</h1>
+  <h1 class="page-title">Projects Summary — {{ year }}</h1>
   <form method="get">
     <select name="year" class="year-sel" onchange="this.form.submit()">
       {% for y in years %}<option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>{% endfor %}
@@ -73,4 +94,134 @@
   </div>
   {% endfor %}
 </div>
+
+<div class="ps-section">
+  <div class="ps-section-head">
+    <div class="ps-section-title">🏢 Companies — Number of Orders</div>
+    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+      <select id="co-preset" class="form-input" style="max-width:180px;" onchange="coApplyPreset()">
+        <option value="all_time" {% if co_preset == 'all_time' %}selected{% endif %}>All time</option>
+        <option value="this_month" {% if co_preset == 'this_month' %}selected{% endif %}>This month</option>
+        <option value="last_month" {% if co_preset == 'last_month' %}selected{% endif %}>Last month</option>
+        <option value="this_year" {% if co_preset == 'this_year' %}selected{% endif %}>This year</option>
+        <option value="last_year" {% if co_preset == 'last_year' %}selected{% endif %}>Last year</option>
+        <option value="custom" {% if co_preset == 'custom' %}selected{% endif %}>Custom range…</option>
+      </select>
+      <input type="date" id="co-from" class="form-input" style="max-width:150px;{% if co_preset != 'custom' %}display:none;{% endif %}" value="{{ co_from }}" onchange="coGo()">
+      <span id="co-to-sep" style="{% if co_preset != 'custom' %}display:none;{% endif %}color:var(--mut);">to</span>
+      <input type="date" id="co-to" class="form-input" style="max-width:150px;{% if co_preset != 'custom' %}display:none;{% endif %}" value="{{ co_to }}" onchange="coGo()">
+    </div>
+  </div>
+  {% if companies %}
+  <table class="ps-table">
+    <thead><tr><th>Company</th><th class="num">Orders</th></tr></thead>
+    <tbody>
+      {% for c in companies %}
+      <tr><td>{{ c.customer }}</td><td class="num">{{ c.count }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="ps-empty">No projects in this period.</div>
+  {% endif %}
+</div>
+
+<div class="ps-section">
+  <div class="ps-section-head">
+    <div class="ps-section-title">📋 Projects by Status</div>
+  </div>
+  {% for g in status_groups %}
+  <div class="ps-status-card">
+    <div class="ps-status-head" onclick="psToggleStatus('{{ g.value }}')">
+      <span>{{ g.label }}</span>
+      <span style="display:flex;align-items:center;gap:.6rem;">
+        <span class="ps-status-count">{{ g.count }}</span>
+        <span class="ps-arrow" id="ps-arrow-{{ g.value }}">▸</span>
+      </span>
+    </div>
+    <div class="ps-status-body" id="ps-body-{{ g.value }}">
+      {% for p in g.projects %}
+      <div class="ps-proj-row">
+        <a href="{% url 'project_edit' p.pk %}">{{ p.project_name }}</a>
+        <span class="ps-proj-meta">{{ p.customer }} · {{ p.created_at|date:"d M Y" }}</span>
+      </div>
+      {% empty %}
+      <div class="ps-proj-row"><span class="ps-proj-meta">No projects in this status.</span></div>
+      {% endfor %}
+      {% if g.count > 50 %}
+      <div class="ps-proj-row"><span class="ps-proj-meta">…and {{ g.count|add:"-50" }} more. See the Dashboard for the full list.</span></div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="ps-section">
+  <div class="ps-section-head">
+    <div class="ps-section-title">⚠ Stalled Projects</div>
+    <form method="get" style="display:flex;align-items:center;gap:.5rem;">
+      <input type="hidden" name="year" value="{{ year }}">
+      <span style="font-size:.82rem;color:var(--mut);">No update in</span>
+      <select name="stalled_days" class="form-input" style="max-width:110px;" onchange="this.form.submit()">
+        <option value="14" {% if stalled_days == 14 %}selected{% endif %}>14 days</option>
+        <option value="30" {% if stalled_days == 30 %}selected{% endif %}>30 days</option>
+        <option value="60" {% if stalled_days == 60 %}selected{% endif %}>60 days</option>
+        <option value="90" {% if stalled_days == 90 %}selected{% endif %}>90 days</option>
+      </select>
+    </form>
+  </div>
+  {% if stalled_projects %}
+  <table class="ps-table">
+    <thead><tr><th>Project</th><th>Customer</th><th>Status</th><th class="num">Last Updated</th></tr></thead>
+    <tbody>
+      {% for p in stalled_projects %}
+      <tr>
+        <td><a href="{% url 'project_edit' p.pk %}" style="color:var(--txt);text-decoration:none;">{{ p.project_name }}</a></td>
+        <td>{{ p.customer }}</td>
+        <td>{{ p.get_status_display }}</td>
+        <td class="num">{{ p.updated_at|date:"d M Y" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="ps-empty">No stalled projects — everything active has moved in the last {{ stalled_days }} days.</div>
+  {% endif %}
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+function coApplyPreset(){
+  const preset = document.getElementById('co-preset').value;
+  const fromEl = document.getElementById('co-from');
+  const toEl = document.getElementById('co-to');
+  const sep = document.getElementById('co-to-sep');
+  if(preset === 'custom'){
+    fromEl.style.display = 'inline-block';
+    toEl.style.display = 'inline-block';
+    sep.style.display = 'inline';
+    return;
+  }
+  fromEl.style.display = 'none';
+  toEl.style.display = 'none';
+  sep.style.display = 'none';
+  window.location.href = `?co_preset=${preset}&year={{ year }}`;
+}
+function coGo(){
+  const preset = document.getElementById('co-preset').value;
+  const from = document.getElementById('co-from').value;
+  const to = document.getElementById('co-to').value;
+  if(preset === 'custom' && from && to){
+    window.location.href = `?co_preset=custom&co_from=${from}&co_to=${to}&year={{ year }}`;
+  }
+}
+function psToggleStatus(val){
+  const body = document.getElementById('ps-body-' + val);
+  const arrow = document.getElementById('ps-arrow-' + val);
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
+}
+</script>
 {% endblock %}

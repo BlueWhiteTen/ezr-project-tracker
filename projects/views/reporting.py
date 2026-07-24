@@ -376,6 +376,7 @@ def sales_summary_export(request):
 @login_required
 def monthly_summary(request):
     from django.db.models.functions import TruncMonth
+    from collections import defaultdict
     try:
         year = int(request.GET.get('year', date.today().year))
     except (ValueError, TypeError):
@@ -405,9 +406,70 @@ def monthly_summary(request):
     total_inst = sum(m['installed']  for m in data)
     total_comp = sum(m['completed'] for m in data)
     years = list(range(date.today().year - 2, date.today().year + 2))
+
+    # ── Companies by order count (no £ values) ──────────────────────────────
+    co_preset = request.GET.get('co_preset', 'all_time')
+    co_from = request.GET.get('co_from', '')
+    co_to = request.GET.get('co_to', '')
+    today = date.today()
+
+    def month_range(y, m):
+        s = date(y, m, 1)
+        e = date(y + 1, 1, 1) if m == 12 else date(y, m + 1, 1)
+        return s, e - timedelta(days=1)
+
+    co_projects = Project.objects.exclude(status='cancelled')
+    if co_preset == 'custom' and co_from and co_to:
+        try:
+            co_start = date.fromisoformat(co_from)
+            co_end = date.fromisoformat(co_to)
+            co_projects = co_projects.filter(created_at__date__gte=co_start, created_at__date__lte=co_end)
+        except ValueError:
+            co_preset = 'all_time'
+    elif co_preset == 'this_month':
+        s, e = month_range(today.year, today.month)
+        co_projects = co_projects.filter(created_at__date__gte=s, created_at__date__lte=e)
+    elif co_preset == 'last_month':
+        y, m = (today.year, today.month - 1) if today.month > 1 else (today.year - 1, 12)
+        s, e = month_range(y, m)
+        co_projects = co_projects.filter(created_at__date__gte=s, created_at__date__lte=e)
+    elif co_preset == 'this_year':
+        co_projects = co_projects.filter(created_at__year=today.year)
+    elif co_preset == 'last_year':
+        co_projects = co_projects.filter(created_at__year=today.year - 1)
+    # else: all_time — no date filter
+
+    company_counts = defaultdict(int)
+    for p in co_projects.values_list('customer', flat=True):
+        company_counts[p or '—'] += 1
+    companies = sorted(
+        [{'customer': k, 'count': v} for k, v in company_counts.items()],
+        key=lambda x: x['count'], reverse=True
+    )
+
+    # ── Projects by status, with the actual project list per status ────────
+    status_groups = []
+    for val, label in Project.STATUS_CHOICES:
+        projs = Project.objects.filter(status=val).order_by('-created_at')
+        status_groups.append({'value': val, 'label': label, 'count': projs.count(), 'projects': list(projs[:50])})
+
+    # ── Stalled projects: active status, no update in N days ────────────────
+    try:
+        stalled_days = int(request.GET.get('stalled_days', 30))
+    except (ValueError, TypeError):
+        stalled_days = 30
+    stalled_cutoff = timezone.now() - timedelta(days=stalled_days)
+    active_statuses = ['enquiry', 'quoted', 'order_received', 'processed', 'part_delivered']
+    stalled_projects = (Project.objects
+        .filter(status__in=active_statuses, updated_at__lt=stalled_cutoff)
+        .order_by('updated_at'))
+
     return render(request, 'projects/monthly_summary.html', {
         'data': data, 'year': year, 'years': years,
         'total_del': total_del, 'total_inst': total_inst, 'total_comp': total_comp,
+        'companies': companies, 'co_preset': co_preset, 'co_from': co_from, 'co_to': co_to,
+        'status_groups': status_groups,
+        'stalled_projects': stalled_projects, 'stalled_days': stalled_days,
     })
 
 
