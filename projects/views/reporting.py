@@ -625,15 +625,28 @@ def so_search(request):
     results = []
     if q:
         from django.db.models import Q
-        qs = Project.objects.filter(
+        projects = Project.objects.filter(
             Q(sales_order__icontains=q) |
             Q(project_number__icontains=q) |
             Q(project_name__icontains=q) |
             Q(customer__icontains=q) |
-            Q(location__icontains=q) |
-            Q(purchase_orders__po_number__icontains=q)
-        ).distinct().order_by('-project_number')[:12]
-        results = list(qs.values('id','project_name','customer','sales_order','project_number','status'))
+            Q(location__icontains=q)
+        ).order_by('-project_number')[:12]
+        results = [
+            {'type': 'project', 'id': p.id, 'project_name': p.project_name, 'customer': p.customer,
+             'sales_order': p.sales_order, 'project_number': p.project_number, 'status': p.status}
+            for p in projects
+        ]
+
+        # Purchase Orders — searched directly, since a PO doesn't always have
+        # a project attached (e.g. general stock replenishment), so it can't
+        # always be reached by finding "its" project.
+        pos = PurchaseOrder.objects.filter(po_number__icontains=q).select_related('supplier', 'project')[:8]
+        results += [
+            {'type': 'po', 'id': po.id, 'po_number': po.po_number, 'supplier': po.supplier.name,
+             'status': po.status, 'project_id': po.project_id, 'project_name': po.project.project_name if po.project else None}
+            for po in pos
+        ]
     return JsonResponse(results, safe=False)
 
 

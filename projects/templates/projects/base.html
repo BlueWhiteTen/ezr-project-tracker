@@ -409,6 +409,10 @@ if(soInput){
       .then(function(items){
         if(!items.length){ soResults.style.display='none'; return; }
         soResults.innerHTML = items.map(function(p){
+          if(p.type === 'po'){
+            var projRef = p.project_name ? ' <span style="font-size:.75rem;color:var(--mut)">— '+p.project_name+'</span>' : ' <span style="font-size:.75rem;color:var(--mut)">— stock / no job</span>';
+            return '<div class="nav-so-item" onclick="window.location=\'/purchase-orders/'+p.id+'/\'"><strong>'+p.po_number+'</strong> <span style="font-size:.72rem;color:var(--acc);">PO</span>'+projRef+'<div style="font-size:.72rem;color:var(--mut)">'+p.supplier+'</div></div>';
+          }
           var ref = p.project_number ? 'Ref ' + p.project_number : (p.sales_order ? 'SO ' + p.sales_order : '');
           return '<div class="nav-so-item" onclick="window.location=\'/project/'+p.id+'/edit/\'"><strong>'+p.project_name+'</strong>'+(ref?' <span style="font-size:.75rem;color:var(--mut)">'+ref+'</span>':'')+'<div style="font-size:.72rem;color:var(--mut)">'+p.customer+'</div></div>';
         }).join('');

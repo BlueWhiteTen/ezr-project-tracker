@@ -143,9 +143,9 @@
         <label class="form-label">Linked Project (optional)</label>
         {% if po.project %}
         <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;">
-          <span style="font-size:.85rem;font-weight:600;color:var(--txt);">
+          <a href="{% url 'project_edit' po.project.pk %}" style="font-size:.85rem;font-weight:600;color:var(--acc);text-decoration:none;">
             {% if po.project.project_number %}Ref {{ po.project.project_number }} — {% endif %}{{ po.project.project_name }}
-          </span>
+          </a>
           {% if not po.received and not po.locked %}
           <button type="button" class="btn btn-ghost btn-sm" style="padding:1px 6px;font-size:.72rem;" onclick="clearProject()">✕</button>
           {% endif %}
