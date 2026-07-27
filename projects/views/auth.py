@@ -31,10 +31,10 @@ def login_view(request):
         identifier = request.POST.get('identifier', '').strip()
         password   = request.POST.get('password', '')
         user = None
-        try:
-            u = User.objects.get(email=identifier)
+        u = User.objects.filter(email__iexact=identifier).first()
+        if u:
             user = authenticate(request, username=u.username, password=password)
-        except User.DoesNotExist:
+        else:
             for u in User.objects.all():
                 if u.get_full_name().lower() == identifier.lower():
                     user = authenticate(request, username=u.username, password=password)
