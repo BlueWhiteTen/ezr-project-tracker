@@ -44,6 +44,8 @@ class Project(models.Model):
 
     project_name   = models.CharField(max_length=200)
     customer       = models.CharField(max_length=200)
+    customer_profile = models.ForeignKey('CustomerProfile', null=True, blank=True, on_delete=models.SET_NULL, related_name='projects',
+        help_text='Real link to the Customer record. The customer text field is kept in sync automatically for backward compatibility.')
     location       = models.CharField(max_length=300, blank=True)
     description    = models.CharField(max_length=300, blank=True)
     status         = models.CharField(max_length=30, choices=STATUS_CHOICES, default='enquiry')
@@ -84,6 +86,14 @@ class Project(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        # Keep the legacy customer text field in sync with the real link,
+        # so every existing template/report/search that reads .customer as
+        # text keeps working unchanged.
+        if self.customer_profile_id and self.customer_profile.name:
+            self.customer = self.customer_profile.name
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.project_name

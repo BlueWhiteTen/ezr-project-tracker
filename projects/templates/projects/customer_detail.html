@@ -75,7 +75,7 @@
           <div style="flex:1;">
             <div style="font-weight:500;">{{ p.project_name }}</div>
             <div style="font-size:.75rem;color:var(--mut);">
-              {% if p.installation_date %}Installed {{ p.installation_date|date:"d M Y" }}{% elif p.delivery_date %}Delivery {{ p.delivery_date|date:"d M Y" }}{% else %}Created {{ p.created_at|date:"d M Y" }}{% endif %}
+              {% if p.sales_order %}SO {{ p.sales_order }} · {% endif %}{% if p.installation_date %}Installed {{ p.installation_date|date:"d M Y" }}{% elif p.delivery_date %}Delivery {{ p.delivery_date|date:"d M Y" }}{% else %}Created {{ p.created_at|date:"d M Y" }}{% endif %}
             </div>
           </div>
           <span class="badge badge-{{ p.status }}">{{ p.get_status_display }}</span>
@@ -84,6 +84,26 @@
         {% endfor %}
       {% else %}
         <div style="color:var(--mut);font-size:.875rem;">No projects found for {{ customer.name }}</div>
+      {% endif %}
+    </div>
+
+    <div class="card" style="margin-top:1.2rem;">
+      <div class="section-title">Purchase Orders ({{ pos|length }})</div>
+      {% if pos %}
+        {% for po in pos %}
+        <div class="proj-row">
+          <div style="flex:1;">
+            <div style="font-weight:500;">{{ po.po_number }} <span style="font-weight:400;color:var(--mut);">— {{ po.supplier.name }}</span></div>
+            <div style="font-size:.75rem;color:var(--mut);">
+              For {{ po.project.project_name }}{% if po.order_date %} · Ordered {{ po.order_date|date:"d M Y" }}{% endif %}
+            </div>
+          </div>
+          <span class="badge">{{ po.get_status_display }}</span>
+          <a href="{% url 'po_detail' po.pk %}" class="btn btn-ghost btn-sm">Open</a>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div style="color:var(--mut);font-size:.875rem;">No purchase orders raised for {{ customer.name }}'s projects yet.</div>
       {% endif %}
     </div>
   </div>

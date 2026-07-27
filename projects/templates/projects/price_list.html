@@ -14,7 +14,8 @@
 .pl-code{font-family:var(--fm);color:var(--acc);font-size:.78rem;}
 .pl-price{width:100px;text-align:right;border:1px solid var(--bdr);border-radius:4px;padding:3px 7px;background:var(--surf2);color:var(--txt);font-size:.84rem;}
 .pl-price:disabled{background:transparent;border-color:transparent;}
-.readonly-banner{background:var(--acc-bg);border:1px solid var(--acc-bdr);color:var(--acc);border-radius:var(--rad);padding:.6rem 1rem;font-size:.82rem;margin-bottom:1.2rem;}
+.readonly-banner{background:var(--acc-bg);border:1px solid var(--acc-bdr);color:var(--acc);border-radius:var(--rad);padding:.6rem 1rem;font-size:.82rem;margin-bottom:1.2rem;white-space:normal;overflow-wrap:break-word;}
+.readonly-banner .pl-code{white-space:nowrap;display:inline-block;}
 .pl-cols{column-count:2;column-gap:1.2rem;}
 @media(max-width:900px){.pl-cols{column-count:1;}}
 {% endblock %}

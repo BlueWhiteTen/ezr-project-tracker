@@ -170,7 +170,8 @@
         <div class="section-title">Customer & Location</div>
         <div class="form-group">
           <label class="form-label">Customer</label>
-          <div class="ac-wrap">{{ form.customer }}<div class="ac-list" id="ac-list"></div></div>
+          <div class="ac-wrap">{{ form.customer }}<input type="hidden" name="customer_profile_id" id="customer_profile_id" value="{{ project.customer_profile_id|default:'' }}"><div class="ac-list" id="ac-list"></div></div>
+          <div style="font-size:.72rem;color:var(--mut2);margin-top:.3rem;" id="cust-link-note">{% if project.customer_profile %}✓ Linked to this customer's record{% else %}Pick a suggestion to link this to a real customer record{% endif %}</div>
         </div>
         <div class="form-group"><label class="form-label">Location</label>{{ form.location }}</div>
         {% if project %}
@@ -519,19 +520,25 @@ document.getElementById('project-form').addEventListener('submit',function(e){
 });
 
 const custInput=document.getElementById('{{ form.customer.id_for_label }}');
+const custProfileId=document.getElementById('customer_profile_id');
+const custLinkNote=document.getElementById('cust-link-note');
 const acList=document.getElementById('ac-list');
 let acIdx=-1;
 custInput.addEventListener('input',async function(){
   const q=this.value.trim();
+  // Any manual edit invalidates a previous link until a suggestion is re-picked
+  custProfileId.value='';
+  if(custLinkNote) {custLinkNote.textContent='Pick a suggestion to link this to a real customer record'; custLinkNote.style.color='var(--mut2)';}
   if(q.length<1){acList.style.display='none';return;}
   const res=await fetch(`/api/customers/?q=${encodeURIComponent(q)}`);
-  const names=await res.json();
-  if(!names.length){acList.style.display='none';return;}
+  const items=await res.json();
+  if(!items.length){acList.style.display='none';return;}
   acIdx=-1;
-  acList.innerHTML=names.map((n,i)=>{
+  acList.innerHTML=items.map((it,i)=>{
+    const n=it.name;
     const idx=n.toLowerCase().indexOf(q.toLowerCase());
-    const hi=n.slice(0,idx)+'<mark>'+n.slice(idx,idx+q.length)+'</mark>'+n.slice(idx+q.length);
-    return`<div class="ac-item" onmousedown="acSel('${n.replace(/'/g,"\\'")}')">${hi}</div>`;
+    const hi=idx>=0 ? (n.slice(0,idx)+'<mark>'+n.slice(idx,idx+q.length)+'</mark>'+n.slice(idx+q.length)) : n;
+    return`<div class="ac-item" data-id="${it.id}" data-name="${n.replace(/"/g,'&quot;')}" onmousedown="acSel(this)">${hi}</div>`;
   }).join('');
   acList.style.display='block';
 });
@@ -539,12 +546,17 @@ custInput.addEventListener('keydown',function(e){
   const items=acList.querySelectorAll('.ac-item');
   if(e.key==='ArrowDown'){acIdx=Math.min(acIdx+1,items.length-1);}
   else if(e.key==='ArrowUp'){acIdx=Math.max(acIdx-1,0);}
-  else if(e.key==='Enter'&&acIdx>=0){acSel(items[acIdx].textContent);e.preventDefault();return;}
+  else if(e.key==='Enter'&&acIdx>=0){acSel(items[acIdx]);e.preventDefault();return;}
   else if(e.key==='Escape'){acList.style.display='none';return;}
   items.forEach((item,i)=>item.classList.toggle('sel',i===acIdx));
 });
 custInput.addEventListener('blur',()=>setTimeout(()=>acList.style.display='none',150));
-function acSel(name){custInput.value=name;acList.style.display='none';}
+function acSel(el){
+  custInput.value=el.dataset.name;
+  custProfileId.value=el.dataset.id;
+  if(custLinkNote){custLinkNote.textContent='✓ Linked to this customer\'s record'; custLinkNote.style.color='var(--grn)';}
+  acList.style.display='none';
+}
 
 {% if project %}
 function openAddress(){

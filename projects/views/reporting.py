@@ -630,8 +630,9 @@ def so_search(request):
             Q(project_number__icontains=q) |
             Q(project_name__icontains=q) |
             Q(customer__icontains=q) |
-            Q(location__icontains=q)
-        ).order_by('-project_number')[:12]
+            Q(location__icontains=q) |
+            Q(purchase_orders__po_number__icontains=q)
+        ).distinct().order_by('-project_number')[:12]
         results = list(qs.values('id','project_name','customer','sales_order','project_number','status'))
     return JsonResponse(results, safe=False)
 

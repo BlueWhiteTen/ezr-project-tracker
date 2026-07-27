@@ -49,6 +49,7 @@
         <div class="po-row">
           <a href="{% url 'po_detail' po.pk %}" style="font-weight:600;color:var(--acc);text-decoration:none;min-width:90px;">{{ po.po_number }}</a>
           <div style="flex:1;font-size:.78rem;color:var(--mut);">
+            {% if po.project %}<a href="{% url 'project_edit' po.project.pk %}" style="color:var(--mut);">{{ po.project.project_name }}</a> · {% endif %}
             {% if po.order_date %}{{ po.order_date|date:"d M Y" }}{% endif %}
             {% if po.expected_date %} · exp {{ po.expected_date|date:"d M Y" }}{% endif %}
           </div>

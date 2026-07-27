@@ -39,9 +39,20 @@ def project_create(request):
             p.last_edited_by = request.user
             p.assigned_to = request.user
             p.project_number = _next_project_number()
-            p.save()
             if cust:
                 Customer.objects.get_or_create(name=cust)
+                profile_id = request.POST.get('customer_profile_id', '').strip()
+                if profile_id:
+                    p.customer_profile = CustomerProfile.objects.filter(pk=profile_id).first()
+                else:
+                    # No suggestion was picked — link to an existing profile with
+                    # this exact name if there is one, otherwise create a real
+                    # Customer record for it rather than leaving it as text-only.
+                    profile = CustomerProfile.objects.filter(name__iexact=cust).first()
+                    if not profile:
+                        profile = CustomerProfile.objects.create(name=cust)
+                    p.customer_profile = profile
+            p.save()
             ProjectLog.objects.create(project=p, user=request.user, field='Project created', old_value='', new_value=p.project_name)
             messages.success(request, 'Project created.')
             return redirect('dashboard')
@@ -79,10 +90,13 @@ def project_quick_create(request):
             kwargs['installation_required'] = True
             kwargs['installation_date_type'] = 'exact'
         p = Project.objects.create(**kwargs)
-        # Auto-create customer profile
+        # Auto-create customer profile, and link the project to it
         if customer:
-            if not CustomerProfile.objects.filter(name__iexact=customer).exists():
-                CustomerProfile.objects.create(name=customer)
+            profile = CustomerProfile.objects.filter(name__iexact=customer).first()
+            if not profile:
+                profile = CustomerProfile.objects.create(name=customer)
+            p.customer_profile = profile
+            p.save(update_fields=['customer_profile'])
         Customer.objects.get_or_create(name=customer)
         ProjectLog.objects.create(project=p, user=request.user, field='Project created', old_value='', new_value=p.project_name)
         return JsonResponse({'pk': p.pk, 'name': p.project_name})
@@ -109,6 +123,17 @@ def project_edit(request, pk):
             edited.customer = cust
             edited.location = loc
             edited.project_name = f"{cust} — {loc}" if loc else cust or 'New Project'
+            if cust:
+                profile_id = request.POST.get('customer_profile_id', '').strip()
+                if profile_id:
+                    edited.customer_profile = CustomerProfile.objects.filter(pk=profile_id).first()
+                elif not edited.customer_profile_id or edited.customer_profile.name.lower() != cust.lower():
+                    # The text was hand-edited without picking a suggestion, or
+                    # there was no link yet — (re)resolve it to a real record.
+                    profile = CustomerProfile.objects.filter(name__iexact=cust).first()
+                    if not profile:
+                        profile = CustomerProfile.objects.create(name=cust)
+                    edited.customer_profile = profile
             # Reverting from Completed is restricted to staff/admins
             if old_status_val == 'completed' and edited.status != 'completed' and not request.user.is_staff:
                 messages.error(request, 'Only an administrator can revert a project from Completed status.')

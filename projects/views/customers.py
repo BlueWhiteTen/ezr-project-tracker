@@ -28,7 +28,7 @@ def customer_autocomplete(request):
     q = request.GET.get('q','').strip()
     if len(q) < 1:
         return JsonResponse([], safe=False)
-    results = Customer.objects.filter(name__icontains=q).values_list('name', flat=True)[:8]
+    results = CustomerProfile.objects.filter(name__icontains=q).values('id', 'name')[:8]
     return JsonResponse(list(results), safe=False)
 
 
@@ -118,12 +118,13 @@ def customer_detail(request, pk):
         else:
             messages.success(request, 'Customer updated.')
         return redirect('customer_detail', pk=pk)
-    projects = Project.objects.filter(
-        customer__iexact=customer.name
-    ).order_by('-created_at')
+    linked_projects = customer.projects.all()
+    text_matched = Project.objects.filter(customer__iexact=customer.name).exclude(pk__in=linked_projects.values('pk'))
+    projects = (linked_projects | text_matched).order_by('-created_at')
+    pos = PurchaseOrder.objects.filter(project__in=projects).select_related('supplier', 'project').order_by('-created_at')
     from ..countries import COUNTRIES
     return render(request, 'projects/customer_detail.html', {
-        'customer': customer, 'projects': projects, 'countries': COUNTRIES,
+        'customer': customer, 'projects': projects, 'pos': pos, 'countries': COUNTRIES,
     })
 
 
