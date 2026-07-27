@@ -517,6 +517,7 @@ class Product(models.Model):
     sales_price        = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     cost_price         = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     weight             = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True, help_text='kg, used for delivery weight estimates')
+    preferred_supplier = models.ForeignKey('Supplier', null=True, blank=True, on_delete=models.SET_NULL, related_name='products')
     updated_at         = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -840,6 +841,22 @@ class PurchaseOrderLine(models.Model):
     @property
     def display_desc(self):
         return self.product.description if self.product else self.description
+
+
+class ProductPriceChange(models.Model):
+    product     = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='price_changes')
+    old_price   = models.DecimalField(max_digits=10, decimal_places=2)
+    new_price   = models.DecimalField(max_digits=10, decimal_places=2)
+    supplier    = models.ForeignKey('Supplier', null=True, blank=True, on_delete=models.SET_NULL,
+                   help_text='Preferred supplier at the time of this change, if set')
+    changed_by  = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    changed_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-changed_at']
+
+    def __str__(self):
+        return f"{self.product.code}: £{self.old_price} → £{self.new_price}"
 
 
 class StockMovement(models.Model):

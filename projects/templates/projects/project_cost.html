@@ -682,6 +682,10 @@ async function toggleAccepted(){
         pf.replaceWith(span);
       }
     }
+    if(d.is_accepted && d.shortages && d.shortages.length){
+      const lines = d.shortages.map(s => `• ${s.code} — ${s.description}: need ${s.needed}, only ${s.free_stock} free`).join('\n');
+      alert(`⚠ This option is approved, but ${d.shortages.length} component(s) are already short on free stock:\n\n${lines}\n\nWorth checking before this goes out as a quote.`);
+    }
   } else {
     cb.checked = !cb.checked;
     alert(d.error || 'Failed');

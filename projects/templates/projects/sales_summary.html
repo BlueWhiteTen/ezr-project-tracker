@@ -36,6 +36,7 @@ table.ss-table th.num{text-align:right;}
   <a href="{% url 'sales_summary_export' %}?preset={{ preset }}&from={{ start|date:'Y-m-d' }}&to={{ end|date:'Y-m-d' }}" class="btn btn-ghost btn-sm" style="margin-left:auto;">⬇ Export CSV</a>
 </div>
 
+<div style="font-size:.78rem;color:var(--mut);margin-bottom:1rem;">Margin % is based on the ex-works price (goods + markup only) — delivery and installation aren't marked up, so including them would understate the actual markup applied.</div>
 <div class="ss-cards">
   <div class="ss-card">
     <div class="ss-card-label">Value of Jobs Added</div>
@@ -53,7 +54,7 @@ table.ss-table th.num{text-align:right;}
   <div class="ss-section-title">📥 Jobs Added</div>
   {% if added_rows %}
   <table class="ss-table">
-    <thead><tr><th>Date</th><th>Project</th><th>Customer</th><th class="num">Sell Price</th><th class="num">Margin</th><th class="num">Margin %</th></tr></thead>
+    <thead><tr><th>Date</th><th>Project</th><th>Customer</th><th class="num">Sell Price</th><th class="num">Margin</th><th class="num">Margin % (ex-works)</th></tr></thead>
     <tbody>
       {% for r in added_rows %}
       <tr>
@@ -98,7 +99,7 @@ table.ss-table th.num{text-align:right;}
   <div class="ss-section-title">✅ Jobs Invoiced (Completed)</div>
   {% if invoiced_rows %}
   <table class="ss-table">
-    <thead><tr><th>Date</th><th>Project</th><th>Customer</th><th class="num">Sell Price</th><th class="num">Margin</th><th class="num">Margin %</th></tr></thead>
+    <thead><tr><th>Date</th><th>Project</th><th>Customer</th><th class="num">Sell Price</th><th class="num">Margin</th><th class="num">Margin % (ex-works)</th></tr></thead>
     <tbody>
       {% for r in invoiced_rows %}
       <tr>

@@ -51,6 +51,7 @@ td:nth-child(3){white-space:normal;word-break:break-word;}
     <span style="font-size:.82rem;color:var(--mut);">{{ products|length }} products</span>
     <button class="btn btn-primary btn-sm" onclick="openNewProduct()">+ New Product</button>
     <button class="btn btn-ghost btn-sm" onclick="openPrintStock()">🖶 Print</button>
+    <button class="btn btn-ghost btn-sm" onclick="openDraftPOs()">📦 Generate Draft POs</button>
     {% if request.user.is_superuser %}
     <label class="btn btn-ghost btn-sm" style="cursor:pointer;" for="import-file">⬆ Import from Excel</label>
     <input type="file" id="import-file" accept=".xlsx" style="display:none;" onchange="importStock(this)">
@@ -99,7 +100,7 @@ td:nth-child(3){white-space:normal;word-break:break-word;}
     {% for p in products %}
     <tr id="prod-row-{{ p.pk }}" {% if not p.is_active %}class="prod-inactive"{% endif %}>
       <td><input type="checkbox" class="row-sel-cb" value="{{ p.pk }}" onchange="updateBulkBar()"></td>
-      <td><span class="code" style="cursor:pointer;" onclick="editProduct({{ p.pk }},'{{ p.code|escapejs }}','{{ p.description|escapejs }}',{{ p.quantity }},{{ p.reorder_level }},{{ p.cost_price }},{% if p.weight is not None %}{{ p.weight }}{% else %}null{% endif %},'{{ p.category|escapejs }}',{{ p.reorder_qty }})">{{ p.code }}</span></td>
+      <td><span class="code" style="cursor:pointer;" onclick="editProduct({{ p.pk }},'{{ p.code|escapejs }}','{{ p.description|escapejs }}',{{ p.quantity }},{{ p.reorder_level }},{{ p.cost_price }},{% if p.weight is not None %}{{ p.weight }}{% else %}null{% endif %},'{{ p.category|escapejs }}',{{ p.reorder_qty }},{% if p.preferred_supplier_id %}{{ p.preferred_supplier_id }}{% else %}null{% endif %})">{{ p.code }}</span></td>
       <td>{{ p.description }}{% if not p.is_active %} <span style="font-size:.7rem;color:var(--mut);font-style:italic;">(inactive)</span>{% endif %}</td>
       <td style="text-align:right;">
         <span class="{% if p.reorder_level > 0 and p.quantity <= p.reorder_level %}qty-low{% elif p.quantity <= 0 %}qty-zero{% else %}qty-ok{% endif %}">{{ p.quantity|floatformat:0 }}</span>
@@ -120,7 +121,7 @@ td:nth-child(3){white-space:normal;word-break:break-word;}
         {% if p.weight is not None %}{{ p.weight|floatformat:2 }} kg{% else %}<span style="color:var(--mut);">—</span>{% endif %}
       </td>
       <td style="text-align:right;white-space:nowrap;">
-        <button class="edit-qty" onclick="editProduct({{ p.pk }},'{{ p.code|escapejs }}','{{ p.description|escapejs }}',{{ p.quantity }},{{ p.reorder_level }},{{ p.cost_price }},{% if p.weight is not None %}{{ p.weight }}{% else %}null{% endif %},'{{ p.category|escapejs }}',{{ p.reorder_qty }})">Edit</button>
+        <button class="edit-qty" onclick="editProduct({{ p.pk }},'{{ p.code|escapejs }}','{{ p.description|escapejs }}',{{ p.quantity }},{{ p.reorder_level }},{{ p.cost_price }},{% if p.weight is not None %}{{ p.weight }}{% else %}null{% endif %},'{{ p.category|escapejs }}',{{ p.reorder_qty }},{% if p.preferred_supplier_id %}{{ p.preferred_supplier_id }}{% else %}null{% endif %})">Edit</button>
         <button class="edit-qty" id="act-btn-{{ p.pk }}" onclick="toggleActive({{ p.pk }}, this)"
           style="margin-left:.3rem;{% if p.is_active %}background:var(--surf2);color:var(--mut2);{% else %}background:#fef3c7;color:#92400e;border-color:#fcd34d;{% endif %}">
           {% if p.is_active %}Deactivate{% else %}Activate{% endif %}
@@ -168,12 +169,27 @@ td:nth-child(3){white-space:normal;word-break:break-word;}
         {% endfor %}
       </select>
     </div>
+    <div class="form-group"><label class="form-label">Preferred Supplier</label>
+      <select class="form-input" id="eq-supplier">
+        <option value="">— None —</option>
+        {% for s in suppliers %}
+        <option value="{{ s.pk }}">{{ s.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
     <div class="form-group"><label class="form-label">Quantity in Stock</label><input class="form-input" type="number" id="eq-qty" step="1"></div>
     <div class="form-group"><label class="form-label">Reorder Level</label><input class="form-input" type="number" id="eq-reorder" step="1"></div>
     <div class="form-group"><label class="form-label">Reorder Quantity</label><input class="form-input" type="number" id="eq-reorderqty" step="1"></div>
     <div class="form-group"><label class="form-label">Buying Price (£) <span style="font-weight:400;color:var(--mut2)">(feeds Price List &amp; costing)</span></label><input class="form-input" type="number" id="eq-cost" step="0.01" min="0" placeholder="0.00"></div>
     <div class="form-group" style="margin-bottom:0;"><label class="form-label">Weight (kg) <span style="font-weight:400;color:var(--mut2)">(feeds delivery weight estimates)</span></label><input class="form-input" type="number" id="eq-weight" step="0.01" min="0" placeholder="0.00"></div>
     <div class="form-group" style="margin-bottom:0;margin-top:.7rem;"><label class="form-label">Reason for change <span style="font-weight:400;color:var(--mut2)">(only needed if adjusting quantity)</span></label><input class="form-input" type="text" id="eq-reason" placeholder="e.g. Stocktake correction, damaged stock, found in warehouse…"></div>
+
+    <div style="margin-top:1.2rem;border-top:1px solid var(--bdr);padding-top:.9rem;">
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-bottom:.5rem;">Buying Price History</div>
+      <div id="eq-price-history" style="max-height:160px;overflow-y:auto;font-size:.8rem;">
+        <div style="color:var(--mut);padding:.5rem 0;">Loading…</div>
+      </div>
+    </div>
 
     <div style="margin-top:1.2rem;border-top:1px solid var(--bdr);padding-top:.9rem;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;flex-wrap:wrap;gap:.5rem;">
@@ -226,6 +242,14 @@ td:nth-child(3){white-space:normal;word-break:break-word;}
         <option value="">— None —</option>
         {% for val, label in category_choices %}
         <option value="{{ val }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Preferred Supplier</label>
+      <select class="form-input" id="np-supplier">
+        <option value="">— None —</option>
+        {% for s in suppliers %}
+        <option value="{{ s.pk }}">{{ s.name }}</option>
         {% endfor %}
       </select>
     </div>
@@ -292,23 +316,41 @@ td:nth-child(3){white-space:normal;word-break:break-word;}
     <button onclick="goPrintStock()" class="btn btn-primary btn-sm">🖶 Open Print View</button>
   </div>
 </div>
+
+<!-- Generate Draft POs modal -->
+<div class="eq-overlay" id="dpo-overlay" onclick="closeDraftPOs()"></div>
+<div class="eq-modal" id="dpo-modal" style="width:640px;">
+  <div class="eq-head">
+    <div style="font-weight:600;font-size:.95rem;">Generate Draft POs from Low Stock</div>
+    <button onclick="closeDraftPOs()" style="background:none;border:1px solid var(--bdr);border-radius:var(--rad);color:var(--mut);cursor:pointer;padding:3px 9px;">✕</button>
+  </div>
+  <div class="eq-body">
+    <div id="dpo-content" style="font-size:.85rem;color:var(--mut);">Checking low stock…</div>
+  </div>
+  <div class="eq-foot">
+    <button onclick="closeDraftPOs()" class="btn btn-ghost btn-sm">Cancel</button>
+    <button onclick="confirmDraftPOs()" class="btn btn-primary btn-sm" id="dpo-confirm-btn" style="display:none;">Create Draft POs</button>
+  </div>
+</div>
 {% endblock %}
 {% block extra_js %}
 <script>
 const CSRF = '{{ csrf_token }}';
-function editProduct(pk, code, desc, qty, reorder, cost, weight, category, reorderQty){
+function editProduct(pk, code, desc, qty, reorder, cost, weight, category, reorderQty, supplierId){
   document.getElementById('eq-pk').value = pk;
   document.getElementById('eq-code').textContent = code;
   document.getElementById('eq-desc').textContent = desc;
   document.getElementById('eq-code-inp').value = code;
   document.getElementById('eq-desc-inp').value = desc;
   document.getElementById('eq-category').value = category || '';
+  document.getElementById('eq-supplier').value = supplierId || '';
   document.getElementById('eq-qty').value = qty;
   document.getElementById('eq-reorder').value = reorder;
   document.getElementById('eq-reorderqty').value = reorderQty || 0;
   document.getElementById('eq-cost').value = cost || '';
   document.getElementById('eq-weight').value = (weight === null || weight === undefined) ? '' : weight;
   document.getElementById('eq-reason').value = '';
+  loadPriceHistory(pk);
   document.getElementById('eq-act-preset').value = '';
   document.getElementById('eq-act-from').value = '';
   document.getElementById('eq-act-from').style.display = 'none';
@@ -357,6 +399,34 @@ function applyActivityPreset(){
   fromEl.value = from;
   toEl.value = to;
   loadActivity(pk);
+}
+async function loadPriceHistory(pk){
+  const box = document.getElementById('eq-price-history');
+  box.innerHTML = '<div style="color:var(--mut);padding:.5rem 0;">Loading…</div>';
+  try{
+    const r = await fetch(`/stock/${pk}/price-history/`);
+    const d = await r.json();
+    if(!d.ok || !d.changes.length){
+      box.innerHTML = '<div style="color:var(--mut);padding:.5rem 0;">No price changes recorded yet.</div>';
+      return;
+    }
+    let html = '<table style="width:100%;border-collapse:collapse;">';
+    d.changes.forEach(c => {
+      const up = c.new_price > c.old_price;
+      const arrow = up ? '▲' : (c.new_price < c.old_price ? '▼' : '—');
+      const color = up ? 'var(--red)' : (c.new_price < c.old_price ? 'var(--grn)' : 'var(--mut)');
+      html += `<tr style="border-bottom:.5px solid var(--bdr);">
+        <td style="padding:.35rem .3rem;color:var(--mut);white-space:nowrap;">${c.changed_at}</td>
+        <td style="padding:.35rem .3rem;">£${c.old_price.toFixed(2)} → £${c.new_price.toFixed(2)}</td>
+        <td style="padding:.35rem .3rem;color:${color};font-weight:600;white-space:nowrap;">${arrow} ${Math.abs(c.pct_change).toFixed(1)}%</td>
+        <td style="padding:.35rem .3rem;color:var(--mut);white-space:nowrap;">${c.supplier || ''}</td>
+      </tr>`;
+    });
+    html += '</table>';
+    box.innerHTML = html;
+  } catch(e){
+    box.innerHTML = '<div style="color:var(--red);padding:.5rem 0;">Could not load price history.</div>';
+  }
 }
 async function loadActivity(pk){
   const box = document.getElementById('eq-activity');
@@ -424,6 +494,7 @@ function openNewProduct(){
   document.getElementById('np-code').value = '';
   document.getElementById('np-desc').value = '';
   document.getElementById('np-category').value = '';
+  document.getElementById('np-supplier').value = '';
   document.getElementById('np-qty').value = '0';
   document.getElementById('np-reorder').value = '0';
   document.getElementById('np-reorderqty').value = '0';
@@ -473,6 +544,60 @@ async function applyBulkCategory(){
   if(d.ok) location.reload();
   else alert(d.error || 'Failed to update category.');
 }
+async function openDraftPOs(){
+  document.getElementById('dpo-overlay').classList.add('open');
+  document.getElementById('dpo-modal').classList.add('open');
+  document.getElementById('dpo-confirm-btn').style.display = 'none';
+  const content = document.getElementById('dpo-content');
+  content.innerHTML = 'Checking low stock…';
+  try{
+    const r = await fetch('/stock/draft-pos/preview/');
+    const d = await r.json();
+    if(!d.suppliers.length){
+      content.innerHTML = '<div>Nothing below reorder level right now — no draft POs needed.</div>';
+      if(d.no_supplier.length){
+        content.innerHTML += `<div style="margin-top:.8rem;color:var(--amb);">⚠ ${d.no_supplier.length} low-stock item(s) have no Preferred Supplier set, so they can't be drafted: ${d.no_supplier.map(i=>i.code).join(', ')}</div>`;
+      }
+      return;
+    }
+    let html = '<div style="margin-bottom:.8rem;">This will create one draft PO per supplier below, with a line for each item at its reorder quantity. Nothing is sent — they\'ll sit as drafts for you to review first.</div>';
+    d.suppliers.forEach(s => {
+      html += `<div style="border:1px solid var(--bdr);border-radius:var(--rad);padding:.6rem .8rem;margin-bottom:.6rem;">
+        <div style="font-weight:600;margin-bottom:.3rem;">${s.supplier_name} <span style="font-weight:400;color:var(--mut);">(${s.items.length} item${s.items.length>1?'s':''})</span></div>
+        ${s.items.map(i=>`<div style="font-size:.8rem;color:var(--mut);">${i.code} — ${i.description} · qty ${i.qty}</div>`).join('')}
+      </div>`;
+    });
+    if(d.no_supplier.length){
+      html += `<div style="color:var(--amb);font-size:.82rem;margin-top:.4rem;">⚠ ${d.no_supplier.length} low-stock item(s) skipped — no Preferred Supplier set: ${d.no_supplier.map(i=>i.code).join(', ')}</div>`;
+    }
+    content.innerHTML = html;
+    document.getElementById('dpo-confirm-btn').style.display = 'inline-flex';
+  } catch(e){
+    content.innerHTML = '<div style="color:var(--red);">Could not check low stock.</div>';
+  }
+}
+function closeDraftPOs(){
+  document.getElementById('dpo-overlay').classList.remove('open');
+  document.getElementById('dpo-modal').classList.remove('open');
+}
+async function confirmDraftPOs(){
+  const btn = document.getElementById('dpo-confirm-btn');
+  btn.disabled = true; btn.textContent = 'Creating…';
+  try{
+    const r = await fetch('/stock/draft-pos/generate/', {method:'POST', headers:{'X-CSRFToken':CSRF}});
+    const d = await r.json();
+    if(d.ok){
+      const content = document.getElementById('dpo-content');
+      content.innerHTML = `<div style="color:var(--grn);font-weight:600;margin-bottom:.5rem;">✓ Created ${d.created.length} draft PO(s):</div>` +
+        d.created.map(po=>`<div><a href="/purchase-orders/${po.id}/" style="color:var(--acc);">${po.po_number}</a> — ${po.supplier} (${po.items} item${po.items>1?'s':''})</div>`).join('');
+      document.getElementById('dpo-confirm-btn').style.display = 'none';
+    }
+  } catch(e){
+    alert('Could not create draft POs.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Create Draft POs';
+  }
+}
 function openPrintStock(){
   document.getElementById('pr-overlay').classList.add('open');
   document.getElementById('pr-modal').classList.add('open');
@@ -507,6 +632,7 @@ async function saveNewProduct(){
     code: code,
     description: document.getElementById('np-desc').value.trim(),
     category: document.getElementById('np-category').value,
+    preferred_supplier_id: document.getElementById('np-supplier').value,
     quantity: document.getElementById('np-qty').value,
     reorder_level: document.getElementById('np-reorder').value,
     reorder_qty: document.getElementById('np-reorderqty').value,
@@ -533,8 +659,9 @@ async function saveEdit(){
   const cost = document.getElementById('eq-cost').value;
   const weight = document.getElementById('eq-weight').value;
   const category = document.getElementById('eq-category').value;
+  const supplierId = document.getElementById('eq-supplier').value;
   const reason = document.getElementById('eq-reason').value.trim();
-  await fetch(`/stock/${pk}/adjust/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({code,description:desc,quantity:qty,reorder_level:reorder,reorder_qty:reorderQty,cost_price:cost,weight:weight,category:category,reason})});
+  await fetch(`/stock/${pk}/adjust/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({code,description:desc,quantity:qty,reorder_level:reorder,reorder_qty:reorderQty,cost_price:cost,weight:weight,category:category,preferred_supplier_id:supplierId,reason})});
   closeEdit();
   location.reload();
 }

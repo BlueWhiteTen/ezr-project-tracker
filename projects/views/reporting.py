@@ -343,7 +343,7 @@ def sales_summary_export(request):
     writer.writerow([])
 
     writer.writerow(['JOBS ADDED'])
-    writer.writerow(['Date', 'Project', 'Customer', 'Sell Price', 'Margin', 'Margin %'])
+    writer.writerow(['Date', 'Project', 'Customer', 'Sell Price', 'Margin', 'Margin % (ex-works)'])
     for r in d['added_rows']:
         writer.writerow([r['date'], r['project'].project_name, r['project'].customer or '',
                           r['sell_price'], r['margin'], r['margin_pct']])
@@ -358,7 +358,7 @@ def sales_summary_export(request):
     writer.writerow([])
 
     writer.writerow(['JOBS INVOICED (COMPLETED)'])
-    writer.writerow(['Date', 'Project', 'Customer', 'Sell Price', 'Margin', 'Margin %'])
+    writer.writerow(['Date', 'Project', 'Customer', 'Sell Price', 'Margin', 'Margin % (ex-works)'])
     for r in d['invoiced_rows']:
         writer.writerow([r['date'], r['project'].project_name, r['project'].customer or '',
                           r['sell_price'], r['margin'], r['margin_pct']])

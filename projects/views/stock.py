@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 import json
 
-from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence
+from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, ProductPriceChange
 from ..forms import RegisterForm, ProjectForm
 
 
@@ -165,6 +165,7 @@ def stock_list(request):
         'inactive_count': Product.objects.filter(is_active=False).count(),
         'category_choices': Product.CATEGORY_CHOICES,
         'selected_category': category,
+        'suppliers': Supplier.objects.all().order_by('name'),
     })
 
 
@@ -189,6 +190,22 @@ def product_search_api(request):
     return JsonResponse(code_starts, safe=False)
 
 
+
+
+@login_required
+def stock_price_history(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    changes = product.price_changes.select_related('supplier').all()[:50]
+    rows = []
+    for c in changes:
+        old_p, new_p = float(c.old_price), float(c.new_price)
+        pct = round(((new_p - old_p) / old_p) * 100, 1) if old_p else 0
+        rows.append({
+            'old_price': old_p, 'new_price': new_p, 'pct_change': pct,
+            'supplier': c.supplier.name if c.supplier else None,
+            'changed_at': timezone.localtime(c.changed_at).strftime('%d %b %Y'),
+        })
+    return JsonResponse({'ok': True, 'changes': rows})
 
 
 @login_required
@@ -237,6 +254,63 @@ def stock_activity(request, pk):
     })
 
 
+
+
+def _low_stock_with_supplier_groups():
+    """Shared helper: active, genuinely-low-stock products, split into those
+    with a preferred supplier set (can be drafted into a PO) and those
+    without (need a supplier set on the product first)."""
+    from django.db.models import F as _F
+    low_stock = Product.objects.filter(is_active=True).filter(
+        Q(reorder_level__gt=0, quantity__lte=_F('reorder_level')) | Q(quantity__lt=0)
+    )
+    with_supplier = low_stock.filter(preferred_supplier__isnull=False).select_related('preferred_supplier').order_by('preferred_supplier__name', 'code')
+    without_supplier = low_stock.filter(preferred_supplier__isnull=True).order_by('code')
+    groups = {}
+    for p in with_supplier:
+        groups.setdefault(p.preferred_supplier, []).append(p)
+    return groups, without_supplier
+
+
+@login_required
+def stock_draft_pos_preview(request):
+    groups, without_supplier = _low_stock_with_supplier_groups()
+    return JsonResponse({
+        'ok': True,
+        'suppliers': [
+            {
+                'supplier_id': sup.pk, 'supplier_name': sup.name,
+                'items': [{'code': p.code, 'description': p.description,
+                           'qty': float(p.reorder_qty) if p.reorder_qty else max(0, float(p.reorder_level) - float(p.quantity))}
+                          for p in products],
+            }
+            for sup, products in groups.items()
+        ],
+        'no_supplier': [{'code': p.code, 'description': p.description} for p in without_supplier],
+    })
+
+
+@login_required
+@require_POST
+def stock_draft_pos_generate(request):
+    groups, without_supplier = _low_stock_with_supplier_groups()
+    created = []
+    for supplier, products in groups.items():
+        po = PurchaseOrder.objects.create(
+            supplier=supplier, status='draft', created_by=request.user,
+            order_date=timezone.now().date(),
+            notes='Auto-generated from low stock levels.',
+        )
+        for i, p in enumerate(products):
+            qty = float(p.reorder_qty) if p.reorder_qty else max(0, float(p.reorder_level) - float(p.quantity))
+            if qty <= 0:
+                continue
+            PurchaseOrderLine.objects.create(
+                purchase_order=po, item_type='stock', product=p,
+                quantity=qty, unit_cost=p.cost_price, sort_order=i,
+            )
+        created.append({'id': po.pk, 'po_number': po.po_number, 'supplier': supplier.name, 'items': po.lines.count()})
+    return JsonResponse({'ok': True, 'created': created, 'skipped_no_supplier': without_supplier.count()})
 
 
 @login_required
@@ -320,6 +394,7 @@ def stock_create(request):
         return float(v) if v not in (None, '') else 0
 
     weight_val = data.get('weight')
+    sup_id = data.get('preferred_supplier_id')
     product = Product.objects.create(
         code=code,
         description=(data.get('description') or '').strip(),
@@ -329,6 +404,7 @@ def stock_create(request):
         reorder_qty=dec('reorder_qty'),
         cost_price=dec('cost_price'),
         weight=float(weight_val) if weight_val not in (None, '') else None,
+        preferred_supplier_id=sup_id or None,
     )
     return JsonResponse({'ok': True, 'id': product.pk})
 
@@ -354,6 +430,7 @@ def stock_adjust(request, pk):
             product.reorder_qty = data.get('reorder_qty') or 0
         if 'sales_price' in data:
             product.sales_price = data.get('sales_price') or 0
+        old_cost_price = product.cost_price
         if 'cost_price' in data:
             product.cost_price = data.get('cost_price') or 0
         if 'weight' in data:
@@ -361,7 +438,15 @@ def stock_adjust(request, pk):
             product.weight = float(wv) if (wv not in (None, '')) else None
         if 'category' in data:
             product.category = data.get('category') or ''
+        if 'preferred_supplier_id' in data:
+            sup_id = data.get('preferred_supplier_id')
+            product.preferred_supplier_id = sup_id or None
         product.save()
+        if 'cost_price' in data and float(product.cost_price) != float(old_cost_price):
+            ProductPriceChange.objects.create(
+                product=product, old_price=old_cost_price, new_price=product.cost_price,
+                supplier=product.preferred_supplier, changed_by=request.user,
+            )
         if new_qty != old_qty:
             reason = (data.get('reason') or '').strip() or 'Manual stock adjustment'
             StockMovement.objects.create(

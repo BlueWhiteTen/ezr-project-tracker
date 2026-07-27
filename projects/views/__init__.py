@@ -87,7 +87,8 @@ from .photos import (
 )
 from .stock import (
     project_documents, document_download, document_delete,
-    stock_list, product_search_api, stock_activity, stock_adjust, stock_import, stock_create, stock_print, stock_bulk_category,
+    stock_list, product_search_api, stock_activity, stock_price_history, stock_adjust, stock_import, stock_create, stock_print, stock_bulk_category,
+    stock_draft_pos_preview, stock_draft_pos_generate,
 )
 from .pdf import (
     po_pdf, picking_list_pdf, quote_pdf, proforma_pdf,
