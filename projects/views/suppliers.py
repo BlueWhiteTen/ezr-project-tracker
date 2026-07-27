@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 import json
 
-from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence
+from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, SupplierDocument
 from ..forms import RegisterForm, ProjectForm
 
 
@@ -135,9 +135,65 @@ def supplier_detail(request, pk):
         messages.success(request, 'Supplier updated.')
         return redirect('supplier_detail', pk=pk)
     pos = supplier.purchase_orders.all().order_by('-created_at')
+    documents = supplier.documents.all()
     return render(request, 'projects/supplier_detail.html', {
-        'supplier': supplier, 'pos': pos,
+        'supplier': supplier, 'pos': pos, 'documents': documents,
     })
+
+
+@login_required
+def supplier_documents(request, pk):
+    supplier = get_object_or_404(Supplier, pk=pk)
+    if request.method == 'POST':
+        f = request.FILES.get('file')
+        if not f:
+            return JsonResponse({'error': 'No file'}, status=400)
+        try:
+            import mimetypes
+            mime = f.content_type or mimetypes.guess_type(f.name)[0] or 'application/octet-stream'
+            year_raw = request.POST.get('year', '').strip()
+            doc = SupplierDocument.objects.create(
+                supplier=supplier,
+                file_data=f.read(),
+                file_mime=mime,
+                file_original_name=f.name,
+                name=request.POST.get('name', f.name),
+                doc_type=request.POST.get('doc_type', 'price_list'),
+                year=int(year_raw) if year_raw.isdigit() else None,
+                notes=request.POST.get('notes', ''),
+                uploaded_by=request.user,
+            )
+            return JsonResponse({
+                'id': doc.pk,
+                'name': doc.name,
+                'doc_type': doc.get_doc_type_display(),
+                'year': doc.year,
+                'url': f'/supplier-document/{doc.pk}/download/',
+                'uploaded_by': request.user.get_full_name() or request.user.username,
+                'uploaded_at': timezone.localtime(doc.uploaded_at).strftime('%d %b %Y, %H:%M'),
+            })
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    return JsonResponse({'error': 'POST required'}, status=405)
+
+
+@login_required
+def supplier_document_download(request, pk):
+    doc = get_object_or_404(SupplierDocument, pk=pk)
+    if doc.file_data:
+        response = HttpResponse(bytes(doc.file_data), content_type=doc.file_mime or 'application/octet-stream')
+        filename = doc.file_original_name or doc.name
+        response['Content-Disposition'] = f'inline; filename="{filename}"'
+        return response
+    return HttpResponse('File not found', status=404)
+
+
+@login_required
+@require_POST
+def supplier_document_delete(request, pk):
+    doc = get_object_or_404(SupplierDocument, pk=pk)
+    doc.delete()
+    return JsonResponse({'ok': True})
 
 
 

@@ -61,6 +61,52 @@
         <div style="color:var(--mut);font-size:.875rem;">No purchase orders yet for {{ supplier.name }}</div>
       {% endif %}
     </div>
+
+    <div class="form-card">
+      <div class="section-title">Price Lists &amp; Brochures ({{ documents|length }})</div>
+      <div id="sdoc-list" style="margin-bottom:.75rem;">
+        {% for d in documents %}
+        <div style="display:flex;align-items:center;gap:.6rem;padding:.45rem 0;border-bottom:.5px solid var(--bdr);font-size:.85rem;" data-doc-id="{{ d.pk }}">
+          <span style="font-family:var(--fm);font-size:.7rem;background:var(--acc-bg);color:var(--acc);padding:1px 6px;border-radius:3px;flex-shrink:0;">{{ d.get_doc_type_display }}{% if d.year %} {{ d.year }}{% endif %}</span>
+          <a href="{% url 'supplier_document_download' d.pk %}" target="_blank" style="flex:1;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ d.name }}</a>
+          <span style="font-size:.75rem;color:var(--mut);flex-shrink:0;">{{ d.uploaded_at|date:"d M Y" }}</span>
+          <button onclick="deleteSupplierDoc({{ d.pk }}, this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;padding:2px 6px;flex-shrink:0;">✕</button>
+        </div>
+        {% empty %}
+        <div style="color:var(--mut);font-size:.875rem;" id="sdoc-empty">No price lists or brochures uploaded for {{ supplier.name }} yet.</div>
+        {% endfor %}
+      </div>
+      <div style="border:2px dashed var(--acc-bdr);border-radius:var(--rad);padding:.75rem;background:var(--acc-bg);">
+        <div class="form-group" style="margin-bottom:.5rem;">
+          <label class="form-label">File <span style="font-weight:400;color:var(--mut2);">(PDF, Excel, or Word)</span></label>
+          <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:.5rem .75rem;font-size:.85rem;color:var(--txt2);" for="sdoc-file">
+            <span style="background:var(--acc);color:#fff;border-radius:4px;padding:3px 10px;font-size:.75rem;font-weight:600;flex-shrink:0;">Choose file</span>
+            <span id="sdoc-file-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">No file chosen</span>
+          </label>
+          <input type="file" id="sdoc-file" accept=".pdf,.xls,.xlsx,.doc,.docx" style="display:none;" onchange="sdocFileChanged(this)">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 100px;gap:.6rem;margin-bottom:.6rem;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Type</label>
+            <select id="sdoc-type" class="form-input">
+              <option value="price_list">Price List</option>
+              <option value="brochure">Brochure</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Year</label>
+            <input type="number" id="sdoc-year" class="form-input" placeholder="{% now 'Y' %}" min="2000" max="2100">
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:.6rem;">
+          <label class="form-label">Name (optional)</label>
+          <input type="text" id="sdoc-name" class="form-input" placeholder="e.g. 2026 Price List">
+        </div>
+        <button type="button" class="btn btn-primary" onclick="uploadSupplierDoc({{ supplier.pk }})" style="width:100%;justify-content:center;">Upload Document</button>
+        <div id="sdoc-error" style="color:var(--red);font-size:.78rem;margin-top:.4rem;display:none;"></div>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -71,6 +117,60 @@ async function newPOForSupplier(){
   const r = await fetch('/purchase-orders/new/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({supplier_id:{{ supplier.pk }}})});
   const d = await r.json();
   if(d.ok) window.location = `/purchase-orders/${d.pk}/`;
+}
+
+function sdocFileChanged(input){
+  const label = document.getElementById('sdoc-file-name');
+  if(label) label.textContent = input.files.length ? input.files[0].name : 'No file chosen';
+}
+
+async function uploadSupplierDoc(pk){
+  const fileEl = document.getElementById('sdoc-file');
+  if(!fileEl || !fileEl.files.length){ alert('Please choose a file first.'); return; }
+  const nameEl = document.getElementById('sdoc-name');
+  const typeEl = document.getElementById('sdoc-type');
+  const yearEl = document.getElementById('sdoc-year');
+  const formData = new FormData();
+  formData.append('file', fileEl.files[0]);
+  formData.append('name', nameEl.value || fileEl.files[0].name);
+  formData.append('doc_type', typeEl.value);
+  formData.append('year', yearEl.value);
+  formData.append('csrfmiddlewaretoken', CSRF);
+  const btn = document.querySelector(`[onclick="uploadSupplierDoc(${pk})"]`);
+  if(btn){ btn.textContent = 'Uploading…'; btn.disabled = true; }
+  try {
+    const r = await fetch(`/suppliers/${pk}/documents/`, { method: 'POST', body: formData });
+    const d = await r.json();
+    if(d.error){ throw new Error(d.error); }
+    document.getElementById('sdoc-empty')?.remove();
+    const list = document.getElementById('sdoc-list');
+    const row = document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:.6rem;padding:.45rem 0;border-bottom:.5px solid var(--bdr);font-size:.85rem;';
+    row.dataset.docId = d.id;
+    row.innerHTML = `<span style="font-family:var(--fm);font-size:.7rem;background:var(--acc-bg);color:var(--acc);padding:1px 6px;border-radius:3px;flex-shrink:0;">${d.doc_type}${d.year ? ' '+d.year : ''}</span>
+      <a href="${d.url}" target="_blank" style="flex:1;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}</a>
+      <span style="font-size:.75rem;color:var(--mut);flex-shrink:0;">${d.uploaded_at}</span>
+      <button onclick="deleteSupplierDoc(${d.id}, this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;padding:2px 6px;flex-shrink:0;">✕</button>`;
+    list.appendChild(row);
+    fileEl.value = '';
+    document.getElementById('sdoc-file-name').textContent = 'No file chosen';
+    nameEl.value = ''; yearEl.value = '';
+    document.getElementById('sdoc-error').style.display = 'none';
+  } catch(e) {
+    const errEl = document.getElementById('sdoc-error');
+    errEl.textContent = 'Upload error: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    if(btn){ btn.textContent = 'Upload Document'; btn.disabled = false; }
+  }
+}
+
+async function deleteSupplierDoc(id, btn){
+  if(!confirm('Delete this document?')) return;
+  const r = await fetch(`/supplier-document/${id}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': CSRF } });
+  const d = await r.json();
+  if(d.ok){ btn.closest('div[data-doc-id]').remove(); }
+  else { alert('Could not delete document.'); }
 }
 </script>
 {% endblock %}

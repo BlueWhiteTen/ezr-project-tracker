@@ -35,6 +35,7 @@ from .customers import (
 from .suppliers import (
     supplier_list, supplier_import, supplier_detail,
     supplier_create, supplier_delete, supplier_api_list,
+    supplier_documents, supplier_document_download, supplier_document_delete,
 )
 from .purchasing import (
     po_list, po_detail, po_print, po_create, po_update,

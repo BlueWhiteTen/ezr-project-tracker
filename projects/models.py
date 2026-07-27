@@ -459,6 +459,30 @@ class ProjectDocument(models.Model):
         return f"{self.name} — {self.project}"
 
 
+class SupplierDocument(models.Model):
+    DOC_TYPES = [
+        ('price_list', 'Price List'),
+        ('brochure',   'Brochure'),
+        ('other',      'Other'),
+    ]
+    supplier     = models.ForeignKey('Supplier', on_delete=models.CASCADE, related_name='documents')
+    file_data    = models.BinaryField(null=True, blank=True)
+    file_mime    = models.CharField(max_length=100, blank=True)
+    file_original_name = models.CharField(max_length=200, blank=True)
+    name         = models.CharField(max_length=200)
+    doc_type     = models.CharField(max_length=20, choices=DOC_TYPES, default='price_list')
+    year         = models.PositiveIntegerField(null=True, blank=True, help_text='Year this price list/brochure applies to, if relevant')
+    uploaded_by  = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    uploaded_at  = models.DateTimeField(auto_now_add=True)
+    notes        = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return f"{self.name} — {self.supplier}"
+
+
 class Product(models.Model):
     CATEGORY_CHOICES = [
         ('1', '1 Discontinued'),
