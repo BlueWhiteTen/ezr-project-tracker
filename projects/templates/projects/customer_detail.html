@@ -98,7 +98,7 @@
               For {{ po.project.project_name }}{% if po.order_date %} · Ordered {{ po.order_date|date:"d M Y" }}{% endif %}
             </div>
           </div>
-          <span class="badge">{{ po.get_status_display }}</span>
+          <span class="badge badge-{{ po.status }}">{{ po.get_status_display }}</span>
           <a href="{% url 'po_detail' po.pk %}" class="btn btn-ghost btn-sm">Open</a>
         </div>
         {% endfor %}
