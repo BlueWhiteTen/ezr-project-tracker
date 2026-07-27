@@ -1,7 +1,16 @@
 from django.urls import path
+from django.http import HttpResponse
 from . import views
 
+
+def robots_txt(request):
+    # Keeps the app out of search engine results — it's an internal tool
+    # reached only via direct link, not something that should be indexed.
+    return HttpResponse("User-agent: *\nDisallow: /\n", content_type="text/plain")
+
+
 urlpatterns = [
+    path('robots.txt',                    robots_txt,                  name='robots_txt'),
     path('',                              views.home,                  name='home'),
     path('dashboard/',                    views.dashboard,             name='dashboard'),
     path('project/new/',                  views.project_create,        name='project_create'),
