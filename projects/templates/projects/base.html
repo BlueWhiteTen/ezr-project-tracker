@@ -1,16 +1,58 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-style="{% if request.user.is_authenticated %}{{ request.user.profile.theme|default:'default' }}{% else %}default{% endif %}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>document.documentElement.dataset.theme = localStorage.getItem('pt-theme') || 'light';</script>
 <title>{% block title %}EZR Project Tracker{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Barlow+Condensed:wght@600;700;800&family=Work+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#faf9f7;--surf:#fff;--surf2:#faf9f7;--surf3:#f0ede8;--bdr:#eee9e2;--bdr2:#ddd6cc;--acc:#d4700a;--acc-dark:#b35c00;--acc-light:#f08030;--acc-bg:#fff4eb;--acc-bdr:#f5c89a;--blue:#185fa5;--blue-light:#378add;--blue-bg:#e6f1fb;--blue-bdr:#b5d4f4;--grn:#16a34a;--grn-bg:#f0fdf4;--amb:#d97706;--amb-bg:#fffbeb;--red:#dc2626;--red-bg:#fef2f2;--txt:#1a1a1a;--txt2:#3d3d3d;--mut:#9a948c;--mut2:#b5afa6;--f:'Manrope',system-ui,sans-serif;--fm:'DM Mono',monospace;--rad:10px;--rad-lg:16px;--shadow:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 12px rgba(0,0,0,.07);}
 [data-theme="dark"]{--bg:#141210;--surf:#1e1b18;--surf2:#272320;--surf3:#312d29;--bdr:#3a3530;--bdr2:#4a4540;--acc:#f08030;--acc-dark:#d4700a;--acc-light:#ffaa60;--acc-bg:rgba(240,128,48,.12);--acc-bdr:rgba(240,128,48,.3);--blue:#378add;--blue-light:#5aa0e8;--blue-bg:rgba(55,138,221,.14);--blue-bdr:rgba(55,138,221,.35);--grn:#22c55e;--grn-bg:rgba(34,197,94,.1);--amb:#f59e0b;--amb-bg:rgba(245,158,11,.1);--red:#ef4444;--red-bg:rgba(239,68,68,.1);--txt:#f5f2ec;--txt2:#ddd6cc;--mut:#b8b2a8;--mut2:#928b82;--shadow:0 1px 3px rgba(0,0,0,.4);--shadow-md:0 4px 12px rgba(0,0,0,.5);}
+
+/* ── Alternate app styles (personal preference, set on the Staff Profile page) ──
+   Dark mode isn't available on these yet, so they always render in their one
+   light form — these rules are placed after [data-theme="dark"] above so they
+   win the cascade even if dark mode was left on from a previous session. */
+[data-style="works_order"],[data-style="works_order"][data-theme="dark"]{
+  --bg:#F5F6F4;--surf:#FFFFFF;--surf2:#EEF0F0;--surf3:#E6E9E9;--bdr:#D7DBDC;--bdr2:#C3C8C9;
+  --acc:#D4700A;--acc-dark:#B35C00;--acc-light:#E8934A;--acc-bg:#FCEADA;--acc-bdr:#F2C089;
+  --blue:#185fa5;--blue-light:#378add;--blue-bg:#e6f1fb;--blue-bdr:#b5d4f4;
+  --grn:#1E7B4D;--grn-bg:#E7F4EC;--amb:#946200;--amb-bg:#FBF0DC;--red:#B3261E;--red-bg:#FBE9E8;
+  --txt:#181B1D;--txt2:#3A3F42;--mut:#767D80;--mut2:#9BA1A3;
+  --f:'IBM Plex Sans',system-ui,sans-serif;--fm:'IBM Plex Mono',monospace;
+  --rad:4px;--rad-lg:6px;--shadow:0 1px 2px rgba(0,0,0,.05);--shadow-md:0 3px 10px rgba(0,0,0,.08);
+}
+[data-style="works_order"] .btn{border-radius:4px;}
+[data-style="works_order"] body{background-image:
+  repeating-linear-gradient(0deg, rgba(0,0,0,.022) 0 1px, transparent 1px 32px),
+  repeating-linear-gradient(90deg, rgba(0,0,0,.022) 0 1px, transparent 1px 32px);}
+
+[data-style="site_signage"],[data-style="site_signage"][data-theme="dark"]{
+  --bg:#FAFAF8;--surf:#FFFFFF;--surf2:#F0F0EC;--surf3:#E7E8E5;--bdr:#15171A;--bdr2:#15171A;
+  --acc:#D4700A;--acc-dark:#A85800;--acc-light:#E8934A;--acc-bg:#D4700A;--acc-bdr:#15171A;
+  --blue:#185fa5;--blue-light:#378add;--blue-bg:#e6f1fb;--blue-bdr:#b5d4f4;
+  --grn:#1E7B4D;--grn-bg:#1E7B4D;--amb:#946200;--amb-bg:#946200;--red:#B3261E;--red-bg:#B3261E;
+  --txt:#15171A;--txt2:#3A3D40;--mut:#5B6066;--mut2:#8A8F94;
+  --f:'Work Sans',system-ui,sans-serif;--fm:'Work Sans',system-ui,sans-serif;
+  --rad:0px;--rad-lg:0px;--shadow:none;--shadow-md:none;
+}
+[data-style="site_signage"] .btn{border-radius:0;border:2px solid var(--bdr);font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
+[data-style="site_signage"] h1,[data-style="site_signage"] h2,[data-style="site_signage"] .page-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.01em;}
+[data-style="site_signage"] .card,[data-style="site_signage"] .stock-table-wrap{border-width:2px;}
+
+[data-style="ledger"],[data-style="ledger"][data-theme="dark"]{
+  --bg:#F6F3EC;--surf:#FFFFFF;--surf2:#F0EBE0;--surf3:#E9E2D3;--bdr:#E4DDCE;--bdr2:#D3C9B4;
+  --acc:#2F5233;--acc-dark:#22401F;--acc-light:#4C7350;--acc-bg:#E4EDE3;--acc-bdr:#C3D6C3;
+  --blue:#185fa5;--blue-light:#378add;--blue-bg:#e6f1fb;--blue-bdr:#b5d4f4;
+  --grn:#2F5233;--grn-bg:#E4EDE3;--amb:#8A5A18;--amb-bg:#F3E7D2;--red:#96322A;--red-bg:#F5E4E1;
+  --txt:#241F1A;--txt2:#4A4238;--mut:#8B8071;--mut2:#ABA292;
+  --f:'Karla',system-ui,sans-serif;--fm:'Karla',system-ui,sans-serif;
+  --rad:6px;--rad-lg:8px;--shadow:0 1px 2px rgba(36,31,26,.05);--shadow-md:0 3px 10px rgba(36,31,26,.08);
+}
+[data-style="ledger"] h1,[data-style="ledger"] .page-title{font-family:'Fraunces',serif;font-weight:600;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:var(--f);background:var(--bg);color:var(--txt);min-height:100vh;font-size:14px;line-height:1.5;}
 a{color:inherit;text-decoration:none;}
@@ -304,12 +346,23 @@ function toggleReportsMenu(){
 <script>
 document.addEventListener('DOMContentLoaded', function(){
   var b = document.getElementById('theme-btn');
-  if(b) b.textContent = document.documentElement.dataset.theme === 'dark' ? 'Light mode' : 'Dark mode';
+  if(!b) return;
+  if(document.documentElement.dataset.style && document.documentElement.dataset.style !== 'default'){
+    b.textContent = 'Dark mode not available yet';
+    b.style.opacity = '.6';
+    b.style.cursor = 'not-allowed';
+  } else {
+    b.textContent = document.documentElement.dataset.theme === 'dark' ? 'Light mode' : 'Dark mode';
+  }
 });
 
 function toggleTheme(){
   var h = document.documentElement;
   var b = document.getElementById('theme-btn');
+  if(h.dataset.style && h.dataset.style !== 'default'){
+    if(b) b.textContent = 'Dark mode not available yet';
+    return;
+  }
   if(h.dataset.theme === 'light'){
     h.dataset.theme = 'dark';
     if(b) b.textContent = 'Light mode';

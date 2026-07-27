@@ -268,6 +268,13 @@ class StaffProfile(models.Model):
     bio    = models.TextField(blank=True)
     colour = models.CharField(max_length=7, blank=True, help_text='Hex colour for avatar')
     can_view_reports = models.BooleanField(default=False, help_text='Can view Sales Summary and Daily Accounts Report, independent of Staff status')
+    THEME_CHOICES = [
+        ('default', 'Default'),
+        ('works_order', 'Works Order'),
+        ('site_signage', 'Site Signage'),
+        ('ledger', 'Ledger'),
+    ]
+    theme = models.CharField(max_length=20, choices=THEME_CHOICES, default='default', help_text='Personal visual style — set on your own profile')
 
     def __str__(self):
         return f"{self.user.get_full_name()} — {self.role}"

@@ -49,6 +49,12 @@ def staff_profile(request, user_id):
         # only a superuser can change it, and only for someone else's profile.
         if request.user.is_superuser:
             profile.can_view_reports = request.POST.get('can_view_reports') == 'on'
+        # Theme is a personal display preference — only the profile owner
+        # can set it, not visible/editable when viewing someone else's page.
+        if request.user == member:
+            theme = request.POST.get('theme', '').strip()
+            if theme in [c[0] for c in StaffProfile.THEME_CHOICES]:
+                profile.theme = theme
         member.first_name = request.POST.get('first_name', '').strip()
         member.last_name  = request.POST.get('last_name', '').strip()
         member.save()
@@ -61,6 +67,7 @@ def staff_profile(request, user_id):
         'member': member, 'profile': profile,
         'assigned': assigned, 'upcoming_leave': upcoming_leave,
         'colour_choices': StaffProfile.COLOUR_CHOICES,
+        'theme_choices': StaffProfile.THEME_CHOICES,
     })
 
 
