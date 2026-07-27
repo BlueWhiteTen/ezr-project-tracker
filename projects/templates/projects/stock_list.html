@@ -29,7 +29,7 @@ td:nth-child(3){white-space:normal;word-break:break-word;}
 /* Edit modal */
 .eq-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s;}
 .eq-overlay.open{opacity:1;pointer-events:all;}
-.eq-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-58%);width:760px;max-width:95vw;max-height:90vh;overflow-y:auto;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);z-index:201;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
+.eq-modal{position:fixed;top:calc(50% + 40px);left:50%;transform:translate(-50%,-50%);width:760px;max-width:95vw;max-height:calc(90vh - 40px);overflow-y:auto;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);z-index:201;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
 .eq-modal.open{opacity:1;pointer-events:all;transform:translate(-50%,-50%);}
 .eq-head{padding:.9rem 1.2rem;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;background:var(--surf2);border-radius:var(--rad-lg) var(--rad-lg) 0 0;}
 .eq-body{padding:1.2rem;}
@@ -103,9 +103,11 @@ td:nth-child(3){white-space:normal;word-break:break-word;}
       <td><span class="code" style="cursor:pointer;" onclick="editProduct({{ p.pk }},'{{ p.code|escapejs }}','{{ p.description|escapejs }}',{{ p.quantity }},{{ p.reorder_level }},{{ p.cost_price }},{% if p.weight is not None %}{{ p.weight }}{% else %}null{% endif %},'{{ p.category|escapejs }}',{{ p.reorder_qty }},{% if p.preferred_supplier_id %}{{ p.preferred_supplier_id }}{% else %}null{% endif %})">{{ p.code }}</span></td>
       <td>{{ p.description }}{% if not p.is_active %} <span style="font-size:.7rem;color:var(--mut);font-style:italic;">(inactive)</span>{% endif %}</td>
       <td style="text-align:right;">
-        <span class="{% if p.reorder_level > 0 and p.quantity <= p.reorder_level %}qty-low{% elif p.quantity <= 0 %}qty-zero{% else %}qty-ok{% endif %}">{{ p.quantity|floatformat:0 }}</span>
-        {% if p.reorder_level > 0 and p.quantity <= p.reorder_level %}<span class="low-badge" style="margin-left:.4rem;">LOW</span>
-        {% elif p.free_stock < 0 %}<span class="low-badge" style="margin-left:.4rem;background:var(--amb-bg);color:var(--amb);border-color:rgba(217,119,6,.3);">NEG</span>{% endif %}
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+          <span class="{% if p.reorder_level > 0 and p.quantity <= p.reorder_level %}qty-low{% elif p.quantity <= 0 %}qty-zero{% else %}qty-ok{% endif %}">{{ p.quantity|floatformat:0 }}</span>
+          {% if p.reorder_level > 0 and p.quantity <= p.reorder_level %}<span class="low-badge">LOW</span>
+          {% elif p.free_stock < 0 %}<span class="low-badge" style="background:var(--amb-bg);color:var(--amb);border-color:rgba(217,119,6,.3);">NEG</span>{% endif %}
+        </div>
       </td>
       <td style="text-align:right;color:var(--mut);">{{ p.qty_allocated|floatformat:0 }}</td>
       <td style="text-align:right;color:var(--mut);">{{ p.qty_on_order|floatformat:0 }}</td>
@@ -177,12 +179,18 @@ td:nth-child(3){white-space:normal;word-break:break-word;}
         {% endfor %}
       </select>
     </div>
-    <div class="form-group"><label class="form-label">Quantity in Stock</label><input class="form-input" type="number" id="eq-qty" step="1"></div>
-    <div class="form-group"><label class="form-label">Reorder Level</label><input class="form-input" type="number" id="eq-reorder" step="1"></div>
-    <div class="form-group"><label class="form-label">Reorder Quantity</label><input class="form-input" type="number" id="eq-reorderqty" step="1"></div>
+    <div class="form-group" style="margin-bottom:.5rem;">
+      <div style="display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:end;gap:.6rem;">
+        <div><label class="form-label">Quantity in Stock</label><input class="form-input" type="number" id="eq-qty" step="1"></div>
+        <div style="width:1px;background:var(--bdr);height:38px;"></div>
+        <div><label class="form-label">Reorder Level</label><input class="form-input" type="number" id="eq-reorder" step="1"></div>
+        <div style="width:1px;background:var(--bdr);height:38px;"></div>
+        <div><label class="form-label">Reorder Quantity</label><input class="form-input" type="number" id="eq-reorderqty" step="1"></div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Reason for change <span style="font-weight:400;color:var(--mut2)">(only needed if adjusting quantity)</span></label><input class="form-input" type="text" id="eq-reason" placeholder="e.g. Stocktake correction, damaged stock, found in warehouse…"></div>
     <div class="form-group"><label class="form-label">Buying Price (£) <span style="font-weight:400;color:var(--mut2)">(feeds Price List &amp; costing)</span></label><input class="form-input" type="number" id="eq-cost" step="0.01" min="0" placeholder="0.00"></div>
     <div class="form-group" style="margin-bottom:0;"><label class="form-label">Weight (kg) <span style="font-weight:400;color:var(--mut2)">(feeds delivery weight estimates)</span></label><input class="form-input" type="number" id="eq-weight" step="0.01" min="0" placeholder="0.00"></div>
-    <div class="form-group" style="margin-bottom:0;margin-top:.7rem;"><label class="form-label">Reason for change <span style="font-weight:400;color:var(--mut2)">(only needed if adjusting quantity)</span></label><input class="form-input" type="text" id="eq-reason" placeholder="e.g. Stocktake correction, damaged stock, found in warehouse…"></div>
 
     <div style="margin-top:1.2rem;border-top:1px solid var(--bdr);padding-top:.9rem;">
       <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-bottom:.5rem;">Buying Price History</div>
