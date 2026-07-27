@@ -130,8 +130,22 @@ from django.contrib.auth.views import (
     PasswordResetView, PasswordResetDoneView,
     PasswordResetConfirmView, PasswordResetCompleteView,
 )
+import smtplib, socket
 
-password_reset_request = PasswordResetView.as_view(
+
+class SafePasswordResetView(PasswordResetView):
+    """If the email genuinely can't be sent (SMTP unreachable, timed out, bad
+    credentials), show a clear error instead of a blank hang or a raw 500 —
+    the same failure that used to leave the page stuck loading."""
+    def form_valid(self, form):
+        try:
+            return super().form_valid(form)
+        except (smtplib.SMTPException, socket.error, socket.timeout, TimeoutError) as e:
+            form.add_error(None, "Couldn't send the reset email right now — the mail server didn't respond. Please try again shortly, or contact Tasos if this keeps happening.")
+            return self.form_invalid(form)
+
+
+password_reset_request = SafePasswordResetView.as_view(
     template_name='projects/password_reset.html',
     email_template_name='projects/password_reset_email.txt',
     subject_template_name='projects/password_reset_subject.txt',
