@@ -7,7 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-local-dev-only-change-in-production')
 DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
-ALLOWED_HOSTS += ['web-production-1dde3.up.railway.app', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS += ['web-production-1dde3.up.railway.app', 'ezrshelvingtracker.uk', 'www.ezrshelvingtracker.uk', 'localhost', '127.0.0.1']
 
 # Cookies/redirects should only be forced secure when not running locally —
 # DEBUG is the simplest signal we have for "this is local dev, not Railway".
@@ -21,6 +21,8 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 CSRF_TRUSTED_ORIGINS += [
     'https://web-production-1dde3.up.railway.app',
+    'https://ezrshelvingtracker.uk',
+    'https://www.ezrshelvingtracker.uk',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
 ]
