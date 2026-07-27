@@ -88,6 +88,11 @@ class ResendEmailBackend(BaseEmailBackend):
                 headers={
                     'Authorization': f'Bearer {api_key}',
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    # Resend's API sits behind Cloudflare, whose bot-protection
+                    # blocks the default urllib User-Agent (Cloudflare error
+                    # 1010) — a normal-looking one avoids that entirely.
+                    'User-Agent': 'EZR-Project-Tracker/1.0 (+https://ezrshelving.com)',
                 },
             )
             try:
