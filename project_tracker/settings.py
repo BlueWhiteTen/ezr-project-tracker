@@ -114,11 +114,24 @@ LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 
 # ── Email ─────────────────────────────────────────────────────────────────────
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+RESEND_FROM_EMAIL = os.environ.get('RESEND_FROM_EMAIL', 'EZR Project Tracker <onboarding@resend.dev>')
+
+if RESEND_API_KEY:
+    # Railway blocks outbound raw SMTP at the network level (confirmed via a
+    # direct connection test — "Network is unreachable" on all ports), so
+    # send over HTTPS via Resend instead once an API key is configured.
+    EMAIL_BACKEND = 'projects.email_backends.ResendEmailBackend'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 EMAIL_TIMEOUT = 10  # seconds — fail fast with a clear error instead of the page hanging forever if the SMTP server can't be reached
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'EZR Project Tracker <noreply@ezrshelving.com>')
+# Note: sending "from" a custom domain (e.g. @ezrshelving.com) via Resend
+# requires that domain to be verified in the Resend dashboard first — until
+# that's done, Resend only accepts sending from its own onboarding@resend.dev
+# sandbox address, which is why that's the default here when Resend is active.
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', RESEND_FROM_EMAIL if RESEND_API_KEY else 'EZR Project Tracker <noreply@ezrshelving.com>')
