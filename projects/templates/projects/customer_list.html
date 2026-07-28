@@ -38,6 +38,12 @@
   <input class="form-input" name="q" value="{{ query }}" placeholder="Search name, contact, email…" style="max-width:360px;">
   <button class="btn btn-ghost btn-sm" type="submit">Search</button>
   {% if query %}<a href="{% url 'customer_list' %}" class="btn btn-ghost btn-sm">Clear</a>{% endif %}
+  {% if inactive_count %}
+  <label style="display:flex;align-items:center;gap:.4rem;font-size:.82rem;color:var(--mut);cursor:pointer;margin-left:.4rem;">
+    <input type="checkbox" name="show_inactive" value="1" {% if show_inactive %}checked{% endif %} onchange="this.form.submit()">
+    Include inactive ({{ inactive_count }})
+  </label>
+  {% endif %}
 </form>
 <div class="cust-list">
   {% if customers %}
@@ -45,8 +51,8 @@
   {% for letter_group in by_letter %}
   <div class="cust-letter">{{ letter_group.grouper }}</div>
   {% for c in letter_group.list %}
-  <div class="cust-row">
-    <a href="{% url 'customer_detail' c.pk %}" class="cust-name" style="text-decoration:none;color:inherit;">{{ c.name }}</a>
+  <div class="cust-row" {% if not c.is_active %}style="opacity:.5;"{% endif %}>
+    <a href="{% url 'customer_detail' c.pk %}" class="cust-name" style="text-decoration:none;color:inherit;">{{ c.name }}{% if not c.is_active %} <span style="font-size:.72rem;color:var(--mut);font-style:italic;">(inactive)</span>{% endif %}</a>
     <div class="cust-contact">{% if c.contact_name %}{{ c.contact_name }}{% endif %}{% if c.contact_name and c.email %} · {% endif %}{% if c.email %}{{ c.email }}{% endif %}</div>
     <div class="cust-phone">{% if c.phone %}{{ c.phone }}{% endif %}</div>
     <a href="{% url 'customer_detail' c.pk %}" class="btn btn-ghost btn-sm">View</a>

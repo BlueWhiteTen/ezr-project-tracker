@@ -359,6 +359,7 @@ class SatisfactionNote(models.Model):
 
 class CustomerProfile(models.Model):
     name         = models.CharField(max_length=200, help_text='Not required to be unique — imports may intentionally create duplicates to be reconciled by hand')
+    is_active    = models.BooleanField(default=True)
     account_number = models.CharField(max_length=100, blank=True, help_text='Sage customer account reference')
     contact_name = models.CharField(max_length=200, blank=True)
     email        = models.EmailField(blank=True)

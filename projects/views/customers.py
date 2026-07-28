@@ -124,7 +124,10 @@ def customer_import(request):
 @login_required
 def customer_list(request):
     q = request.GET.get('q', '').strip()
+    show_inactive = request.GET.get('show_inactive', '') == '1'
     customers = CustomerProfile.objects.all().order_by('name')
+    if not show_inactive:
+        customers = customers.filter(is_active=True)
     if q:
         customers = customers.filter(
             Q(name__icontains=q) | Q(contact_name__icontains=q) |
@@ -132,6 +135,8 @@ def customer_list(request):
         )
     return render(request, 'projects/customer_list.html', {
         'customers': customers, 'query': q,
+        'show_inactive': show_inactive,
+        'inactive_count': CustomerProfile.objects.filter(is_active=False).count(),
     })
 
 
@@ -150,6 +155,7 @@ def customer_detail(request, pk):
         customer.phone        = request.POST.get('phone', '').strip()
         customer.vat_number   = request.POST.get('vat_number', '').strip()
         customer.company_reg_number = request.POST.get('company_reg_number', '').strip()
+        customer.is_active = request.POST.get('is_active') == 'on'
         customer.eori_number  = request.POST.get('eori_number', '').strip()
         customer.account_number = request.POST.get('account_number', '').strip()
         customer.address_line1 = request.POST.get('address_line1', '').strip()
