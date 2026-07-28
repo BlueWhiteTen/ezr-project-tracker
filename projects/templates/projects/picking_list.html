@@ -4,6 +4,20 @@
 
 .pl-page{max-width:1320px;}
 .pl-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem;flex-wrap:wrap;gap:1rem;}
+.pl-header > div{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;min-width:0;}
+@media (max-width: 600px){
+  body{overflow-x:hidden;}
+  .pl-page{overflow-x:hidden;max-width:100vw;width:100vw;}
+  .pl-card, .pl-top, .pl-body{width:100%;box-sizing:border-box;max-width:100vw;}
+  .pl-header, .pl-header > div{flex-direction:column;align-items:flex-start!important;width:100%;max-width:100vw;box-sizing:border-box;}
+  .pl-header .btn-ghost, .pl-header a.btn-ghost, .pl-header h1{max-width:calc(100vw - 3rem);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .pl-top{flex-direction:column;align-items:flex-start!important;gap:.6rem!important;width:100%;max-width:100vw;box-sizing:border-box;}
+  .pl-top > div{flex-wrap:wrap;max-width:100%;width:100%;}
+  .pl-top span{word-break:break-word;}
+  #tmpl-select{min-width:0!important;max-width:calc(100vw - 3rem)!important;flex:1 1 100%!important;box-sizing:border-box;}
+  .tmpl-apply-row{flex-direction:column;align-items:stretch!important;width:100%;max-width:calc(100vw - 3rem);box-sizing:border-box;}
+  .add-row{grid-template-columns:1fr!important;width:100%;max-width:100%;box-sizing:border-box;}
+}
 .pl-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow);overflow:visible;}
 .pl-top{padding:1.1rem 1.5rem;border-bottom:1px solid var(--bdr);background:var(--surf2);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;border-radius:var(--rad-lg) var(--rad-lg) 0 0;}
 .pl-body{padding:1.5rem;}
@@ -93,9 +107,9 @@
   <div class="pl-body">
     <!-- Apply template -->
     {% if pl.status != 'dispatched' and not pl.allocated %}
-    <div style="background:var(--acc-bg);border:1px solid var(--acc-bdr);border-radius:var(--rad);padding:.75rem 1rem;margin-bottom:1.2rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+    <div class="tmpl-apply-row" style="background:var(--acc-bg);border:1px solid var(--acc-bdr);border-radius:var(--rad);padding:.75rem 1rem;margin-bottom:1.2rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
       <span style="font-size:.82rem;font-weight:600;color:var(--acc);">Apply Template:</span>
-      <select class="form-input" id="tmpl-select" style="flex:1;min-width:200px;max-width:350px;">
+      <select class="form-input" id="tmpl-select" style="flex:1;min-width:0;max-width:350px;">
         <option value="">— Select a template —</option>
         {% for t in templates %}<option value="{{ t.pk }}">{{ t.name }}{% if t.customer %} ({{ t.customer }}){% endif %}</option>{% endfor %}
       </select>
@@ -104,6 +118,7 @@
     </div>
     {% endif %}
     <!-- Items table -->
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <table class="items-table">
       <thead><tr>
         <th style="width:40px;">✓</th>
@@ -175,6 +190,7 @@
       {% endfor %}
       </tbody>
     </table>
+    </div>
 
     <!-- Add product area -->
     {% if pl.status != 'dispatched' and not pl.allocated %}
