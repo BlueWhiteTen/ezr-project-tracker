@@ -164,12 +164,34 @@ def customer_list(request):
         page_obj = paginator.page(1)
     customers = page_obj.object_list
 
+    # Page numbers to show at the bottom — all of them if there aren't too
+    # many, otherwise a truncated range around the current page (with a
+    # None entry meaning "show an ellipsis here") so jumping from page 1 to
+    # page 11 of 12 doesn't take ten clicks through Next.
+    num_pages = paginator.num_pages
+    current = page_obj.number
+    if num_pages <= 15:
+        page_range = list(range(1, num_pages + 1))
+    else:
+        pages = {1, num_pages, current}
+        for d in (1, 2):
+            pages.add(current - d)
+            pages.add(current + d)
+        pages = sorted(p for p in pages if 1 <= p <= num_pages)
+        page_range = []
+        prev = None
+        for p in pages:
+            if prev is not None and p - prev > 1:
+                page_range.append(None)
+            page_range.append(p)
+            prev = p
+
     return render(request, 'projects/customer_list.html', {
         'customers': customers, 'query': q,
         'show_inactive': show_inactive,
         'inactive_count': CustomerProfile.objects.filter(is_active=False).count(),
         'page_obj': page_obj, 'total_matching': total_matching,
-        'letter': letter, 'index_chars': index_chars,
+        'letter': letter, 'index_chars': index_chars, 'page_range': page_range,
     })
 
 

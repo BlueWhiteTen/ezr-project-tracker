@@ -22,13 +22,19 @@
 .close-btn{background:transparent;border:1px solid var(--bdr);border-radius:var(--rad);color:var(--mut);font-size:.9rem;cursor:pointer;padding:3px 9px;}
 .close-btn:hover{background:var(--red-bg);color:var(--red);}
 .cust-shell{display:flex;gap:1.2rem;align-items:flex-start;}
-.cust-index{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow);padding:.5rem .3rem;display:flex;flex-direction:column;gap:1px;flex-shrink:0;}
+.cust-index{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow);padding:.5rem .3rem;display:flex;flex-direction:column;gap:1px;flex-shrink:0;position:sticky;top:94px;max-height:calc(100vh - 114px);overflow-y:auto;}
+.cust-index-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);padding:.4rem .6rem .3rem;}
 .cust-index a{display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.3rem .6rem;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;color:var(--txt2);}
 .cust-index a:hover{background:var(--surf2);}
 .cust-index a.active{background:var(--acc);color:#fff;}
 .cust-index a.empty{color:var(--mut2);opacity:.4;pointer-events:none;}
 .cust-index .idx-count{font-size:.68rem;font-weight:500;color:inherit;opacity:.75;}
 .cust-main{flex:1;min-width:0;}
+@media (max-width: 700px){
+  .cust-shell{flex-direction:column;}
+  .cust-index{position:static;max-height:none;flex-direction:row;flex-wrap:wrap;width:100%;box-sizing:border-box;}
+  .cust-index-title{width:100%;}
+}
 {% endblock %}
 {% block content %}
 <div class="page-hdr">
@@ -56,6 +62,7 @@
 
 <div class="cust-shell">
   <nav class="cust-index">
+    <div class="cust-index-title">Index</div>
     {% for idx in index_chars %}
     <a href="?letter={{ idx.char }}{% if show_inactive %}&show_inactive=1{% endif %}"
        class="{% if not query and letter == idx.char %}active{% endif %}{% if not idx.count %} empty{% endif %}">
@@ -83,15 +90,24 @@
     </div>
 
     {% if page_obj.paginator.num_pages > 1 %}
-    <div style="display:flex;align-items:center;justify-content:center;gap:1rem;margin-top:1.2rem;">
+    <div style="display:flex;align-items:center;justify-content:center;gap:.4rem;margin-top:1.2rem;flex-wrap:wrap;">
       {% if page_obj.has_previous %}
         <a href="?q={{ query }}&letter={{ letter }}{% if show_inactive %}&show_inactive=1{% endif %}&page={{ page_obj.previous_page_number }}" class="btn btn-ghost btn-sm">← Previous</a>
       {% endif %}
-      <span style="font-size:.85rem;color:var(--mut);">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} ({{ total_matching }} customer{{ total_matching|pluralize }})</span>
+      {% for p in page_range %}
+        {% if p == None %}
+          <span style="padding:0 .3rem;color:var(--mut2);">…</span>
+        {% elif p == page_obj.number %}
+          <span class="btn btn-primary btn-sm" style="min-width:2.2rem;justify-content:center;cursor:default;">{{ p }}</span>
+        {% else %}
+          <a href="?q={{ query }}&letter={{ letter }}{% if show_inactive %}&show_inactive=1{% endif %}&page={{ p }}" class="btn btn-ghost btn-sm" style="min-width:2.2rem;justify-content:center;">{{ p }}</a>
+        {% endif %}
+      {% endfor %}
       {% if page_obj.has_next %}
         <a href="?q={{ query }}&letter={{ letter }}{% if show_inactive %}&show_inactive=1{% endif %}&page={{ page_obj.next_page_number }}" class="btn btn-ghost btn-sm">Next →</a>
       {% endif %}
     </div>
+    <div style="text-align:center;font-size:.8rem;color:var(--mut);margin-top:.5rem;">{{ total_matching }} customer{{ total_matching|pluralize }}</div>
     {% endif %}
   </div>
 </div>
