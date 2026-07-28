@@ -26,14 +26,58 @@ from django.contrib.auth.views import (
 @login_required
 def supplier_list(request):
     q = request.GET.get('q', '').strip()
-    suppliers = Supplier.objects.all().order_by('name')
+    letter = request.GET.get('letter', '').strip().upper()[:1]
+    base = Supplier.objects.all()
+
     if q:
-        suppliers = suppliers.filter(
+        letter = ''
+        suppliers = base.filter(
             Q(name__icontains=q) | Q(contact_name__icontains=q) |
             Q(email__icontains=q) | Q(phone__icontains=q) | Q(account_number__icontains=q)
-        )
+        ).order_by('name')
+    else:
+        if not letter:
+            letter = '0'
+        suppliers = base.filter(name__istartswith=letter).order_by('name')
+
+    from django.db.models.functions import Upper, Left
+    from django.db.models import Count
+    counts_qs = base.annotate(first_char=Upper(Left('name', 1))).values('first_char').annotate(n=Count('id'))
+    counts = {row['first_char']: row['n'] for row in counts_qs}
+    index_chars = [{'char': c, 'count': counts.get(c, 0)} for c in list('0123456789') + list('ABCDEFGHIJKLMNOPQRSTUVWXYZ')]
+
+    from django.core.paginator import Paginator
+    total_matching = suppliers.count()
+    paginator = Paginator(suppliers, 50)
+    page_num = request.GET.get('page', 1)
+    try:
+        page_obj = paginator.page(page_num)
+    except Exception:
+        page_obj = paginator.page(1)
+    suppliers = page_obj.object_list
+
+    num_pages = paginator.num_pages
+    current = page_obj.number
+    if num_pages <= 15:
+        page_range = list(range(1, num_pages + 1))
+    else:
+        pages = {1, num_pages, current}
+        for d in (1, 2):
+            pages.add(current - d)
+            pages.add(current + d)
+        pages = sorted(p for p in pages if 1 <= p <= num_pages)
+        page_range = []
+        prev = None
+        for p in pages:
+            if prev is not None and p - prev > 1:
+                page_range.append(None)
+            page_range.append(p)
+            prev = p
+
     return render(request, 'projects/supplier_list.html', {
         'suppliers': suppliers, 'query': q,
+        'page_obj': page_obj, 'total_matching': total_matching,
+        'letter': letter, 'index_chars': index_chars, 'page_range': page_range,
     })
 
 

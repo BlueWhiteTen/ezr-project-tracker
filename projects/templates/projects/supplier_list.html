@@ -11,6 +11,20 @@
 .cust-contact{font-size:.82rem;color:var(--mut);flex:1;}
 .cust-phone{font-size:.82rem;color:var(--mut);min-width:130px;}
 .cust-letter{background:var(--surf2);padding:.2rem 1.2rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);border-bottom:1px solid var(--bdr);}
+.cust-shell{display:flex;gap:1.2rem;align-items:flex-start;}
+.cust-index{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow);padding:.5rem .3rem;display:flex;flex-direction:column;gap:1px;flex-shrink:0;position:sticky;top:94px;max-height:calc(100vh - 114px);overflow-y:auto;}
+.cust-index-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);padding:.4rem .6rem .3rem;}
+.cust-index a{display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.3rem .6rem;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;color:var(--txt2);}
+.cust-index a:hover{background:var(--surf2);}
+.cust-index a.active{background:var(--acc);color:#fff;}
+.cust-index a.empty{color:var(--mut2);opacity:.4;pointer-events:none;}
+.cust-index .idx-count{font-size:.68rem;font-weight:500;color:inherit;opacity:.75;}
+.cust-main{flex:1;min-width:0;}
+@media (max-width: 700px){
+  .cust-shell{flex-direction:column;}
+  .cust-index{position:static;max-height:none;flex-direction:row;flex-wrap:wrap;width:100%;box-sizing:border-box;}
+  .cust-index-title{width:100%;}
+}
 .nc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s;}
 .nc-overlay.open{opacity:1;pointer-events:all;}
 .nc-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-58%);width:480px;max-width:95vw;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);z-index:201;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
@@ -34,25 +48,56 @@
   <button class="btn btn-ghost btn-sm" type="submit">Search</button>
   {% if query %}<a href="{% url 'supplier_list' %}" class="btn btn-ghost btn-sm">Clear</a>{% endif %}
 </form>
-<div class="cust-list">
-  {% if suppliers %}
-  {% regroup suppliers by name.0|upper as by_letter %}
-  {% for letter_group in by_letter %}
-  <div class="cust-letter">{{ letter_group.grouper }}</div>
-  {% for s in letter_group.list %}
-  <div class="cust-row">
-    <a href="{% url 'supplier_detail' s.pk %}" class="cust-name" style="text-decoration:none;color:inherit;">{{ s.name }}</a>
-    <div class="cust-contact">{% if s.contact_name %}{{ s.contact_name }}{% endif %}{% if s.contact_name and s.email %} · {% endif %}{% if s.email %}{{ s.email }}{% endif %}</div>
-    <div class="cust-phone">{% if s.phone %}{{ s.phone }}{% endif %}</div>
-    <a href="{% url 'supplier_detail' s.pk %}" class="btn btn-ghost btn-sm">View</a>
+<div class="cust-shell">
+  <nav class="cust-index">
+    <div class="cust-index-title">Index</div>
+    {% for idx in index_chars %}
+    <a href="?letter={{ idx.char }}"
+       class="{% if not query and letter == idx.char %}active{% endif %}{% if not idx.count %} empty{% endif %}">
+      {{ idx.char }}<span class="idx-count">{{ idx.count }}</span>
+    </a>
+    {% endfor %}
+  </nav>
+
+  <div class="cust-main">
+    <div class="cust-list">
+      {% if suppliers %}
+      {% for s in suppliers %}
+      <div class="cust-row">
+        <a href="{% url 'supplier_detail' s.pk %}" class="cust-name" style="text-decoration:none;color:inherit;">{{ s.name }}</a>
+        <div class="cust-contact">{% if s.contact_name %}{{ s.contact_name }}{% endif %}{% if s.contact_name and s.email %} · {% endif %}{% if s.email %}{{ s.email }}{% endif %}</div>
+        <div class="cust-phone">{% if s.phone %}{{ s.phone }}{% endif %}</div>
+        <a href="{% url 'supplier_detail' s.pk %}" class="btn btn-ghost btn-sm">View</a>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div style="text-align:center;padding:3rem;color:var(--mut);">
+        {% if query %}No suppliers found for "{{ query }}"{% else %}No suppliers starting with "{{ letter }}"{% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div style="display:flex;align-items:center;justify-content:center;gap:.4rem;margin-top:1.2rem;flex-wrap:wrap;">
+      {% if page_obj.has_previous %}
+        <a href="?q={{ query }}&letter={{ letter }}&page={{ page_obj.previous_page_number }}" class="btn btn-ghost btn-sm">← Previous</a>
+      {% endif %}
+      {% for p in page_range %}
+        {% if p == None %}
+          <span style="padding:0 .3rem;color:var(--mut2);">…</span>
+        {% elif p == page_obj.number %}
+          <span class="btn btn-primary btn-sm" style="min-width:2.2rem;justify-content:center;cursor:default;">{{ p }}</span>
+        {% else %}
+          <a href="?q={{ query }}&letter={{ letter }}&page={{ p }}" class="btn btn-ghost btn-sm" style="min-width:2.2rem;justify-content:center;">{{ p }}</a>
+        {% endif %}
+      {% endfor %}
+      {% if page_obj.has_next %}
+        <a href="?q={{ query }}&letter={{ letter }}&page={{ page_obj.next_page_number }}" class="btn btn-ghost btn-sm">Next →</a>
+      {% endif %}
+    </div>
+    <div style="text-align:center;font-size:.8rem;color:var(--mut);margin-top:.5rem;">{{ total_matching }} supplier{{ total_matching|pluralize }}</div>
+    {% endif %}
   </div>
-  {% endfor %}
-  {% endfor %}
-  {% else %}
-  <div style="text-align:center;padding:3rem;color:var(--mut);">
-    {% if query %}No suppliers found for "{{ query }}"{% else %}No suppliers yet — click + New Supplier to add one{% endif %}
-  </div>
-  {% endif %}
 </div>
 
 <div class="nc-overlay" id="nc-overlay" onclick="closeNew()"></div>
