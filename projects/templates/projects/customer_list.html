@@ -21,6 +21,14 @@
 .nc-foot{padding:.85rem 1.3rem;border-top:1px solid var(--bdr);display:flex;gap:.5rem;justify-content:flex-end;}
 .close-btn{background:transparent;border:1px solid var(--bdr);border-radius:var(--rad);color:var(--mut);font-size:.9rem;cursor:pointer;padding:3px 9px;}
 .close-btn:hover{background:var(--red-bg);color:var(--red);}
+.cust-shell{display:flex;gap:1.2rem;align-items:flex-start;}
+.cust-index{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow);padding:.5rem .3rem;display:flex;flex-direction:column;gap:1px;flex-shrink:0;}
+.cust-index a{display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.3rem .6rem;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;color:var(--txt2);}
+.cust-index a:hover{background:var(--surf2);}
+.cust-index a.active{background:var(--acc);color:#fff;}
+.cust-index a.empty{color:var(--mut2);opacity:.4;pointer-events:none;}
+.cust-index .idx-count{font-size:.68rem;font-weight:500;color:inherit;opacity:.75;}
+.cust-main{flex:1;min-width:0;}
 {% endblock %}
 {% block content %}
 <div class="page-hdr">
@@ -45,38 +53,48 @@
   </label>
   {% endif %}
 </form>
-<div class="cust-list">
-  {% if customers %}
-  {% regroup customers by name.0|upper as by_letter %}
-  {% for letter_group in by_letter %}
-  <div class="cust-letter">{{ letter_group.grouper }}</div>
-  {% for c in letter_group.list %}
-  <div class="cust-row" {% if not c.is_active %}style="opacity:.5;"{% endif %}>
-    <a href="{% url 'customer_detail' c.pk %}" class="cust-name" style="text-decoration:none;color:inherit;">{{ c.name }}{% if not c.is_active %} <span style="font-size:.72rem;color:var(--mut);font-style:italic;">(inactive)</span>{% endif %}</a>
-    <div class="cust-contact">{% if c.contact_name %}{{ c.contact_name }}{% endif %}{% if c.contact_name and c.email %} · {% endif %}{% if c.email %}{{ c.email }}{% endif %}</div>
-    <div class="cust-phone">{% if c.phone %}{{ c.phone }}{% endif %}</div>
-    <a href="{% url 'customer_detail' c.pk %}" class="btn btn-ghost btn-sm">View</a>
-  </div>
-  {% endfor %}
-  {% endfor %}
-  {% else %}
-  <div style="text-align:center;padding:3rem;color:var(--mut);">
-    {% if query %}No customers found for "{{ query }}"{% else %}No customers yet — click + New Customer to add one{% endif %}
-  </div>
-  {% endif %}
-</div>
 
-{% if page_obj.paginator.num_pages > 1 %}
-<div style="display:flex;align-items:center;justify-content:center;gap:1rem;margin-top:1.2rem;">
-  {% if page_obj.has_previous %}
-    <a href="?q={{ query }}{% if show_inactive %}&show_inactive=1{% endif %}&page={{ page_obj.previous_page_number }}" class="btn btn-ghost btn-sm">← Previous</a>
-  {% endif %}
-  <span style="font-size:.85rem;color:var(--mut);">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} ({{ total_matching }} customer{{ total_matching|pluralize }})</span>
-  {% if page_obj.has_next %}
-    <a href="?q={{ query }}{% if show_inactive %}&show_inactive=1{% endif %}&page={{ page_obj.next_page_number }}" class="btn btn-ghost btn-sm">Next →</a>
-  {% endif %}
+<div class="cust-shell">
+  <nav class="cust-index">
+    {% for idx in index_chars %}
+    <a href="?letter={{ idx.char }}{% if show_inactive %}&show_inactive=1{% endif %}"
+       class="{% if not query and letter == idx.char %}active{% endif %}{% if not idx.count %} empty{% endif %}">
+      {{ idx.char }}<span class="idx-count">{{ idx.count }}</span>
+    </a>
+    {% endfor %}
+  </nav>
+
+  <div class="cust-main">
+    <div class="cust-list">
+      {% if customers %}
+      {% for c in customers %}
+      <div class="cust-row" {% if not c.is_active %}style="opacity:.5;"{% endif %}>
+        <a href="{% url 'customer_detail' c.pk %}" class="cust-name" style="text-decoration:none;color:inherit;">{{ c.name }}{% if not c.is_active %} <span style="font-size:.72rem;color:var(--mut);font-style:italic;">(inactive)</span>{% endif %}</a>
+        <div class="cust-contact">{% if c.contact_name %}{{ c.contact_name }}{% endif %}{% if c.contact_name and c.email %} · {% endif %}{% if c.email %}{{ c.email }}{% endif %}</div>
+        <div class="cust-phone">{% if c.phone %}{{ c.phone }}{% endif %}</div>
+        <a href="{% url 'customer_detail' c.pk %}" class="btn btn-ghost btn-sm">View</a>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div style="text-align:center;padding:3rem;color:var(--mut);">
+        {% if query %}No customers found for "{{ query }}"{% else %}No customers starting with "{{ letter }}"{% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div style="display:flex;align-items:center;justify-content:center;gap:1rem;margin-top:1.2rem;">
+      {% if page_obj.has_previous %}
+        <a href="?q={{ query }}&letter={{ letter }}{% if show_inactive %}&show_inactive=1{% endif %}&page={{ page_obj.previous_page_number }}" class="btn btn-ghost btn-sm">← Previous</a>
+      {% endif %}
+      <span style="font-size:.85rem;color:var(--mut);">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} ({{ total_matching }} customer{{ total_matching|pluralize }})</span>
+      {% if page_obj.has_next %}
+        <a href="?q={{ query }}&letter={{ letter }}{% if show_inactive %}&show_inactive=1{% endif %}&page={{ page_obj.next_page_number }}" class="btn btn-ghost btn-sm">Next →</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
 </div>
-{% endif %}
 
 <!-- New Customer Modal -->
 <div class="nc-overlay" id="nc-overlay" onclick="closeNewCustomer()"></div>

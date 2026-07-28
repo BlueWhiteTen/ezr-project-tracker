@@ -125,21 +125,38 @@ def customer_import(request):
 def customer_list(request):
     q = request.GET.get('q', '').strip()
     show_inactive = request.GET.get('show_inactive', '') == '1'
-    customers = CustomerProfile.objects.all().order_by('name')
+    letter = request.GET.get('letter', '').strip().upper()[:1]
+
+    base = CustomerProfile.objects.all()
     if not show_inactive:
-        customers = customers.filter(is_active=True)
+        base = base.filter(is_active=True)
+
     if q:
-        customers = customers.filter(
+        # A text search overrides the index filter — show matches regardless
+        # of which letter/number they start with.
+        letter = ''
+        customers = base.filter(
             Q(name__icontains=q) | Q(contact_name__icontains=q) |
             Q(email__icontains=q) | Q(phone__icontains=q)
-        )
+        ).order_by('name')
+    else:
+        if not letter:
+            letter = '0'
+        customers = base.filter(name__istartswith=letter).order_by('name')
 
-    # Paginate — without this, a large imported customer list spends most of
-    # its time rendering rows nobody can see, which is what was making the
-    # page heavy in the browser.
+    # Per-letter/number counts for the index column — one query, not 36.
+    from django.db.models.functions import Upper, Left
+    from django.db.models import Count
+    counts_qs = base.annotate(first_char=Upper(Left('name', 1))).values('first_char').annotate(n=Count('id'))
+    counts = {row['first_char']: row['n'] for row in counts_qs}
+    index_chars = [{'char': c, 'count': counts.get(c, 0)} for c in list('0123456789') + list('ABCDEFGHIJKLMNOPQRSTUVWXYZ')]
+
+    # Paginate within the selected letter/search — groups are naturally much
+    # smaller than the full list, so a modest page size keeps things fast
+    # without needing many pages.
     from django.core.paginator import Paginator
     total_matching = customers.count()
-    paginator = Paginator(customers, 200)
+    paginator = Paginator(customers, 50)
     page_num = request.GET.get('page', 1)
     try:
         page_obj = paginator.page(page_num)
@@ -152,6 +169,7 @@ def customer_list(request):
         'show_inactive': show_inactive,
         'inactive_count': CustomerProfile.objects.filter(is_active=False).count(),
         'page_obj': page_obj, 'total_matching': total_matching,
+        'letter': letter, 'index_chars': index_chars,
     })
 
 
