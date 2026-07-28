@@ -12,25 +12,46 @@
 .notif-body{flex:1;font-size:.875rem;color:var(--txt2);}
 .notif-time{font-size:.75rem;color:var(--mut);white-space:nowrap;}
 .empty{text-align:center;padding:3rem;color:var(--mut);}
+.notif-dismiss{background:none;border:none;color:var(--mut);cursor:pointer;font-size:1.1rem;line-height:1;padding:2px 8px;border-radius:4px;flex-shrink:0;align-self:center;}
+.notif-dismiss:hover{background:var(--red-bg);color:var(--red);}
 {% endblock %}
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.3rem;">
   <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">Notifications</h1>
   <span style="font-size:.85rem;color:var(--mut);">Last 50</span>
 </div>
-<div class="notif-card">
+<div class="notif-card" id="notif-card">
   {% if notifications %}
   {% for n in notifications %}
-  <{% if n.link %}a href="{{ n.link }}"{% else %}div{% endif %} class="notif-row {% if not n.read %}unread{% endif %}">
+  <div class="notif-row {% if not n.read %}unread{% endif %}" id="notif-{{ n.pk }}">
+    {% if n.link %}<a href="{{ n.link }}" style="display:flex;align-items:flex-start;gap:.9rem;flex:1;text-decoration:none;color:inherit;">{% endif %}
     <div class="notif-icon {% if n.type == 'tag' %}notif-icon-tag{% else %}notif-icon-msg{% endif %}">
       {% if n.type == 'tag' %}@{% else %}✉{% endif %}
     </div>
     <div class="notif-body">{{ n.text }}</div>
     <div class="notif-time">{{ n.timestamp|date:"d M Y, H:i" }}</div>
-  </{% if n.link %}a{% else %}div{% endif %}>
+    {% if n.link %}</a>{% endif %}
+    <button class="notif-dismiss" onclick="dismissNotification(event, {{ n.pk }})" title="Dismiss">✕</button>
+  </div>
   {% endfor %}
   {% else %}
-  <div class="empty">No notifications yet</div>
+  <div class="empty" id="notif-empty">No notifications yet</div>
   {% endif %}
 </div>
+<script>
+const CSRF = '{{ csrf_token }}';
+async function dismissNotification(event, pk){
+  event.preventDefault();
+  event.stopPropagation();
+  const row = document.getElementById('notif-' + pk);
+  const res = await fetch(`/notifications/${pk}/dismiss/`, { method: 'POST', headers: { 'X-CSRFToken': CSRF } });
+  if(res.ok){
+    row.remove();
+    const card = document.getElementById('notif-card');
+    if(!card.querySelector('.notif-row')){
+      card.innerHTML = '<div class="empty" id="notif-empty">No notifications yet</div>';
+    }
+  }
+}
+</script>
 {% endblock %}

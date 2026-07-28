@@ -40,6 +40,15 @@ def notifications_view(request):
     return render(request, 'projects/notifications.html', {'notifications': notes})
 
 
+@login_required
+@require_POST
+def notification_dismiss(request, pk):
+    # Scoped to request.user so nobody can dismiss someone else's notification
+    # by guessing a pk.
+    Notification.objects.filter(pk=pk, user=request.user).delete()
+    return JsonResponse({'ok': True})
+
+
 # ── Messaging ─────────────────────────────────────────────────────────────────
 
 

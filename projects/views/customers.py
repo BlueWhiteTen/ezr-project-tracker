@@ -64,6 +64,64 @@ def customer_history(request, pk):
 
 
 @login_required
+def customer_import(request):
+    if not request.user.is_superuser:
+        return JsonResponse({'error': 'Only Tasos can import customers from Excel.'}, status=403)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    import openpyxl
+    f = request.FILES.get('file')
+    if not f:
+        return JsonResponse({'error': 'No file'}, status=400)
+    try:
+        wb = openpyxl.load_workbook(f)
+        ws = wb.active
+        rows = list(ws.iter_rows(values_only=True))
+        if not rows:
+            return JsonResponse({'error': 'File is empty.'}, status=400)
+
+        # Map columns by header name — robust against the spreadsheet's
+        # column order changing, unlike matching by fixed position.
+        header_row = [str(h).strip() if h is not None else '' for h in rows[0]]
+        required = ['A/C', 'Name', 'Contact', 'Telephone',
+                    'VAT Number', 'Company Reg. Number', 'Email 1', 'Email 3']
+        missing = [h for h in required if h not in header_row]
+        if missing:
+            return JsonResponse({'error': f'Missing expected column(s): {", ".join(missing)}'}, status=400)
+        col = {h: header_row.index(h) for h in required}
+
+        def text(row, key):
+            v = row[col[key]]
+            return str(v).strip() if v is not None else ''
+
+        created = 0
+        skipped = 0
+        for row in rows[1:]:
+            name = text(row, 'Name')
+            if not name:
+                skipped += 1
+                continue
+
+            # Always create a new record — never match against, or update,
+            # an existing one. Any duplicates this creates are intentional;
+            # they get reconciled by hand afterwards, not merged here.
+            CustomerProfile.objects.create(
+                name=name,
+                account_number=text(row, 'A/C'),
+                contact_name=text(row, 'Contact'),
+                phone=text(row, 'Telephone'),
+                vat_number=text(row, 'VAT Number'),
+                company_reg_number=text(row, 'Company Reg. Number'),
+                email=text(row, 'Email 1'),
+                email3=text(row, 'Email 3'),
+            )
+            created += 1
+        return JsonResponse({'ok': True, 'created': created, 'skipped': skipped})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
 def customer_list(request):
     q = request.GET.get('q', '').strip()
     customers = CustomerProfile.objects.all().order_by('name')
@@ -91,6 +149,7 @@ def customer_detail(request, pk):
         customer.email3       = request.POST.get('email3', '').strip()
         customer.phone        = request.POST.get('phone', '').strip()
         customer.vat_number   = request.POST.get('vat_number', '').strip()
+        customer.company_reg_number = request.POST.get('company_reg_number', '').strip()
         customer.eori_number  = request.POST.get('eori_number', '').strip()
         customer.account_number = request.POST.get('account_number', '').strip()
         customer.address_line1 = request.POST.get('address_line1', '').strip()

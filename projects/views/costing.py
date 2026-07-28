@@ -1324,10 +1324,7 @@ def satisfaction_note(request, pk):
     """Generate a client satisfaction note as a printable HTML page."""
     project = get_object_or_404(Project, pk=pk)
     report = getattr(project, 'install_report', None)
-    try:
-        customer_profile = CustomerProfile.objects.get(name__iexact=project.customer)
-    except CustomerProfile.DoesNotExist:
-        customer_profile = None
+    customer_profile = project.customer_profile or CustomerProfile.objects.filter(name__iexact=project.customer).first()
     # Pre-resolve all fields so template is simple
     site_contact = project.addr_fao or (report.site_contact if report else '') or (customer_profile.contact_name if customer_profile else '')
     contact_number = project.addr_phone or (report.contact_number if report else '') or (customer_profile.phone if customer_profile else '')

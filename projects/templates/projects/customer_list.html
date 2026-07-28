@@ -25,8 +25,15 @@
 {% block content %}
 <div class="page-hdr">
   <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">Customers</h1>
-  <button class="btn btn-primary" onclick="openNewCustomer()">+ New Customer</button>
+  <div style="display:flex;gap:.6rem;">
+    <button class="btn btn-primary" onclick="openNewCustomer()">+ New Customer</button>
+    {% if request.user.is_superuser %}
+    <label class="btn btn-ghost btn-sm" style="cursor:pointer;" for="import-file">⬆ Import from Excel</label>
+    <input type="file" id="import-file" accept=".xlsx" style="display:none;" onchange="importCustomers(this)">
+    {% endif %}
+  </div>
 </div>
+<div id="import-msg" style="display:none;padding:.65rem 1rem;border-radius:var(--rad);font-size:.85rem;margin-bottom:1rem;"></div>
 <form method="get" class="search-row">
   <input class="form-input" name="q" value="{{ query }}" placeholder="Search name, contact, email…" style="max-width:360px;">
   <button class="btn btn-ghost btn-sm" type="submit">Search</button>
@@ -97,6 +104,34 @@
 <script>
 const CSRF = '{{ csrf_token }}';
 function openNewCustomer(){ document.getElementById('nc-overlay').classList.add('open'); document.getElementById('nc-modal').classList.add('open'); setTimeout(()=>document.getElementById('nc-name').focus(),100); }
+
+async function importCustomers(inp){
+  const file = inp.files[0];
+  if(!file) return;
+  const msg = document.getElementById('import-msg');
+  msg.style.display='block';
+  msg.style.background='var(--surf2)';
+  msg.style.color='var(--txt2)';
+  msg.style.border='1px solid var(--bdr)';
+  msg.textContent='Importing… please wait';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const r = await fetch('/customers/import/',{method:'POST',headers:{'X-CSRFToken':'{{ csrf_token }}'},body:fd});
+    const d = await r.json();
+    if(d.ok){
+      msg.style.background='var(--grn-bg)';msg.style.color='var(--grn)';msg.style.border='1px solid rgba(22,163,74,.2)';
+      msg.textContent=`✓ Imported ${d.created} customer(s)${d.skipped ? ` — ${d.skipped} row(s) skipped (no name)` : ''}. Existing customers were left untouched — any duplicates are there for you to review.`;
+      setTimeout(()=>location.reload(),2000);
+    } else {
+      msg.style.background='var(--red-bg)';msg.style.color='var(--red)';msg.style.border='1px solid rgba(220,38,38,.2)';
+      msg.textContent='Error: '+d.error;
+    }
+  } catch(e){
+    msg.style.background='var(--red-bg)';msg.style.color='var(--red)';
+    msg.textContent='Import failed: '+e.message;
+  }
+}
 function closeNewCustomer(){ document.getElementById('nc-overlay').classList.remove('open'); document.getElementById('nc-modal').classList.remove('open'); }
 async function submitNewCustomer(){
   const name = document.getElementById('nc-name').value.trim();

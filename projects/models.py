@@ -358,7 +358,7 @@ class SatisfactionNote(models.Model):
 
 
 class CustomerProfile(models.Model):
-    name         = models.CharField(max_length=200, unique=True)
+    name         = models.CharField(max_length=200, help_text='Not required to be unique — imports may intentionally create duplicates to be reconciled by hand')
     account_number = models.CharField(max_length=100, blank=True, help_text='Sage customer account reference')
     contact_name = models.CharField(max_length=200, blank=True)
     email        = models.EmailField(blank=True)
@@ -366,6 +366,7 @@ class CustomerProfile(models.Model):
     email3       = models.EmailField(blank=True)
     phone        = models.CharField(max_length=30, blank=True)
     vat_number   = models.CharField(max_length=40, blank=True)
+    company_reg_number = models.CharField(max_length=40, blank=True)
     eori_number  = models.CharField(max_length=40, blank=True)
     address_line1  = models.CharField(max_length=200, blank=True)
     address_line2  = models.CharField(max_length=200, blank=True)

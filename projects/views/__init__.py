@@ -29,7 +29,7 @@ from .reminders import (
     reminder_add, reminder_delete, reminder_dismiss, reminders_list, check_reminders,
 )
 from .customers import (
-    customer_autocomplete, customer_history, customer_list,
+    customer_autocomplete, customer_history, customer_list, customer_import,
     customer_detail, customer_create, customer_delete,
 )
 from .suppliers import (
@@ -45,7 +45,7 @@ from .purchasing import (
     project_search,
 )
 from .messaging import (
-    notification_count, notifications_view, inbox, conversation_poll,
+    notification_count, notifications_view, notification_dismiss, inbox, conversation_poll,
     conversation, team_chat, team_chat_poll,
 )
 from .staff import (
