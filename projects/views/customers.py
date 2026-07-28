@@ -133,10 +133,25 @@ def customer_list(request):
             Q(name__icontains=q) | Q(contact_name__icontains=q) |
             Q(email__icontains=q) | Q(phone__icontains=q)
         )
+
+    # Paginate — without this, a large imported customer list spends most of
+    # its time rendering rows nobody can see, which is what was making the
+    # page heavy in the browser.
+    from django.core.paginator import Paginator
+    total_matching = customers.count()
+    paginator = Paginator(customers, 200)
+    page_num = request.GET.get('page', 1)
+    try:
+        page_obj = paginator.page(page_num)
+    except Exception:
+        page_obj = paginator.page(1)
+    customers = page_obj.object_list
+
     return render(request, 'projects/customer_list.html', {
         'customers': customers, 'query': q,
         'show_inactive': show_inactive,
         'inactive_count': CustomerProfile.objects.filter(is_active=False).count(),
+        'page_obj': page_obj, 'total_matching': total_matching,
     })
 
 

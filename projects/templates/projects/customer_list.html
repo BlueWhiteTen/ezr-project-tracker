@@ -66,6 +66,18 @@
   {% endif %}
 </div>
 
+{% if page_obj.paginator.num_pages > 1 %}
+<div style="display:flex;align-items:center;justify-content:center;gap:1rem;margin-top:1.2rem;">
+  {% if page_obj.has_previous %}
+    <a href="?q={{ query }}{% if show_inactive %}&show_inactive=1{% endif %}&page={{ page_obj.previous_page_number }}" class="btn btn-ghost btn-sm">← Previous</a>
+  {% endif %}
+  <span style="font-size:.85rem;color:var(--mut);">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} ({{ total_matching }} customer{{ total_matching|pluralize }})</span>
+  {% if page_obj.has_next %}
+    <a href="?q={{ query }}{% if show_inactive %}&show_inactive=1{% endif %}&page={{ page_obj.next_page_number }}" class="btn btn-ghost btn-sm">Next →</a>
+  {% endif %}
+</div>
+{% endif %}
+
 <!-- New Customer Modal -->
 <div class="nc-overlay" id="nc-overlay" onclick="closeNewCustomer()"></div>
 <div class="nc-modal" id="nc-modal">
