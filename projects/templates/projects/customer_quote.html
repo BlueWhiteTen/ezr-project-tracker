@@ -30,8 +30,8 @@
   .rtf-editable:empty:before{content:attr(data-placeholder);color:#999;}
   .price-row .lbl{font-weight:400;}
   .terms{white-space:pre-wrap;margin:1rem 0;color:#333;}
-  .sig{margin-top:1.5rem;break-inside:avoid;page-break-inside:avoid;-pdf-keep-with-next:true;}
-  .footer{border-top:1px solid #ccc;margin-top:2rem;padding-top:.6rem;text-align:center;font-size:.7rem;color:#666;line-height:1.5;break-inside:avoid;page-break-inside:avoid;-pdf-keep-with-next:true;}
+  .sig{margin-top:1.5rem;break-inside:avoid;page-break-inside:avoid;}
+  .footer{border-top:1px solid #ccc;padding-top:.6rem;text-align:center;font-size:.7rem;color:#666;line-height:1.5;}
   .edit-only{display:none;}
   .editing .edit-only{display:block;}
   .editing .view-only{display:none;}
@@ -42,16 +42,29 @@
     .page{box-shadow:none;margin:0;max-width:100%;padding:1cm 1.2cm 0 1.2cm;}
     .photos-page{break-before:page;page-break-before:always;}
     .photos-page img{break-inside:avoid;page-break-inside:avoid;}
-    /* Reclaim vertical space so the whole quote fits on one printed page —
-       the on-screen editing spacing above is more generous than a printed
-       page needs, and margins between this many blocks add up quickly. */
+    /* Reclaim vertical space so short quotes comfortably fit on one page —
+       the on-screen editing spacing above is more generous than print
+       needs, and margins between this many blocks add up quickly. */
     .qhead{margin-bottom:.8rem;}
     .addr{line-height:1.3;}
     p, .view-only.field, .rtf-editable{margin-top:.5rem !important;margin-bottom:.5rem !important;}
     .terms{margin:.5rem 0;line-height:1.35;}
     .sig{margin-top:.7rem;}
-    .footer{margin-top:.8rem;padding-top:.4rem;line-height:1.3;}
-    @page { margin:0.5cm; size:A4; }
+    /* A genuine repeating footer — pinned to the bottom of every printed
+       page, not just wherever the content happens to end. Real browsers
+       handle position:fixed correctly in print, repeating it once per
+       page; .page's bottom padding above reserves room so it never
+       overlaps the actual content. */
+    .footer{
+      position:fixed;
+      bottom:0.3cm;
+      left:1.2cm;
+      right:1.2cm;
+      padding-top:.4rem;
+      line-height:1.3;
+      background:#fff;
+    }
+    @page { margin:0.5cm 0.5cm 2.9cm 0.5cm; size:A4; }
   }
 </style>
 </head>
