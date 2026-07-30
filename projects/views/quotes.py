@@ -47,7 +47,6 @@ def customer_quote(request, pk, cost_pk=None):
 
 
     if request.method == 'POST':
-        quote.intro          = request.POST.get('intro', '').strip()
         quote.greeting       = request.POST.get('greeting', '').strip()
         quote.thank_you      = request.POST.get('thank_you', '').strip()
         quote.closing        = request.POST.get('closing', '').strip()
@@ -57,7 +56,6 @@ def customer_quote(request, pk, cost_pk=None):
         quote.header_ref     = request.POST.get('header_ref', '').strip()
         quote.supply_line    = request.POST.get('supply_line', '').strip()
         quote.capacity       = request.POST.get('capacity', '').strip()
-        quote.bay_breakdown  = request.POST.get('bay_breakdown', '').strip()
         quote.spec_note      = request.POST.get('spec_note', '').strip()
         quote.main_price_label = request.POST.get('main_price_label', '').strip()
         quote.main_price     = request.POST.get('main_price') or 0

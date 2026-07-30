@@ -97,32 +97,16 @@
   <div class="view-only field" style="margin-top:1rem;">{{ supply_line }}</div>
   <textarea class="efield edit-only" name="supply_line" rows="3" style="margin-top:1rem;">{{ supply_line }}</textarea>
 
-  <!-- Intro (optional extra) -->
-  <div class="view-only field" style="margin-top:1rem;margin-bottom:1rem;">{{ quote.intro|linebreaksbr }}</div>
-  <textarea class="efield edit-only" name="intro" rows="2" placeholder="Optional extra intro text…" style="margin-top:1rem;margin-bottom:1rem;">{{ quote.intro }}</textarea>
-
-  <!-- Additional information 1 (repurposed from 'capacity') -->
-  {% if quote.capacity %}<div class="view-only field" style="margin-bottom:1rem;">{{ capacity_html }}</div>{% endif %}
-  <div class="edit-only rtf-wrap" style="margin-bottom:1rem;">
+  <!-- Additional project information -->
+  {% if quote.capacity %}<div class="view-only field" style="margin-top:1rem;margin-bottom:1rem;">{{ capacity_html }}</div>{% endif %}
+  <div class="edit-only rtf-wrap" style="margin-top:1rem;margin-bottom:1rem;">
     <div class="rtf-toolbar">
       <button type="button" onclick="rtfCmd(this,'bold')"><b>B</b></button>
       <button type="button" onclick="rtfCmd(this,'italic')"><i>I</i></button>
       <button type="button" onclick="rtfCmd(this,'underline')"><u>U</u></button>
     </div>
-    <div class="efield rtf-editable" contenteditable="true" data-target="capacity" data-placeholder="Additional project information (e.g. bay breakdown, quantities…)">{{ capacity_html }}</div>
+    <div class="efield rtf-editable" contenteditable="true" data-target="capacity" data-placeholder="Additional project information (e.g. bay breakdown, spec notes, quantities…)">{{ capacity_html }}</div>
     <textarea name="capacity" id="capacity-hidden" style="display:none;">{{ quote.capacity }}</textarea>
-  </div>
-
-  <!-- Additional information 2 (repurposed from 'bay_breakdown') -->
-  {% if quote.bay_breakdown %}<div class="view-only field" style="margin-bottom:1rem;">{{ bay_breakdown_html }}</div>{% endif %}
-  <div class="edit-only rtf-wrap" style="margin-bottom:1rem;">
-    <div class="rtf-toolbar">
-      <button type="button" onclick="rtfCmd(this,'bold')"><b>B</b></button>
-      <button type="button" onclick="rtfCmd(this,'italic')"><i>I</i></button>
-      <button type="button" onclick="rtfCmd(this,'underline')"><u>U</u></button>
-    </div>
-    <div class="efield rtf-editable" contenteditable="true" data-target="bay_breakdown" data-placeholder="Additional project information (e.g. spec notes, installation details…)">{{ bay_breakdown_html }}</div>
-    <textarea name="bay_breakdown" id="bay_breakdown-hidden" style="display:none;">{{ quote.bay_breakdown }}</textarea>
   </div>
 
   <!-- Prices -->
