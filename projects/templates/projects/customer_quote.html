@@ -1,4 +1,5 @@
 {% load static %}
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,9 +18,16 @@
   .qhead .proj{text-align:right;font-weight:700;font-size:.95rem;padding-top:.3rem;}
   .addr{margin-bottom:1.2rem;line-height:1.45;}
   .addr .date{margin-bottom:1rem;}
-  .field{border:1px dashed transparent;border-radius:4px;}
+  .field{border:1px dashed #fff;border-radius:4px;}
   .editing .field{border-color:#d4700a;background:#fff8f0;padding:2px 5px;}
   textarea.efield,input.efield{width:100%;border:1px solid #d4700a;border-radius:4px;padding:6px 8px;font-family:Arial;font-size:14px;background:#fff8f0;resize:vertical;}
+  .rtf-wrap{border:1px solid #d4700a;border-radius:4px;background:#fff8f0;overflow:hidden;}
+  .rtf-toolbar{display:flex;gap:2px;padding:4px;border-bottom:1px solid #f0c089;background:#fff2e0;}
+  .rtf-toolbar button{width:26px;height:24px;border:1px solid #e0b078;border-radius:3px;background:#fff;cursor:pointer;font-size:13px;color:#333;line-height:1;}
+  .rtf-toolbar button:hover{background:#fde8d0;}
+  .rtf-toolbar button.active{background:#d4700a;color:#fff;border-color:#d4700a;}
+  .rtf-editable{min-height:80px;padding:6px 8px;font-family:Arial;font-size:14px;outline:none;border:none;background:transparent;}
+  .rtf-editable:empty:before{content:attr(data-placeholder);color:#999;}
   .price-row{display:flex;justify-content:space-between;align-items:center;margin:.5rem 0;font-weight:700;}
   .price-row .lbl{font-weight:400;}
   .terms{white-space:pre-wrap;margin:1rem 0;color:#333;}
@@ -74,14 +82,14 @@
       <div class="addr">
         <div class="date view-only">{{ quote_date }}</div>
         <input class="efield edit-only" name="quote_date" value="{{ quote_date }}" style="margin-bottom:.6rem;max-width:240px;">
-        <div class="view-only" style="white-space:pre-line;">{{ address_block }}</div>
+        <div class="view-only" style="white-space:pre-line;">{{ address_block|linebreaksbr }}</div>
         <textarea class="efield edit-only" name="address_block" rows="6" placeholder="Contact name&#10;Company&#10;Address…" style="max-width:340px;">{{ address_block }}</textarea>
         {% if not address_block %}<div class="view-only" style="color:#c00;">⚠ No customer profile found for "{{ project.customer }}" — add their address in Customers, or type it here in Edit mode.</div>{% endif %}
       </div>
     </div>
     <div class="logo" style="text-align:right;">
       <img src="{% static 'logo.png' %}" alt="EZR Shelving">
-      <div class="proj view-only" style="white-space:pre-line;">{{ header_ref }}</div>
+      <div class="proj view-only" style="white-space:pre-line;">{{ header_ref|linebreaksbr }}</div>
       <textarea class="efield edit-only" name="header_ref" rows="2" style="max-width:240px;text-align:right;">{{ header_ref }}</textarea>
     </div>
   </div>
@@ -103,25 +111,41 @@
   <textarea class="efield edit-only" name="intro" rows="2" placeholder="Optional extra intro text…" style="margin-top:1rem;margin-bottom:1rem;">{{ quote.intro }}</textarea>
 
   <!-- Additional information 1 (repurposed from 'capacity') -->
-  {% if quote.capacity %}<div class="view-only field" style="margin-bottom:1rem;white-space:pre-wrap;">{{ quote.capacity }}</div>{% endif %}
-  <textarea class="efield edit-only" name="capacity" rows="4" placeholder="Additional project information (e.g. bay breakdown, quantities…)" style="margin-bottom:1rem;">{{ quote.capacity }}</textarea>
+  {% if quote.capacity %}<div class="view-only field" style="margin-bottom:1rem;">{{ capacity_html }}</div>{% endif %}
+  <div class="edit-only rtf-wrap" style="margin-bottom:1rem;">
+    <div class="rtf-toolbar">
+      <button type="button" onclick="rtfCmd(this,'bold')"><b>B</b></button>
+      <button type="button" onclick="rtfCmd(this,'italic')"><i>I</i></button>
+      <button type="button" onclick="rtfCmd(this,'underline')"><u>U</u></button>
+    </div>
+    <div class="efield rtf-editable" contenteditable="true" data-target="capacity" data-placeholder="Additional project information (e.g. bay breakdown, quantities…)">{{ capacity_html }}</div>
+    <textarea name="capacity" id="capacity-hidden" style="display:none;">{{ quote.capacity }}</textarea>
+  </div>
 
   <!-- Additional information 2 (repurposed from 'bay_breakdown') -->
-  {% if quote.bay_breakdown %}<div class="view-only field" style="margin-bottom:1rem;white-space:pre-wrap;">{{ quote.bay_breakdown }}</div>{% endif %}
-  <textarea class="efield edit-only" name="bay_breakdown" rows="4" placeholder="Additional project information (e.g. spec notes, installation details…)" style="margin-bottom:1rem;">{{ quote.bay_breakdown }}</textarea>
+  {% if quote.bay_breakdown %}<div class="view-only field" style="margin-bottom:1rem;">{{ bay_breakdown_html }}</div>{% endif %}
+  <div class="edit-only rtf-wrap" style="margin-bottom:1rem;">
+    <div class="rtf-toolbar">
+      <button type="button" onclick="rtfCmd(this,'bold')"><b>B</b></button>
+      <button type="button" onclick="rtfCmd(this,'italic')"><i>I</i></button>
+      <button type="button" onclick="rtfCmd(this,'underline')"><u>U</u></button>
+    </div>
+    <div class="efield rtf-editable" contenteditable="true" data-target="bay_breakdown" data-placeholder="Additional project information (e.g. spec notes, installation details…)">{{ bay_breakdown_html }}</div>
+    <textarea name="bay_breakdown" id="bay_breakdown-hidden" style="display:none;">{{ quote.bay_breakdown }}</textarea>
+  </div>
 
   <!-- Prices -->
   <div class="price-row">
     <span class="lbl view-only">{{ quote.main_price_label }}</span>
     <input class="efield edit-only lbl" name="main_price_label" value="{{ quote.main_price_label }}" style="max-width:60%;">
-    <span class="view-only" id="main-price-display">£{{ quote.main_price|floatformat:2 }}</span>
+    <span class="view-only" id="main-price-display">£{{ quote.main_price|floatformat:2|intcomma }}</span>
     <input class="efield edit-only" name="main_price" type="number" step="0.01" value="{{ quote.main_price|floatformat:2 }}" style="max-width:140px;text-align:right;">
   </div>
 
   <div class="price-row">
     <span class="lbl view-only">{% if quote.extra_label %}{{ quote.extra_label }}{% endif %}</span>
     <input class="efield edit-only lbl" name="extra_label" value="{{ quote.extra_label }}" placeholder="Additional cost to… (optional)" style="max-width:60%;">
-    <span class="view-only">{% if quote.extra_price is not None %}£{{ quote.extra_price|floatformat:2 }}{% endif %}</span>
+    <span class="view-only">{% if quote.extra_price is not None %}£{{ quote.extra_price|floatformat:2|intcomma }}{% endif %}</span>
     <input class="efield edit-only" name="extra_price" type="number" step="0.01" value="{{ quote.extra_price|floatformat:2 }}" placeholder="0.00" style="max-width:140px;text-align:right;">
   </div>
 
@@ -245,9 +269,62 @@ function toggleEdit(){
   document.getElementById('save-btn').style.display = editing ? 'inline-block':'none';
 }
 function saveQuote(){
+  document.querySelectorAll('.rtf-editable').forEach(syncRtf);
   document.getElementById('action-field').value = 'save';
   document.getElementById('quote-form').submit();
 }
+
+// ── Basic rich text (bold/italic/underline only) for the free-text fields ──
+function rtfSanitize(html){
+  // Whitelist-only cleanup: strip everything except b/strong/i/em/u/br and
+  // plain text, so a paste (or a determined user) can't smuggle in a script
+  // tag or arbitrary markup through these fields.
+  const allowed = new Set(['B','STRONG','I','EM','U','BR']);
+  const container = document.createElement('div');
+  container.innerHTML = html;
+  function clean(node){
+    [...node.childNodes].forEach(child => {
+      if(child.nodeType === 1){
+        if(!allowed.has(child.tagName)){
+          const text = document.createTextNode(child.textContent);
+          node.replaceChild(text, child);
+        } else {
+          // Drop all attributes (style=, onclick=, etc.) — only the tag itself is trusted
+          [...child.attributes].forEach(a => child.removeAttribute(a.name));
+          clean(child);
+        }
+      }
+    });
+  }
+  clean(container);
+  return container.innerHTML;
+}
+function syncRtf(el){
+  const clean = rtfSanitize(el.innerHTML);
+  if(clean !== el.innerHTML) el.innerHTML = clean;
+  const target = document.getElementById(el.dataset.target + '-hidden');
+  if(target) target.value = clean;
+}
+function rtfCmd(btn, command){
+  const wrap = btn.closest('.rtf-wrap');
+  const editable = wrap.querySelector('.rtf-editable');
+  editable.focus();
+  document.execCommand(command, false, null);
+  syncRtf(editable);
+  btn.classList.toggle('active', document.queryCommandState(command));
+}
+document.querySelectorAll('.rtf-editable').forEach(el => {
+  el.addEventListener('input', () => syncRtf(el));
+  el.addEventListener('paste', e => {
+    // Paste as plain text only — formatted pastes from Word/Outlook etc.
+    // carry a lot of markup we don't want to have to sanitize line by line.
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    document.execCommand('insertText', false, text);
+    syncRtf(el);
+  });
+});
+try { document.execCommand('defaultParagraphSeparator', false, 'br'); } catch(e) {}
 async function refreshPrice(){
   const btn = document.getElementById('refresh-btn');
   btn.disabled = true;

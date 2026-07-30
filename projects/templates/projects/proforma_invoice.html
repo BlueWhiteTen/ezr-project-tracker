@@ -80,18 +80,18 @@
   <div class="addr-row">
     <div class="addr-box">
       <div class="lbl">Invoice to:</div>
-      <div class="body vfield">{{ pf.invoice_to }}</div>
+      <div class="body vfield">{{ pf.invoice_to|linebreaksbr }}</div>
       <textarea class="efield" name="invoice_to" rows="6">{{ pf.invoice_to }}</textarea>
     </div>
     <div class="addr-box">
       <div class="lbl">Delivery to:</div>
-      <div class="body vfield">{{ pf.delivery_to }}</div>
+      <div class="body vfield">{{ pf.delivery_to|linebreaksbr }}</div>
       <textarea class="efield" name="delivery_to" rows="6">{{ pf.delivery_to }}</textarea>
     </div>
   </div>
 
   <div style="margin-bottom:.4rem;"><strong>Comments or Special Instructions:</strong>
-    <div class="vfield" style="white-space:pre-line;">{{ pf.comments }}</div>
+    <div class="vfield" style="white-space:pre-line;">{{ pf.comments|linebreaksbr }}</div>
     <textarea class="efield" name="comments" rows="2">{{ pf.comments }}</textarea>
   </div>
 
@@ -112,7 +112,7 @@
     <tr>
       <td></td>
       <td>
-        <span class="vfield" style="white-space:pre-line;">{{ pf.description }}</span>
+        <span class="vfield" style="white-space:pre-line;">{{ pf.description|linebreaksbr }}</span>
         <textarea class="efield" name="description" rows="3">{{ pf.description }}</textarea>
       </td>
       <td></td><td></td>

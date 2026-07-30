@@ -139,6 +139,21 @@ def customer_quote(request, pk, cost_pk=None):
     attached_photos = quote.attached_photos.all()
     library_photos = QuotePhoto.objects.all()
 
+    def _legacy_safe_html(text):
+        """Quotes saved before rich-text editing was added hold plain text
+        with literal newlines; quotes saved since hold real HTML (from the
+        bold/italic/underline editor). Told apart by whether the text
+        contains a '<' at all — plain text never does in practice, and the
+        editor always produces real tags for any actual formatting or line
+        break. This avoids needing a one-off data migration for old quotes."""
+        from django.utils.html import escape
+        from django.utils.safestring import mark_safe
+        if not text:
+            return ''
+        if '<' in text:
+            return mark_safe(text)
+        return mark_safe(escape(text).replace('\n', '<br>'))
+
     return render(request, 'projects/customer_quote.html', {
         'project': project,
         'cost': cost,
@@ -157,6 +172,8 @@ def customer_quote(request, pk, cost_pk=None):
         'quote_date': quote.quote_date or default_date,
         'address_block': quote.address_block or default_address_block,
         'header_ref': quote.header_ref or default_ref,
+        'capacity_html': _legacy_safe_html(quote.capacity),
+        'bay_breakdown_html': _legacy_safe_html(quote.bay_breakdown),
         'sell_price': sell_price,
         'today': today,
         'attached_photos': attached_photos,

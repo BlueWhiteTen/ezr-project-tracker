@@ -10,28 +10,32 @@ from django.conf import settings
 from ..models import PurchaseOrder, Project, PickingList, ProjectCost, ProjectQuote, ProformaInvoice
 
 
+def _pdf_link_callback(uri, rel):
+    """Resolves /static/ and /media/ URLs to real file paths on disk, so
+    xhtml2pdf can actually embed images (like the EZR logo) instead of
+    silently failing to find them."""
+    if uri.startswith(settings.STATIC_URL):
+        path = uri.replace(settings.STATIC_URL, '', 1)
+        for d in getattr(settings, 'STATICFILES_DIRS', []):
+            full = os.path.join(d, path)
+            if os.path.exists(full):
+                return full
+        if settings.STATIC_ROOT:
+            full = os.path.join(settings.STATIC_ROOT, path)
+            if os.path.exists(full):
+                return full
+    if settings.MEDIA_URL and uri.startswith(settings.MEDIA_URL):
+        return os.path.join(settings.MEDIA_ROOT, uri.replace(settings.MEDIA_URL, '', 1))
+    return uri
+
+
 def _render_pdf(template_name, context, filename):
     """Render a Django template to a PDF download response."""
     from xhtml2pdf import pisa
 
-    def link_callback(uri, rel):
-        if uri.startswith(settings.STATIC_URL):
-            path = uri.replace(settings.STATIC_URL, '', 1)
-            for d in getattr(settings, 'STATICFILES_DIRS', []):
-                full = os.path.join(d, path)
-                if os.path.exists(full):
-                    return full
-            if settings.STATIC_ROOT:
-                full = os.path.join(settings.STATIC_ROOT, path)
-                if os.path.exists(full):
-                    return full
-        if settings.MEDIA_URL and uri.startswith(settings.MEDIA_URL):
-            return os.path.join(settings.MEDIA_ROOT, uri.replace(settings.MEDIA_URL, '', 1))
-        return uri
-
     html = render_to_string(template_name, context)
     buf = io.BytesIO()
-    pisa.CreatePDF(html, dest=buf, link_callback=link_callback)
+    pisa.CreatePDF(html, dest=buf, link_callback=_pdf_link_callback)
     response = HttpResponse(buf.getvalue(), content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
@@ -70,7 +74,7 @@ def quote_pdf(request, pk, cost_pk=None):
         project = get_object_or_404(Project, pk=pk)
         buf = io.BytesIO()
         from xhtml2pdf import pisa
-        pisa.CreatePDF(html, dest=buf)
+        pisa.CreatePDF(html, dest=buf, link_callback=_pdf_link_callback)
         pdf = HttpResponse(buf.getvalue(), content_type='application/pdf')
         pdf['Content-Disposition'] = f'attachment; filename="Quote-{project.project_number or pk}.pdf"'
         return pdf
@@ -87,7 +91,7 @@ def proforma_pdf(request, pk, cost_pk=None):
         project = get_object_or_404(Project, pk=pk)
         buf = io.BytesIO()
         from xhtml2pdf import pisa
-        pisa.CreatePDF(html, dest=buf)
+        pisa.CreatePDF(html, dest=buf, link_callback=_pdf_link_callback)
         pdf = HttpResponse(buf.getvalue(), content_type='application/pdf')
         pdf['Content-Disposition'] = f'attachment; filename="Proforma-{project.project_number or pk}.pdf"'
         return pdf
