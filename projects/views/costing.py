@@ -969,13 +969,17 @@ def generate_picking_reference(lines, selected_accessories=None, wall_fixings=0,
                 # actually stocked; otherwise a synthetic NS2::WxD[MFC] key
                 # that the enrichment step turns into a generic NS2
                 # non-stock line with the size and material spelled out.
-                real_code = board_stock_code(w, d, melamine)
-                if real_code:
-                    items[real_code] += qty
-                else:
-                    ns2_key = f'NS2::{w}X{d}{"MFC" if melamine else ""}'
-                    items[ns2_key] += qty
-                # Connector/beam
+                # Skipped entirely when No Deck is set — that shelf level
+                # gets mesh/FR MDF/steel sourced separately, not a board
+                # from us, so it shouldn't appear on the picking list.
+                if not line.no_deck:
+                    real_code = board_stock_code(w, d, melamine)
+                    if real_code:
+                        items[real_code] += qty
+                    else:
+                        ns2_key = f'NS2::{w}X{d}{"MFC" if melamine else ""}'
+                        items[ns2_key] += qty
+                # Connector/beam — still needed structurally either way
                 if stype == 'tfcv':
                     items[f'TFCV{w}'] += qty
                 elif stype == 'twb':
