@@ -54,7 +54,7 @@ from .staff import (
 )
 from .costing import (
     project_cost, project_cost_save, cost_line_add, cost_line_delete,
-    cost_line_update, material_price_update, cost_option_add,
+    cost_line_update, material_price_update, cost_option_add, project_cost_stock_reference,
     cost_option_delete, cost_option_accept, cost_option_rename, project_cost_refresh_prices,
     project_cost_print, product_toggle_active, cost_accessory_toggle,
     cost_accessory_override, cost_extras_save, cost_wall_fixings_save,

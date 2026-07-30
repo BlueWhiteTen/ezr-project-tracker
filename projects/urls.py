@@ -148,6 +148,7 @@ urlpatterns = [
     path('project/<int:pk>/cost/add-line/', views.cost_line_add,        name='cost_line_add'),
     path('cost-line/<int:line_pk>/delete/', views.cost_line_delete,     name='cost_line_delete'),
     path('cost-line/<int:line_pk>/update/', views.cost_line_update,     name='cost_line_update'),
+    path('cost/<int:cost_pk>/stock-reference/', views.project_cost_stock_reference, name='project_cost_stock_reference'),
     path('setup/superuser/', views.create_superuser_once, name='create_superuser_once'),
     path('stock/<int:pk>/toggle-active/', views.product_toggle_active, name='product_toggle_active'),
     path('project/<int:pk>/picking-from-costing/',      views.picking_from_costing,      name='picking_from_costing'),

@@ -604,6 +604,42 @@ def cost_line_delete(request, line_pk):
 
 
 @login_required
+def project_cost_stock_reference(request, cost_pk):
+    """Recompute the Stock Reference panel for a costing option — used to
+    refresh it live after a change like toggling No Deck/Melamine, without
+    needing a full page reload."""
+    cost = get_object_or_404(ProjectCost, pk=cost_pk)
+    lines = list(cost.lines.all())
+    total_uprights = sum(int(float(l.quantity)) * 2 for l in lines if l.line_type == 'frame')
+    overrides_map = {o.accessory_id: o.override_qty for o in AccessoryOverride.objects.filter(cost=cost)}
+    acc_with_uprights = [
+        {'code': acc.code, 'uprights': overrides_map.get(acc.id) if overrides_map.get(acc.id) is not None else total_uprights}
+        for acc in cost.accessories.all()
+    ]
+    picking_ref = generate_picking_reference(lines, acc_with_uprights, cost.wall_fixings, cost.back_to_back_fixings, cost.mobile_base_sets)
+    enriched = []
+    for code, qty in sorted(picking_ref.items()):
+        ns2 = parse_ns2_key(code)
+        if ns2:
+            _, _, ns2_desc = ns2
+            ns2_prod = Product.objects.filter(code__iexact='NS2', is_active=True).first()
+            enriched.append({
+                'code': 'NS2', 'qty': qty, 'description': ns2_desc,
+                'in_stock': float(ns2_prod.quantity) if ns2_prod else None,
+            })
+            continue
+        prod = Product.objects.filter(code__iexact=code).first()
+        if prod and not prod.is_active:
+            continue
+        enriched.append({
+            'code': code, 'qty': qty,
+            'description': prod.description if prod else '—',
+            'in_stock': float(prod.quantity) if prod and prod.is_active else None,
+        })
+    return JsonResponse({'ok': True, 'picking_ref': enriched})
+
+
+@login_required
 @require_POST
 def cost_line_update(request, line_pk):
     line = get_object_or_404(ProjectCostLine, pk=line_pk)

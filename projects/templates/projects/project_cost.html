@@ -601,7 +601,7 @@
         <th style="text-align:right;padding:.4rem .6rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);border-bottom:1px solid var(--bdr);">Qty</th>
         <th style="text-align:right;padding:.4rem .6rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);border-bottom:1px solid var(--bdr);">In Stock</th>
       </tr></thead>
-      <tbody>
+      <tbody id="stock-ref-tbody">
       {% for item in picking_ref %}
       <tr style="border-bottom:.5px solid var(--bdr);">
         <td style="padding:.35rem .6rem;font-family:var(--fm);font-weight:700;color:var(--acc);font-size:.78rem;">{{ item.code }}</td>
@@ -1194,6 +1194,27 @@ async function updateLine(pk, field, val){
   const d=await r.json();
   if(d.ok){ document.getElementById(`total-${pk}`).textContent='£'+parseFloat(d.line_total).toFixed(2); recalcFromDOM(); }
 }
+async function refreshStockReference(){
+  const tbody = document.getElementById('stock-ref-tbody');
+  if(!tbody) return;  // panel isn't shown if there's nothing to reference yet
+  try{
+    const r = await fetch(`/cost/${COST_PK}/stock-reference/`);
+    const d = await r.json();
+    if(!d.ok) return;
+    tbody.innerHTML = d.picking_ref.map(item => {
+      const short = item.in_stock !== null && item.in_stock < item.qty;
+      const stockCell = item.in_stock !== null
+        ? `<td style="padding:.35rem .6rem;text-align:right;font-weight:600;color:${short?'var(--red)':'var(--grn)'};">${Math.round(item.in_stock)}</td>`
+        : `<td style="padding:.35rem .6rem;text-align:right;font-weight:600;color:var(--grn);">—</td>`;
+      return `<tr style="border-bottom:.5px solid var(--bdr);">
+        <td style="padding:.35rem .6rem;font-family:var(--fm);font-weight:700;color:var(--acc);font-size:.78rem;">${item.code}</td>
+        <td style="padding:.35rem .6rem;color:var(--txt2);font-size:.78rem;">${item.description}</td>
+        <td style="padding:.35rem .6rem;text-align:right;font-weight:700;">${item.qty}</td>
+        ${stockCell}
+      </tr>`;
+    }).join('');
+  } catch(e){ /* non-critical — the panel just won't refresh this once */ }
+}
 async function toggleMelamine(pk,mel){
   const r=await fetch(`/cost-line/${pk}/update/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({melamine:mel})});
   const d=await r.json();
@@ -1211,6 +1232,7 @@ async function toggleMelamine(pk,mel){
     const label = d.no_deck ? 'No Deck' : (d.melamine ? 'Melamine' : 'Chipboard');
     if(descEl) descEl.textContent=descEl.textContent.replace(/\((Melamine|Chipboard|No Deck)\)/, `(${label})`);
     recalcFromDOM();
+    refreshStockReference();
   }
 }
 async function toggleNoDeck(pk,noDeck){
@@ -1230,6 +1252,7 @@ async function toggleNoDeck(pk,noDeck){
     const label = d.no_deck ? 'No Deck' : (d.melamine ? 'Melamine' : 'Chipboard');
     if(descEl) descEl.textContent=descEl.textContent.replace(/\((Melamine|Chipboard|No Deck)\)/, `(${label})`);
     recalcFromDOM();
+    refreshStockReference();
   }
 }
 async function deleteLine(pk){
