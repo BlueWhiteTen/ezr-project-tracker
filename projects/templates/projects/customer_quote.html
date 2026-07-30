@@ -42,6 +42,15 @@
     .page{box-shadow:none;margin:0;max-width:100%;padding:1cm 1.2cm 0 1.2cm;}
     .photos-page{break-before:page;page-break-before:always;}
     .photos-page img{break-inside:avoid;page-break-inside:avoid;}
+    /* Reclaim vertical space so the whole quote fits on one printed page —
+       the on-screen editing spacing above is more generous than a printed
+       page needs, and margins between this many blocks add up quickly. */
+    .qhead{margin-bottom:.8rem;}
+    .addr{line-height:1.3;}
+    p, .view-only.field, .rtf-editable{margin-top:.5rem !important;margin-bottom:.5rem !important;}
+    .terms{margin:.5rem 0;line-height:1.35;}
+    .sig{margin-top:.7rem;}
+    .footer{margin-top:.8rem;padding-top:.4rem;line-height:1.3;}
     @page { margin:0.5cm; size:A4; }
   }
 </style>
@@ -55,7 +64,6 @@
   <button class="btn" onclick="saveQuote(false)" id="save-btn" style="display:none;">💾 Save</button>
   <button class="btn btn-ghost" id="refresh-btn" onclick="refreshPrice()" title="Pull the latest sell price from Costing and update the price field">🔄 Refresh Price from Costing</button>
   <a href="?print=1" class="btn btn-ghost" target="_blank">🖨 Print</a>
-  <a href="{% url 'quote_pdf_option' project.pk cost.pk %}" class="btn btn-ghost">⬇ Download PDF</a>
   <span style="font-size:.78rem;color:#888;">Auto-filled from customer, drawing & costing — edit any field, then Save.</span>
 </div>
 {% endif %}

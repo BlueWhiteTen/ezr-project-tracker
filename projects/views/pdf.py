@@ -64,24 +64,6 @@ def picking_list_pdf(request, project_pk):
 
 
 @login_required
-def quote_pdf(request, pk, cost_pk=None):
-    """Render the quote as PDF by delegating to customer_quote view logic."""
-    from .quotes import customer_quote as quote_view
-    # Get the HTML response from the existing view, then convert to PDF
-    response = quote_view(request, pk=pk, cost_pk=cost_pk)
-    if hasattr(response, 'content'):
-        html = response.content.decode('utf-8')
-        project = get_object_or_404(Project, pk=pk)
-        buf = io.BytesIO()
-        from xhtml2pdf import pisa
-        pisa.CreatePDF(html, dest=buf, link_callback=_pdf_link_callback)
-        pdf = HttpResponse(buf.getvalue(), content_type='application/pdf')
-        pdf['Content-Disposition'] = f'attachment; filename="Quote-{project.project_number or pk}.pdf"'
-        return pdf
-    return response
-
-
-@login_required
 def proforma_pdf(request, pk, cost_pk=None):
     """Render the proforma as PDF."""
     from .quotes import proforma_invoice as proforma_view

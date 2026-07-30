@@ -91,7 +91,7 @@ from .stock import (
     stock_draft_pos_preview, stock_draft_pos_generate,
 )
 from .pdf import (
-    po_pdf, picking_list_pdf, quote_pdf, proforma_pdf,
+    po_pdf, picking_list_pdf, proforma_pdf,
 )
 from .price_list import (
     price_list, price_list_update, _seed_price_list,
