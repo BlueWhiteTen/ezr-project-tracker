@@ -54,7 +54,7 @@ def project_cost_refresh_prices(request, pk, cost_pk):
             parts = line.size.replace('"', '').split('x')
             if len(parts) == 3:
                 stype, w, d = parts[0].strip(), parts[1].strip(), parts[2].strip()
-                line.unit_cost = calc_shelf_price(stype, w, d, line.melamine, chipboard, melamine_p, chip18)
+                line.unit_cost = calc_shelf_price(stype, w, d, line.melamine, chipboard, melamine_p, chip18, no_deck=line.no_deck)
                 line.save()
                 updated += 1
         elif line.line_type == 'ls_frame':
@@ -136,7 +136,7 @@ def project_cost(request, pk, cost_pk=None):
                 parts = line.size.replace('"','').split('x')
                 if len(parts) == 3:
                     stype, w, d = parts[0].strip(), parts[1].strip(), parts[2].strip()
-                    line.unit_cost = calc_shelf_price(stype, w, d, line.melamine, chipboard, melamine_p, chip18)
+                    line.unit_cost = calc_shelf_price(stype, w, d, line.melamine, chipboard, melamine_p, chip18, no_deck=line.no_deck)
                     line.save()
 
     lines = cost.lines.select_related('product').all()
@@ -292,6 +292,7 @@ def project_cost(request, pk, cost_pk=None):
         'extras_items': [
             {'key': 'mesh_decks',   'label': 'Mesh decks'},
             {'key': 'metal_decks',  'label': 'Metal decks'},
+            {'key': 'fr_mdf_decks', 'label': 'Fire retardant MDF decks'},
             {'key': 'mobile_bases', 'label': 'Mobile bases'},
         ],
         'project_pk': project.pk,
@@ -373,15 +374,16 @@ def cost_line_add(request, pk):
         for row in rows:
             w, d = row.get('width',''), row.get('depth','')
             mel = bool(row.get('melamine', False))
+            no_deck = bool(row.get('no_deck', False))
             row_qty = float(row.get('quantity', 0))
             if not w or not d or row_qty <= 0:
                 continue
             size = f'tfcv x {w} x {d}'
-            unit_cost = calc_shelf_price('tfcv', w, d, mel, chipboard, melamine_p, chip18)
-            mat_label = 'Melamine' if mel else 'Chipboard'
+            unit_cost = calc_shelf_price('tfcv', w, d, mel, chipboard, melamine_p, chip18, no_deck=no_deck)
+            mat_label = 'No Deck' if no_deck else ('Melamine' if mel else 'Chipboard')
             desc = f'TFCV Shelf {w}" x {d}" ({mat_label})'
             ProjectCostLine.objects.create(cost=cost, line_type='shelf', description=desc,
-                size=size, melamine=mel, quantity=row_qty, unit_cost=unit_cost, sort_order=sort)
+                size=size, melamine=mel, no_deck=no_deck, quantity=row_qty, unit_cost=unit_cost, sort_order=sort)
             sort += 1
 
     elif ltype == 'shelf_twb':
@@ -389,15 +391,16 @@ def cost_line_add(request, pk):
         for row in rows:
             w, d = row.get('width',''), row.get('depth','')
             mel = bool(row.get('melamine', False))
+            no_deck = bool(row.get('no_deck', False))
             row_qty = float(row.get('quantity', 0))
             if not w or not d or row_qty <= 0:
                 continue
             size = f'twb x {w} x {d}'
-            unit_cost = calc_shelf_price('twb', w, d, mel, chipboard, melamine_p, chip18)
-            mat_label = 'Melamine' if mel else 'Chipboard'
+            unit_cost = calc_shelf_price('twb', w, d, mel, chipboard, melamine_p, chip18, no_deck=no_deck)
+            mat_label = 'No Deck' if no_deck else ('Melamine' if mel else 'Chipboard')
             desc = f'TWB Shelf {w}" x {d}" ({mat_label})'
             ProjectCostLine.objects.create(cost=cost, line_type='shelf', description=desc,
-                size=size, melamine=mel, quantity=row_qty, unit_cost=unit_cost, sort_order=sort)
+                size=size, melamine=mel, no_deck=no_deck, quantity=row_qty, unit_cost=unit_cost, sort_order=sort)
             sort += 1
 
     elif ltype == 'stock':
@@ -615,14 +618,30 @@ def cost_line_update(request, line_pk):
         melamine_p = mat.get('melamine', 0.75)
         chip18 = mat.get('chipboard_18mm', melamine_p)
         line.melamine = data['melamine']
+        if line.melamine:
+            line.no_deck = False  # mutually exclusive with no_deck
         parts = line.size.split(' x ')
         if len(parts) == 3:
             stype, w, d = parts
-            line.unit_cost = calc_shelf_price(stype, w, d, line.melamine, chipboard, melamine_p, chip18)
-            mat_label = 'Melamine' if line.melamine else 'Chipboard'
+            line.unit_cost = calc_shelf_price(stype, w, d, line.melamine, chipboard, melamine_p, chip18, no_deck=line.no_deck)
+            mat_label = 'No Deck' if line.no_deck else ('Melamine' if line.melamine else 'Chipboard')
+            line.description = line.description.rsplit('(', 1)[0].strip() + f' ({mat_label})'
+    if 'no_deck' in data:
+        mat = {m.name: float(m.price_per_sqft) for m in MaterialPrice.objects.all()}
+        chipboard = mat.get('chipboard', 0.50)
+        melamine_p = mat.get('melamine', 0.75)
+        chip18 = mat.get('chipboard_18mm', melamine_p)
+        line.no_deck = data['no_deck']
+        if line.no_deck:
+            line.melamine = False  # mutually exclusive with melamine
+        parts = line.size.split(' x ')
+        if len(parts) == 3:
+            stype, w, d = parts
+            line.unit_cost = calc_shelf_price(stype, w, d, line.melamine, chipboard, melamine_p, chip18, no_deck=line.no_deck)
+            mat_label = 'No Deck' if line.no_deck else ('Melamine' if line.melamine else 'Chipboard')
             line.description = line.description.rsplit('(', 1)[0].strip() + f' ({mat_label})'
     line.save()
-    return JsonResponse({'ok': True, 'unit_cost': float(line.unit_cost), 'line_total': line.line_total})
+    return JsonResponse({'ok': True, 'unit_cost': float(line.unit_cost), 'line_total': line.line_total, 'melamine': line.melamine, 'no_deck': line.no_deck})
 
 
 
@@ -1263,16 +1282,21 @@ def calc_frame_price(height_in, depth_in):
 
 
 
-def calc_shelf_price(shelf_type, width_in, depth_in, melamine, chipboard_price, melamine_price, chipboard_18mm_price=None):
+def calc_shelf_price(shelf_type, width_in, depth_in, melamine, chipboard_price, melamine_price, chipboard_18mm_price=None, no_deck=False):
     """Return shelf unit cost.
     Board material rate:
-      - melamine -> melamine rate
+      - no_deck   -> no board cost at all (mesh/FR MDF/steel deck sourced separately)
+      - melamine  -> melamine rate
       - chipboard, depth >= 27" -> 18mm chipboard rate
       - chipboard, depth < 27"  -> standard (15mm) chipboard rate
+    The beam/connector price always applies — the shelf level itself still
+    needs supporting either way, only the board is what's being skipped.
     """
     w, d = float(width_in), float(depth_in)
     sqft = (w * d) / 144
-    if melamine:
+    if no_deck:
+        mat_price = 0
+    elif melamine:
         mat_price = melamine_price
     elif d >= 27 and chipboard_18mm_price is not None:
         mat_price = chipboard_18mm_price

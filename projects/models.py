@@ -713,6 +713,7 @@ class ProjectCostLine(models.Model):
     # Frame/shelf specifics
     size       = models.CharField(max_length=50, blank=True)   # e.g. '120" x 24"'
     melamine   = models.BooleanField(default=False)             # shelf: chipboard or melamine
+    no_deck    = models.BooleanField(default=False)             # shelf: no board at all — mesh/FR MDF/steel deck to be sourced separately
     # Stock link
     product    = models.ForeignKey(Product, null=True, blank=True, on_delete=models.SET_NULL)
     # Picking Template link — set when line_type='template', used to expand
