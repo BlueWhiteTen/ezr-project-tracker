@@ -1279,7 +1279,7 @@ function positionDD(){
 function renderDD(){
   const dd=document.getElementById('st-dd');
   if(!prodResults.length){dd.style.display='none';return;}
-  dd.innerHTML=prodResults.map((p,i)=>`<div class="prod-dd-item ${i===ddIdx?'selected':''}" data-idx="${i}"><div class="prod-code">${p.code}</div><div style="font-size:.82rem;">${p.description}</div></div>`).join('');
+  dd.innerHTML=prodResults.map((p,i)=>`<div class="prod-dd-item ${i===ddIdx?'selected':''}" data-idx="${i}"><div class="prod-code">${p.code}</div><div style="font-size:.82rem;display:flex;justify-content:space-between;gap:.6rem;"><span>${p.description}</span><span style="font-weight:600;color:var(--acc);white-space:nowrap;">£${parseFloat(p.sales_price||0).toFixed(2)}</span></div></div>`).join('');
   dd.querySelectorAll('.prod-dd-item').forEach(el=>el.addEventListener('mousedown',function(e){e.preventDefault();selectCostProd(prodResults[parseInt(this.dataset.idx)]);}));
   positionDD();
   dd.style.display='block';
@@ -1288,7 +1288,7 @@ function selectCostProd(p){
   selProd=p;
   document.getElementById('st-search').value=p.code;
   document.getElementById('st-dd').style.display='none';
-  document.getElementById('st-info').textContent=p.description;
+  document.getElementById('st-info').textContent=`${p.description} — £${parseFloat(p.sales_price||0).toFixed(2)} each`;
   document.getElementById('st-qty').focus();
 }
 document.addEventListener('mousedown',e=>{if(!e.target.closest('.prod-search-wrap'))document.getElementById('st-dd').style.display='none';});

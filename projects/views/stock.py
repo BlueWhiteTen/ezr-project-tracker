@@ -178,14 +178,14 @@ def product_search_api(request):
         return JsonResponse([], safe=False)
     # Code starts with query first, then code contains, then description contains
     from itertools import chain
-    code_starts = list(Product.objects.filter(code__istartswith=q, is_active=True).values('id','code','description','quantity','free_stock')[:10])
+    code_starts = list(Product.objects.filter(code__istartswith=q, is_active=True).values('id','code','description','quantity','free_stock','sales_price')[:10])
     if len(code_starts) < 10:
         seen = {p['id'] for p in code_starts}
-        code_contains = list(Product.objects.filter(code__icontains=q, is_active=True).exclude(id__in=seen).values('id','code','description','quantity','free_stock')[:10-len(code_starts)])
+        code_contains = list(Product.objects.filter(code__icontains=q, is_active=True).exclude(id__in=seen).values('id','code','description','quantity','free_stock','sales_price')[:10-len(code_starts)])
         code_starts += code_contains
     if len(code_starts) < 10:
         seen = {p['id'] for p in code_starts}
-        desc_matches = list(Product.objects.filter(description__icontains=q, is_active=True).exclude(id__in=seen).values('id','code','description','quantity','free_stock')[:10-len(code_starts)])
+        desc_matches = list(Product.objects.filter(description__icontains=q, is_active=True).exclude(id__in=seen).values('id','code','description','quantity','free_stock','sales_price')[:10-len(code_starts)])
         code_starts += desc_matches
     return JsonResponse(code_starts, safe=False)
 
