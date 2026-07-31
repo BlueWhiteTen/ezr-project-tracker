@@ -336,13 +336,14 @@ select.form-input{cursor:pointer;}
       <a href="{% url 'activity_log' %}" class="{% if request.resolver_match.url_name == 'activity_log' %}sb-active{% endif %}" style="display:block;padding:.5rem .85rem;margin-bottom:.3rem;border-radius:var(--rad);font-size:.82rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">Activity Log</a>
       {% if request.user.is_superuser or request.user.profile.can_view_reports %}
       <a href="{% url 'daily_accounts_report' %}" class="{% if request.resolver_match.url_name == 'daily_accounts_report' %}sb-active{% endif %}" style="display:block;padding:.5rem .85rem;margin-bottom:.3rem;border-radius:var(--rad);font-size:.82rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">Daily Accounts Report</a>
+      <a href="{% url 'stock_valuation' %}" class="{% if request.resolver_match.url_name == 'stock_valuation' %}sb-active{% endif %}" style="display:block;padding:.5rem .85rem;margin-bottom:.3rem;border-radius:var(--rad);font-size:.82rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">Stock Valuation</a>
       {% endif %}
     </div>
     <button id="theme-btn" onclick="toggleTheme()">Dark mode</button>
   </div>
 <script>
 (function(){
-  const reportPages = ['monthly_summary','sales_summary','activity_log','daily_accounts_report'];
+  const reportPages = ['monthly_summary','sales_summary','activity_log','daily_accounts_report','stock_valuation'];
   const isOnReportPage = reportPages.includes('{{ request.resolver_match.url_name }}');
   const stored = localStorage.getItem('reports-menu-open');
   const shouldOpen = isOnReportPage || stored === '1';

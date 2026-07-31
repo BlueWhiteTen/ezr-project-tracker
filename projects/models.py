@@ -625,6 +625,36 @@ class MaterialPrice(models.Model):
         return f"{self.name}: £{self.price_per_sqft}/sqft"
 
 
+class ExchangeRate(models.Model):
+    """Manually-maintained currency-to-GBP rates, used for valuing Goods In
+    Transit held in a foreign currency. Checked and updated by hand, same as
+    the 'Check exchange rate' step on the old stock valuation spreadsheet."""
+    CURRENCY_CHOICES = [('CAD', 'Canadian Dollar'), ('EUR', 'Euro'), ('USD', 'US Dollar')]
+    currency   = models.CharField(max_length=3, choices=CURRENCY_CHOICES, unique=True)
+    rate_to_gbp = models.DecimalField(max_digits=10, decimal_places=6, help_text='1 unit of this currency = this many GBP')
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+
+    def __str__(self):
+        return f"{self.currency}: {self.rate_to_gbp} GBP"
+
+
+class GoodsInTransit(models.Model):
+    """Stock that's been ordered/invoiced but not yet received into the
+    warehouse — entered by hand against the supplier invoice, same as the
+    'CANADA GIT' section on the old stock valuation spreadsheet."""
+    CURRENCY_CHOICES = [('CAD', 'Canadian Dollar'), ('EUR', 'Euro'), ('USD', 'US Dollar')]
+    reference  = models.CharField(max_length=100, help_text='e.g. invoice number IV-141486')
+    currency   = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='CAD')
+    value      = models.DecimalField(max_digits=12, decimal_places=2)
+    note       = models.CharField(max_length=200, blank=True)
+    added_at   = models.DateTimeField(auto_now_add=True)
+    added_by   = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+
+    def __str__(self):
+        return f"{self.reference}: {self.currency} {self.value}"
+
+
 class FittingCrew(models.Model):
     name  = models.CharField(max_length=200)
     phone = models.CharField(max_length=50, blank=True)

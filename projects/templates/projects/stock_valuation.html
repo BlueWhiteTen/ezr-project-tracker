@@ -1,0 +1,154 @@
+{% extends 'projects/base.html' %}
+{% block title %}Stock Valuation{% endblock %}
+{% block extra_style %}
+.sv-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:.8rem;}
+.sv-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);margin-bottom:1.4rem;overflow:hidden;}
+.sv-card-head{padding:.7rem 1rem;font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);background:var(--surf2);border-bottom:1px solid var(--bdr);}
+.sv-card-body{padding:1rem;}
+.sv-total-row{display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;}
+.sv-total-row.grand{font-size:1.3rem;font-weight:700;border-top:2px solid var(--bdr);margin-top:.5rem;padding-top:.8rem;}
+.sv-rate-row{display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem;}
+.sv-rate-row label{width:60px;font-weight:600;font-size:.85rem;}
+.sv-rate-row input{width:120px;}
+table.git-table{width:100%;border-collapse:collapse;font-size:.85rem;}
+table.git-table th{text-align:left;padding:.5rem .6rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);border-bottom:1px solid var(--bdr);}
+table.git-table td{padding:.45rem .6rem;border-bottom:1px solid var(--bdr);}
+table.git-table td.num{text-align:right;font-weight:600;}
+.git-currency-total{font-weight:700;color:var(--acc);}
+{% endblock %}
+{% block content %}
+
+<div class="sv-toolbar">
+  <h1 style="font-size:1.5rem;font-weight:700;">Stock Valuation</h1>
+  <span style="font-size:.8rem;color:var(--mut);">Warehouse stock + Goods In Transit, converted to GBP</span>
+</div>
+
+<div class="sv-card">
+  <div class="sv-card-head">Summary</div>
+  <div class="sv-card-body">
+    <div class="sv-total-row"><span>Warehouse stock (active Stock items)</span><span>£{{ warehouse_value|floatformat:2 }}</span></div>
+    <div class="sv-total-row"><span>Goods In Transit (converted)</span><span>£{{ git_gbp_total|floatformat:2 }}</span></div>
+    <div class="sv-total-row grand"><span>Total</span><span id="grand-total">£{{ grand_total|floatformat:2 }}</span></div>
+  </div>
+</div>
+
+<div class="sv-card">
+  <div class="sv-card-head">Exchange Rates (1 unit = £)</div>
+  <div class="sv-card-body">
+    {% for cur, rate in rates.items %}
+    <div class="sv-rate-row">
+      <label>{{ cur }}</label>
+      <input class="form-input" type="number" step="0.0001" id="rate-{{ cur }}" value="{{ rate|default_if_none:'' }}" placeholder="not set">
+    </div>
+    {% endfor %}
+    <button class="btn btn-primary btn-sm" onclick="saveRates()" style="margin-top:.4rem;">Save Rates</button>
+    <span id="rate-msg" style="margin-left:.6rem;font-size:.82rem;"></span>
+  </div>
+</div>
+
+<div class="sv-card">
+  <div class="sv-card-head">Goods In Transit</div>
+  <div class="sv-card-body">
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem;align-items:end;">
+      <div><label style="font-size:.78rem;color:var(--mut);display:block;">Reference</label>
+        <input class="form-input" id="git-ref" placeholder="e.g. IV-141486" style="width:160px;"></div>
+      <div><label style="font-size:.78rem;color:var(--mut);display:block;">Currency</label>
+        <select class="form-input" id="git-currency" style="width:90px;">
+          <option value="CAD">CAD</option><option value="EUR">EUR</option><option value="USD">USD</option>
+        </select></div>
+      <div><label style="font-size:.78rem;color:var(--mut);display:block;">Value</label>
+        <input class="form-input" id="git-value" type="number" step="0.01" style="width:120px;"></div>
+      <div><label style="font-size:.78rem;color:var(--mut);display:block;">Note (optional)</label>
+        <input class="form-input" id="git-note" style="width:200px;"></div>
+      <button class="btn btn-primary btn-sm" onclick="addGit()">+ Add</button>
+      <span id="git-msg" style="font-size:.82rem;"></span>
+    </div>
+
+    {% for cur, data in git_by_currency.items %}
+    <div style="margin-bottom:1.2rem;">
+      <div style="font-weight:700;margin-bottom:.4rem;">
+        {{ cur }} — {{ cur }} {{ data.native_total|floatformat:2 }}
+        {% if data.gbp_total is not None %}<span class="git-currency-total">(£{{ data.gbp_total|floatformat:2 }})</span>
+        {% else %}<span style="color:var(--red);font-weight:400;">— set the {{ cur }} exchange rate above to convert</span>{% endif %}
+      </div>
+      {% if data.entries %}
+      <table class="git-table">
+        <thead><tr><th>Reference</th><th>Note</th><th>Added</th><th style="text-align:right;">Value</th><th></th></tr></thead>
+        <tbody>
+        {% for g in data.entries %}
+        <tr id="git-row-{{ g.pk }}">
+          <td>{{ g.reference }}</td>
+          <td style="color:var(--mut2);">{{ g.note }}</td>
+          <td style="color:var(--mut2);">{{ g.added_at|date:"d M Y" }}{% if g.added_by %} · {{ g.added_by.get_full_name|default:g.added_by.username }}{% endif %}</td>
+          <td class="num">{{ cur }} {{ g.value|floatformat:2 }}</td>
+          <td><button onclick="deleteGit({{ g.pk }})" style="background:none;border:none;color:var(--mut);cursor:pointer;">✕</button></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div style="color:var(--mut2);font-size:.82rem;">No {{ cur }} entries.</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+const CSRF = '{{ csrf_token }}';
+
+async function saveRates(){
+  const payload = {};
+  ['CAD','EUR','USD'].forEach(cur=>{
+    const v = document.getElementById(`rate-${cur}`).value;
+    if(v) payload[cur] = v;
+  });
+  const r = await fetch('{% url "stock_valuation_rate_update" %}', {
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify(payload)
+  });
+  const d = await r.json();
+  const msg = document.getElementById('rate-msg');
+  if(d.ok){
+    msg.style.color = 'var(--grn)';
+    msg.textContent = 'Saved — reloading to recalculate…';
+    setTimeout(()=>location.reload(), 700);
+  } else {
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Failed to save.';
+  }
+}
+
+async function addGit(){
+  const reference = document.getElementById('git-ref').value.trim();
+  const currency = document.getElementById('git-currency').value;
+  const value = document.getElementById('git-value').value;
+  const note = document.getElementById('git-note').value.trim();
+  const msg = document.getElementById('git-msg');
+  if(!reference || !value || parseFloat(value) <= 0){
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Reference and a positive value are required.';
+    return;
+  }
+  const r = await fetch('{% url "goods_in_transit_add" %}', {
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+    body: JSON.stringify({reference, currency, value, note})
+  });
+  const d = await r.json();
+  if(d.ok){
+    location.reload();
+  } else {
+    msg.style.color = 'var(--red)';
+    msg.textContent = d.error || 'Failed to add.';
+  }
+}
+
+async function deleteGit(pk){
+  if(!confirm('Remove this Goods In Transit entry?')) return;
+  const r = await fetch(`/reports/stock-valuation/git/${pk}/delete/`, {
+    method:'POST', headers:{'X-CSRFToken':CSRF}
+  });
+  const d = await r.json();
+  if(d.ok) location.reload();
+}
+</script>
+{% endblock %}

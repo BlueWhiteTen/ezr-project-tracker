@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 import json
 
-from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence
+from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, ExchangeRate, GoodsInTransit
 from ..forms import RegisterForm, ProjectForm
 from .utils import (_calc_sell_price, _calc_cost_breakdown, _can_view_reports)
 
@@ -651,4 +651,84 @@ def so_search(request):
 
 
 # ── Notifications ─────────────────────────────────────────────────────────────
+
+
+# ── Stock Valuation ────────────────────────────────────────────────────────────
+
+@login_required
+def stock_valuation(request):
+    """Total value of stock actually in the warehouse, plus Goods In Transit
+    (ordered/invoiced but not yet received) converted to GBP at a manually
+    maintained rate — replaces the old spreadsheet's stock valuation."""
+    if not _can_view_reports(request.user):
+        messages.error(request, "You don't have access to this report. Ask an administrator to enable report access on your Staff Profile.")
+        return redirect('dashboard')
+
+    from django.db.models import Sum, DecimalField, ExpressionWrapper
+    from django.db.models.functions import Coalesce
+    line_value = ExpressionWrapper(models_F('quantity') * models_F('cost_price'), output_field=DecimalField(max_digits=14, decimal_places=2))
+    warehouse_value = Product.objects.filter(is_active=True).aggregate(
+        total=Coalesce(Sum(line_value), 0, output_field=DecimalField(max_digits=14, decimal_places=2))
+    )['total']
+
+    rates = {r.currency: r.rate_to_gbp for r in ExchangeRate.objects.all()}
+    for cur in ('CAD', 'EUR', 'USD'):
+        rates.setdefault(cur, None)
+
+    git_entries = list(GoodsInTransit.objects.all().order_by('-added_at'))
+    git_by_currency = {}
+    for cur in ('CAD', 'EUR', 'USD'):
+        entries = [g for g in git_entries if g.currency == cur]
+        native_total = sum(g.value for g in entries)
+        rate = rates.get(cur)
+        gbp_total = (native_total * rate) if rate else None
+        git_by_currency[cur] = {'entries': entries, 'native_total': native_total, 'gbp_total': gbp_total}
+
+    git_gbp_total = sum(v['gbp_total'] for v in git_by_currency.values() if v['gbp_total'] is not None)
+    grand_total = warehouse_value + git_gbp_total
+
+    return render(request, 'projects/stock_valuation.html', {
+        'warehouse_value': warehouse_value,
+        'rates': rates,
+        'git_by_currency': git_by_currency,
+        'git_gbp_total': git_gbp_total,
+        'grand_total': grand_total,
+    })
+
+
+@login_required
+@require_POST
+def stock_valuation_rate_update(request):
+    data = json.loads(request.body)
+    for currency, rate in data.items():
+        if currency not in ('CAD', 'EUR', 'USD'):
+            continue
+        ExchangeRate.objects.update_or_create(
+            currency=currency, defaults={'rate_to_gbp': rate, 'updated_by': request.user})
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_POST
+def goods_in_transit_add(request):
+    data = json.loads(request.body)
+    reference = (data.get('reference') or '').strip()
+    currency = data.get('currency', 'CAD')
+    try:
+        value = float(data.get('value', 0))
+    except (TypeError, ValueError):
+        value = 0
+    if not reference or value <= 0 or currency not in ('CAD', 'EUR', 'USD'):
+        return JsonResponse({'error': 'Reference and a positive value are required.'}, status=400)
+    git = GoodsInTransit.objects.create(
+        reference=reference, currency=currency, value=value,
+        note=(data.get('note') or '').strip(), added_by=request.user)
+    return JsonResponse({'ok': True, 'id': git.id})
+
+
+@login_required
+@require_POST
+def goods_in_transit_delete(request, pk):
+    GoodsInTransit.objects.filter(pk=pk).delete()
+    return JsonResponse({'ok': True})
 
