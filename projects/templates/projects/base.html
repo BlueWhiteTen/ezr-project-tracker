@@ -345,9 +345,7 @@ select.form-input{cursor:pointer;}
 (function(){
   const reportPages = ['monthly_summary','sales_summary','activity_log','daily_accounts_report','stock_valuation'];
   const isOnReportPage = reportPages.includes('{{ request.resolver_match.url_name }}');
-  const stored = localStorage.getItem('reports-menu-open');
-  const shouldOpen = isOnReportPage || stored === '1';
-  if(shouldOpen){
+  if(isOnReportPage){
     document.getElementById('reports-submenu').style.display = 'block';
     document.getElementById('reports-arrow').style.transform = 'rotate(90deg)';
   }
@@ -358,7 +356,6 @@ function toggleReportsMenu(){
   const isOpen = menu.style.display !== 'none';
   menu.style.display = isOpen ? 'none' : 'block';
   arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
-  localStorage.setItem('reports-menu-open', isOpen ? '0' : '1');
 }
 </script>
 </div>
