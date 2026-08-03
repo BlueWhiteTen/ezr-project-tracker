@@ -90,7 +90,7 @@ tbody tr:hover td{background:var(--surf3) !important;}
   {% else %}
   <h1 class="pg-title">Projects <span>{{ projects|length }} of {{ total_matching }} shown</span></h1>
   {% endif %}
-  <button class="btn btn-primary" onclick="openNewPanel()">+ New Project</button>
+  <a href="{% url 'project_create' %}" class="btn btn-primary">+ New Project</a>
 </div>
 
 <!-- 6 stat cards -->
@@ -283,7 +283,7 @@ tbody tr:hover td{background:var(--surf3) !important;}
 <div class="empty">
   <h3>No projects found</h3>
   <p>{% if query or selected_status or tl %}Try adjusting your filters{% else %}Get started by creating your first project{% endif %}</p>
-  {% if not query and not selected_status and not tl %}<button class="btn btn-primary" style="margin-top:1rem" onclick="openNewPanel()">+ New Project</button>{% endif %}
+  {% if not query and not selected_status and not tl %}<a href="{% url 'project_create' %}" class="btn btn-primary" style="margin-top:1rem">+ New Project</a>{% endif %}
 </div>
 {% endif %}
 </div>
