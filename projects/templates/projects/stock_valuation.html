@@ -20,13 +20,19 @@ table.git-table td.num{text-align:right;font-weight:600;}
 
 <div class="sv-toolbar">
   <h1 style="font-size:1.5rem;font-weight:700;">Stock Valuation</h1>
-  <span style="font-size:.8rem;color:var(--mut);">Warehouse stock + Goods In Transit, converted to GBP</span>
+  <a href="{% url 'stock_valuation_items' %}" class="btn btn-primary btn-sm">📋 View Full Breakdown ({{ item_count }} items)</a>
 </div>
+<div style="font-size:.8rem;color:var(--mut);margin-top:-.8rem;margin-bottom:1.2rem;">Warehouse stock + Goods In Transit, using the imported stock valuation spreadsheet — converted to GBP</div>
+{% if unconverted_count %}
+<div style="background:var(--red-bg,#fef2f2);color:var(--red,#dc2626);border:1px solid rgba(220,38,38,.2);border-radius:var(--rad);padding:.7rem 1rem;margin-bottom:1rem;font-size:.85rem;">
+  ⚠ {{ unconverted_count }} item{{ unconverted_count|pluralize }} could not be converted to GBP — set the missing exchange rate below.
+</div>
+{% endif %}
 
 <div class="sv-card">
   <div class="sv-card-head">Summary</div>
   <div class="sv-card-body">
-    <div class="sv-total-row"><span>Warehouse stock (active Stock items)</span><span>£{{ warehouse_value|floatformat:2 }}</span></div>
+    <div class="sv-total-row"><span>Warehouse stock (from imported spreadsheet)</span><span>£{{ warehouse_value|floatformat:2 }}</span></div>
     <div class="sv-total-row"><span>Goods In Transit (converted)</span><span>£{{ git_gbp_total|floatformat:2 }}</span></div>
     <div class="sv-total-row grand"><span>Total</span><span id="grand-total">£{{ grand_total|floatformat:2 }}</span></div>
   </div>

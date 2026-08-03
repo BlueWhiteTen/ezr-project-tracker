@@ -1,0 +1,76 @@
+{% extends 'projects/base.html' %}
+{% block title %}Stock Valuation — Full Breakdown{% endblock %}
+{% block extra_style %}
+table.sv-items{width:100%;border-collapse:collapse;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;font-size:.84rem;}
+table.sv-items th{text-align:left;padding:.55rem .75rem;font-size:.71rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);background:var(--surf2);border-bottom:1px solid var(--bdr);white-space:nowrap;}
+table.sv-items td{padding:.5rem .75rem;border-bottom:1px solid var(--bdr);vertical-align:top;}
+table.sv-items tr:last-child td{border-bottom:none;}
+table.sv-items td.num{text-align:right;font-weight:600;white-space:nowrap;}
+.sv-cat-badge{font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.03em;}
+.sv-cat-board{background:var(--acc-bg);color:var(--acc);}
+.sv-cat-non{background:var(--surf2);color:var(--mut);}
+{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:.8rem;">
+  <h1 style="font-size:1.5rem;font-weight:700;">Stock Valuation — Full Breakdown</h1>
+  <a href="{% url 'stock_valuation' %}" class="btn btn-ghost btn-sm">← Back to Summary</a>
+</div>
+
+<form method="get" style="display:flex;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap;">
+  <input class="form-input" name="q" value="{{ query }}" placeholder="Search description or PO…" style="max-width:300px;">
+  <select class="form-input" name="category" style="width:auto;">
+    <option value="">All categories</option>
+    <option value="board_stock" {% if category == 'board_stock' %}selected{% endif %}>Board Stock</option>
+    <option value="non_stock" {% if category == 'non_stock' %}selected{% endif %}>Non Stock</option>
+  </select>
+  <button class="btn btn-ghost btn-sm" type="submit">Filter</button>
+  {% if query or category %}<a href="{% url 'stock_valuation_items' %}" class="btn btn-ghost btn-sm">Clear</a>{% endif %}
+</form>
+
+<div style="overflow-x:auto;">
+<table class="sv-items">
+  <thead><tr>
+    <th>Description</th><th>Category</th><th>Price Changed</th><th>PO Reference</th>
+    <th style="text-align:right;">Qty</th>
+    <th style="text-align:right;">Cost £</th><th style="text-align:right;">Cost €</th>
+    <th style="text-align:right;">Cost C$</th><th style="text-align:right;">Cost US$</th>
+    <th style="text-align:right;">Total £</th>
+  </tr></thead>
+  <tbody>
+  {% for item in items %}
+  <tr>
+    <td>{{ item.description }}</td>
+    <td><span class="sv-cat-badge {% if item.category == 'board_stock' %}sv-cat-board{% else %}sv-cat-non{% endif %}">{{ item.get_category_display }}</span></td>
+    <td style="color:var(--mut2);">{{ item.date_changed }}</td>
+    <td style="color:var(--mut2);">{{ item.po_reference }}</td>
+    <td class="num">{% if item.quantity %}{{ item.quantity|floatformat:0 }}{% else %}—{% endif %}</td>
+    <td class="num">{% if item.cost_gbp is not None %}{{ item.cost_gbp|floatformat:2 }}{% else %}—{% endif %}</td>
+    <td class="num">{% if item.cost_eur is not None %}{{ item.cost_eur|floatformat:2 }}{% else %}—{% endif %}</td>
+    <td class="num">{% if item.cost_cad is not None %}{{ item.cost_cad|floatformat:2 }}{% else %}—{% endif %}</td>
+    <td class="num">{% if item.cost_usd is not None %}{{ item.cost_usd|floatformat:2 }}{% else %}—{% endif %}</td>
+    <td class="num">
+      {% if item.native_currency == 'GBP' %}£{{ item.total_gbp|floatformat:2 }}
+      {% elif item.native_currency %}<span style="color:var(--mut2);" title="Converted on the Summary page using the current exchange rate">see Summary</span>
+      {% else %}—{% endif %}
+    </td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="10" style="text-align:center;color:var(--mut);padding:1.5rem;">No items found.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<div style="display:flex;align-items:center;justify-content:center;gap:.6rem;margin-top:1.2rem;">
+  {% if page_obj.has_previous %}
+    <a href="?q={{ query }}&category={{ category }}&page={{ page_obj.previous_page_number }}" class="btn btn-ghost btn-sm">← Previous</a>
+  {% endif %}
+  <span style="font-size:.85rem;color:var(--mut);">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} ({{ total_matching }} item{{ total_matching|pluralize }})</span>
+  {% if page_obj.has_next %}
+    <a href="?q={{ query }}&category={{ category }}&page={{ page_obj.next_page_number }}" class="btn btn-ghost btn-sm">Next →</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

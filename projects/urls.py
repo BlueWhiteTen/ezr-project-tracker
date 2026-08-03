@@ -24,6 +24,7 @@ urlpatterns = [
     path('log/',                          views.activity_log,          name='activity_log'),
     path('reports/daily-accounts/',       views.daily_accounts_report, name='daily_accounts_report'),
     path('reports/stock-valuation/',      views.stock_valuation,       name='stock_valuation'),
+    path('reports/stock-valuation/items/', views.stock_valuation_items, name='stock_valuation_items'),
     path('reports/stock-valuation/rate/', views.stock_valuation_rate_update, name='stock_valuation_rate_update'),
     path('reports/stock-valuation/git/add/', views.goods_in_transit_add, name='goods_in_transit_add'),
     path('reports/stock-valuation/git/<int:pk>/delete/', views.goods_in_transit_delete, name='goods_in_transit_delete'),

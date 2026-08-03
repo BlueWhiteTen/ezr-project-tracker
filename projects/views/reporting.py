@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 import json
 
-from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, ExchangeRate, GoodsInTransit
+from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, ExchangeRate, GoodsInTransit, StockValuationItem
 from ..forms import RegisterForm, ProjectForm
 from .utils import (_calc_sell_price, _calc_cost_breakdown, _can_view_reports)
 
@@ -664,16 +664,29 @@ def stock_valuation(request):
         messages.error(request, "You don't have access to this report. Ask an administrator to enable report access on your Staff Profile.")
         return redirect('dashboard')
 
-    from django.db.models import Sum, DecimalField, ExpressionWrapper
-    from django.db.models.functions import Coalesce
-    line_value = ExpressionWrapper(models_F('quantity') * models_F('cost_price'), output_field=DecimalField(max_digits=14, decimal_places=2))
-    warehouse_value = Product.objects.filter(is_active=True).aggregate(
-        total=Coalesce(Sum(line_value), 0, output_field=DecimalField(max_digits=14, decimal_places=2))
-    )['total']
-
     rates = {r.currency: r.rate_to_gbp for r in ExchangeRate.objects.all()}
     for cur in ('CAD', 'EUR', 'USD'):
         rates.setdefault(cur, None)
+
+    # Warehouse value comes from the imported spreadsheet snapshot, not live
+    # Stock prices — GBP-native lines use their recorded total directly;
+    # lines priced in CAD/EUR/USD (e.g. Trimline, bought from Canada) are
+    # converted using the same manually-maintained rates as Goods In Transit,
+    # since the spreadsheet's own £ total for those is 0/uncalculated.
+    valuation_items = list(StockValuationItem.objects.all())
+    warehouse_value = 0
+    unconverted_count = 0
+    for item in valuation_items:
+        cur = item.native_currency
+        if cur == 'GBP':
+            warehouse_value += item.total_gbp or 0
+        elif cur in rates and rates[cur]:
+            qty = item.quantity or 0
+            cost = item.native_cost or 0
+            warehouse_value += qty * cost * rates[cur]
+        elif cur:
+            unconverted_count += 1
+        # items with no recorded cost in any currency contribute nothing
 
     git_entries = list(GoodsInTransit.objects.all().order_by('-added_at'))
     git_by_currency = {}
@@ -693,6 +706,39 @@ def stock_valuation(request):
         'git_by_currency': git_by_currency,
         'git_gbp_total': git_gbp_total,
         'grand_total': grand_total,
+        'unconverted_count': unconverted_count,
+        'item_count': len(valuation_items),
+    })
+
+
+@login_required
+def stock_valuation_items(request):
+    """The full itemized breakdown behind the Stock Valuation summary —
+    every line from the imported spreadsheet snapshot."""
+    if not _can_view_reports(request.user):
+        messages.error(request, "You don't have access to this report. Ask an administrator to enable report access on your Staff Profile.")
+        return redirect('dashboard')
+
+    q = request.GET.get('q', '').strip()
+    category = request.GET.get('category', '')
+    items = StockValuationItem.objects.all().order_by('description')
+    if category in ('board_stock', 'non_stock'):
+        items = items.filter(category=category)
+    if q:
+        items = items.filter(Q(description__icontains=q) | Q(po_reference__icontains=q))
+
+    from django.core.paginator import Paginator
+    total_matching = items.count()
+    paginator = Paginator(items, 100)
+    page_num = request.GET.get('page', 1)
+    try:
+        page_obj = paginator.page(page_num)
+    except Exception:
+        page_obj = paginator.page(1)
+
+    return render(request, 'projects/stock_valuation_items.html', {
+        'items': page_obj.object_list, 'page_obj': page_obj, 'total_matching': total_matching,
+        'query': q, 'category': category,
     })
 
 

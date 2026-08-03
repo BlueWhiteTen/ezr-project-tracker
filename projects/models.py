@@ -655,6 +655,46 @@ class GoodsInTransit(models.Model):
         return f"{self.reference}: {self.currency} {self.value}"
 
 
+class StockValuationItem(models.Model):
+    """One line of the warehouse stock valuation — imported from the stock
+    valuation spreadsheet (not live Stock data), so this reflects the
+    figures actually used to value the warehouse, same as the spreadsheet.
+    Re-imported wholesale each time the spreadsheet is refreshed."""
+    CATEGORY_CHOICES = [('board_stock', 'Board Stock'), ('non_stock', 'Non Stock (delivered)')]
+    description   = models.CharField(max_length=200)
+    category      = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='board_stock')
+    date_changed  = models.CharField(max_length=60, blank=True, help_text='When this price was last changed/checked, as recorded on the spreadsheet')
+    po_reference  = models.CharField(max_length=100, blank=True, help_text='The PO that last changed this price')
+    quantity      = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    cost_gbp      = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    cost_eur      = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    cost_cad      = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    cost_usd      = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    total_gbp     = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, help_text='Total as recorded on the spreadsheet — 0/blank for non-GBP items whose conversion is computed live instead')
+    imported_at   = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def native_currency(self):
+        """Which currency this item's cost is actually recorded in — the
+        spreadsheet's own 'Total £' is only reliable for GBP-native items."""
+        if self.cost_gbp is not None:
+            return 'GBP'
+        if self.cost_cad is not None:
+            return 'CAD'
+        if self.cost_eur is not None:
+            return 'EUR'
+        if self.cost_usd is not None:
+            return 'USD'
+        return None
+
+    @property
+    def native_cost(self):
+        return {'GBP': self.cost_gbp, 'CAD': self.cost_cad, 'EUR': self.cost_eur, 'USD': self.cost_usd}.get(self.native_currency)
+
+    def __str__(self):
+        return self.description
+
+
 class FittingCrew(models.Model):
     name  = models.CharField(max_length=200)
     phone = models.CharField(max_length=50, blank=True)

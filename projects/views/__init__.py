@@ -15,7 +15,7 @@ from .auth import (
 )
 from .reporting import (
     home, daily_accounts_report, activity_log, week_view,
-    stock_valuation, stock_valuation_rate_update, goods_in_transit_add, goods_in_transit_delete,
+    stock_valuation, stock_valuation_rate_update, goods_in_transit_add, goods_in_transit_delete, stock_valuation_items,
     monthly_summary, calendar_view, board_view, so_search,
     sales_summary, sales_summary_export,
 )
