@@ -712,6 +712,48 @@ def stock_valuation(request):
 
 
 @login_required
+@require_POST
+def stock_valuation_item_update(request, pk):
+    item = get_object_or_404(StockValuationItem, pk=pk)
+    data = json.loads(request.body)
+    if 'date_changed' in data:
+        item.date_changed = (data['date_changed'] or '').strip()[:60]
+    if 'po_reference' in data:
+        item.po_reference = (data['po_reference'] or '').strip()[:100]
+    if 'cost_value' in data and 'cost_currency' in data:
+        currency = data['cost_currency']
+        try:
+            value = float(data['cost_value']) if data['cost_value'] not in ('', None) else None
+        except (TypeError, ValueError):
+            return JsonResponse({'error': 'Cost must be a number.'}, status=400)
+        if currency not in ('GBP', 'EUR', 'CAD', 'USD'):
+            return JsonResponse({'error': 'Invalid currency.'}, status=400)
+        # Only one currency field is ever populated at a time — clear the
+        # others so native_currency stays unambiguous.
+        item.cost_gbp = value if currency == 'GBP' else None
+        item.cost_eur = value if currency == 'EUR' else None
+        item.cost_cad = value if currency == 'CAD' else None
+        item.cost_usd = value if currency == 'USD' else None
+    item.save()
+
+    rates = {r.currency: float(r.rate_to_gbp) if r.rate_to_gbp is not None else None for r in ExchangeRate.objects.all()}
+    cur = item.native_currency
+    qty = float(item.live_quantity or 0)
+    cost = float(item.native_cost or 0)
+    if cur == 'GBP':
+        computed_total = qty * cost
+    elif cur and rates.get(cur):
+        computed_total = qty * cost * rates[cur]
+    else:
+        computed_total = None
+
+    return JsonResponse({
+        'ok': True, 'live_quantity': float(qty),
+        'computed_total': float(computed_total) if computed_total is not None else None,
+    })
+
+
+@login_required
 def stock_valuation_items(request):
     """The full itemized breakdown behind the Stock Valuation summary —
     every line from the imported spreadsheet snapshot."""
@@ -736,8 +778,21 @@ def stock_valuation_items(request):
     except Exception:
         page_obj = paginator.page(1)
 
+    rates = {r.currency: r.rate_to_gbp for r in ExchangeRate.objects.all()}
+    page_items = list(page_obj.object_list)
+    for item in page_items:
+        cur = item.native_currency
+        qty = item.live_quantity or 0
+        cost = item.native_cost or 0
+        if cur == 'GBP':
+            item.computed_total = qty * cost
+        elif cur and rates.get(cur):
+            item.computed_total = qty * cost * rates[cur]
+        else:
+            item.computed_total = None
+
     return render(request, 'projects/stock_valuation_items.html', {
-        'items': page_obj.object_list, 'page_obj': page_obj, 'total_matching': total_matching,
+        'items': page_items, 'page_obj': page_obj, 'total_matching': total_matching,
         'query': q, 'category': category,
     })
 

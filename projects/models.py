@@ -663,6 +663,7 @@ class StockValuationItem(models.Model):
     CATEGORY_CHOICES = [('board_stock', 'Board Stock'), ('non_stock', 'Non Stock (delivered)')]
     description   = models.CharField(max_length=200)
     category      = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='board_stock')
+    linked_product = models.ForeignKey('Product', null=True, blank=True, on_delete=models.SET_NULL, help_text='When set, Quantity is pulled live from this Stock item instead of the imported snapshot value')
     date_changed  = models.CharField(max_length=60, blank=True, help_text='When this price was last changed/checked, as recorded on the spreadsheet')
     po_reference  = models.CharField(max_length=100, blank=True, help_text='The PO that last changed this price')
     quantity      = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -672,6 +673,14 @@ class StockValuationItem(models.Model):
     cost_usd      = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
     total_gbp     = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, help_text='Total as recorded on the spreadsheet — 0/blank for non-GBP items whose conversion is computed live instead')
     imported_at   = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def live_quantity(self):
+        """Quantity from the live Stock item if linked, else the static
+        imported figure."""
+        if self.linked_product:
+            return self.linked_product.quantity
+        return self.quantity
 
     @property
     def native_currency(self):

@@ -9,6 +9,10 @@ table.sv-items td.num{text-align:right;font-weight:600;white-space:nowrap;}
 .sv-cat-badge{font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.03em;}
 .sv-cat-board{background:var(--acc-bg);color:var(--acc);}
 .sv-cat-non{background:var(--surf2);color:var(--mut);}
+.sv-edit-input{border:1px solid transparent;background:transparent;border-radius:4px;padding:3px 5px;font-size:.82rem;font-family:inherit;color:inherit;}
+.sv-edit-input:hover{border-color:var(--bdr);}
+.sv-edit-input:focus{border-color:var(--acc);background:var(--surf2);outline:none;}
+.sv-cost-value{text-align:right;}
 {% endblock %}
 {% block content %}
 
@@ -33,34 +37,46 @@ table.sv-items td.num{text-align:right;font-weight:600;white-space:nowrap;}
   <thead><tr>
     <th>Description</th><th>Category</th><th>Price Changed</th><th>PO Reference</th>
     <th style="text-align:right;">Qty</th>
-    <th style="text-align:right;">Cost £</th><th style="text-align:right;">Cost €</th>
-    <th style="text-align:right;">Cost C$</th><th style="text-align:right;">Cost US$</th>
+    <th style="text-align:right;">Cost</th>
     <th style="text-align:right;">Total £</th>
   </tr></thead>
   <tbody>
   {% for item in items %}
-  <tr>
+  <tr id="sv-row-{{ item.pk }}">
     <td>{{ item.description }}</td>
     <td><span class="sv-cat-badge {% if item.category == 'board_stock' %}sv-cat-board{% else %}sv-cat-non{% endif %}">{{ item.get_category_display }}</span></td>
-    <td style="color:var(--mut2);">{{ item.date_changed }}</td>
-    <td style="color:var(--mut2);">{{ item.po_reference }}</td>
-    <td class="num">{% if item.quantity %}{{ item.quantity|floatformat:0 }}{% else %}—{% endif %}</td>
-    <td class="num">{% if item.cost_gbp is not None %}{{ item.cost_gbp|floatformat:2 }}{% else %}—{% endif %}</td>
-    <td class="num">{% if item.cost_eur is not None %}{{ item.cost_eur|floatformat:2 }}{% else %}—{% endif %}</td>
-    <td class="num">{% if item.cost_cad is not None %}{{ item.cost_cad|floatformat:2 }}{% else %}—{% endif %}</td>
-    <td class="num">{% if item.cost_usd is not None %}{{ item.cost_usd|floatformat:2 }}{% else %}—{% endif %}</td>
+    <td>
+      <input class="sv-edit-input" data-field="date_changed" data-pk="{{ item.pk }}" value="{{ item.date_changed }}" placeholder="e.g. oct 2025" style="width:100px;">
+    </td>
+    <td>
+      <input class="sv-edit-input" data-field="po_reference" data-pk="{{ item.pk }}" value="{{ item.po_reference }}" placeholder="PO / invoice ref" style="width:150px;">
+    </td>
     <td class="num">
-      {% if item.native_currency == 'GBP' %}£{{ item.total_gbp|floatformat:2 }}
-      {% elif item.native_currency %}<span style="color:var(--mut2);" title="Converted on the Summary page using the current exchange rate">see Summary</span>
-      {% else %}—{% endif %}
+      {{ item.live_quantity|floatformat:0 }}{% if item.linked_product %}<span title="Live from Stock" style="color:var(--grn);margin-left:3px;">●</span>{% endif %}
+    </td>
+    <td class="num">
+      <div style="display:flex;gap:4px;justify-content:flex-end;align-items:center;">
+        <select class="sv-edit-input sv-cost-currency" data-pk="{{ item.pk }}" style="width:56px;">
+          <option value="GBP" {% if item.native_currency == 'GBP' %}selected{% endif %}>£</option>
+          <option value="EUR" {% if item.native_currency == 'EUR' %}selected{% endif %}>€</option>
+          <option value="CAD" {% if item.native_currency == 'CAD' %}selected{% endif %}>C$</option>
+          <option value="USD" {% if item.native_currency == 'USD' %}selected{% endif %}>US$</option>
+        </select>
+        <input class="sv-edit-input sv-cost-value" data-field="cost_value" data-pk="{{ item.pk }}" type="number" step="0.01" value="{{ item.native_cost|default_if_none:'' }}" style="width:80px;">
+      </div>
+    </td>
+    <td class="num" id="sv-total-{{ item.pk }}">
+      {% if item.computed_total is not None %}£{{ item.computed_total|floatformat:2 }}
+      {% else %}<span style="color:var(--mut2);" title="Set the exchange rate on the Summary page to calculate this">—</span>{% endif %}
     </td>
   </tr>
   {% empty %}
-  <tr><td colspan="10" style="text-align:center;color:var(--mut);padding:1.5rem;">No items found.</td></tr>
+  <tr><td colspan="7" style="text-align:center;color:var(--mut);padding:1.5rem;">No items found.</td></tr>
   {% endfor %}
   </tbody>
 </table>
 </div>
+<div style="font-size:.78rem;color:var(--mut);margin-top:.5rem;"><span style="color:var(--grn);">●</span> = quantity is live from Stock. Otherwise it's the figure from the imported spreadsheet.</div>
 
 {% if page_obj.paginator.num_pages > 1 %}
 <div style="display:flex;align-items:center;justify-content:center;gap:.6rem;margin-top:1.2rem;">
@@ -73,4 +89,49 @@ table.sv-items td.num{text-align:right;font-weight:600;white-space:nowrap;}
   {% endif %}
 </div>
 {% endif %}
+
+<script>
+const SV_CSRF = '{{ csrf_token }}';
+
+async function svSave(pk, payload){
+  const r = await fetch(`/reports/stock-valuation/items/${pk}/update/`, {
+    method: 'POST', headers: {'Content-Type':'application/json','X-CSRFToken':SV_CSRF},
+    body: JSON.stringify(payload)
+  });
+  return r.json();
+}
+
+document.querySelectorAll('input.sv-edit-input[data-field="date_changed"], input.sv-edit-input[data-field="po_reference"]').forEach(el => {
+  el.addEventListener('change', async () => {
+    const pk = el.dataset.pk;
+    const payload = {};
+    payload[el.dataset.field] = el.value;
+    await svSave(pk, payload);
+  });
+});
+
+function svCostInputs(pk){
+  const row = document.getElementById(`sv-row-${pk}`);
+  return {
+    currency: row.querySelector('.sv-cost-currency'),
+    value: row.querySelector('.sv-cost-value'),
+  };
+}
+
+async function svSaveCost(pk){
+  const { currency, value } = svCostInputs(pk);
+  const d = await svSave(pk, { cost_value: value.value, cost_currency: currency.value });
+  if(d.ok){
+    const totalCell = document.getElementById(`sv-total-${pk}`);
+    totalCell.innerHTML = d.computed_total !== null
+      ? `£${d.computed_total.toFixed(2)}`
+      : `<span style="color:var(--mut2);" title="Set the exchange rate on the Summary page to calculate this">—</span>`;
+  }
+}
+
+document.querySelectorAll('.sv-cost-value, .sv-cost-currency').forEach(el => {
+  el.addEventListener('change', () => svSaveCost(el.dataset.pk));
+});
+</script>
 {% endblock %}
+
