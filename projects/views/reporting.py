@@ -720,6 +720,15 @@ def stock_valuation_item_update(request, pk):
         item.date_changed = (data['date_changed'] or '').strip()[:60]
     if 'po_reference' in data:
         item.po_reference = (data['po_reference'] or '').strip()[:100]
+    if 'linked_product_id' in data:
+        pid = data['linked_product_id']
+        if pid:
+            product = Product.objects.filter(pk=pid).first()
+            if not product:
+                return JsonResponse({'error': 'Stock item not found.'}, status=400)
+            item.linked_product = product
+        else:
+            item.linked_product = None
     if 'cost_value' in data and 'cost_currency' in data:
         currency = data['cost_currency']
         try:
@@ -750,6 +759,7 @@ def stock_valuation_item_update(request, pk):
     return JsonResponse({
         'ok': True, 'live_quantity': float(qty),
         'computed_total': float(computed_total) if computed_total is not None else None,
+        'linked_product': {'id': item.linked_product.id, 'code': item.linked_product.code, 'description': item.linked_product.description} if item.linked_product else None,
     })
 
 
