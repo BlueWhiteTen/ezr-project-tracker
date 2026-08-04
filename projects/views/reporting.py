@@ -678,11 +678,11 @@ def stock_valuation(request):
     unconverted_count = 0
     for item in valuation_items:
         cur = item.native_currency
+        qty = item.live_quantity or 0
+        cost = item.native_cost or 0
         if cur == 'GBP':
-            warehouse_value += item.total_gbp or 0
+            warehouse_value += qty * cost
         elif cur in rates and rates[cur]:
-            qty = item.quantity or 0
-            cost = item.native_cost or 0
             warehouse_value += qty * cost * rates[cur]
         elif cur:
             unconverted_count += 1
@@ -808,7 +808,7 @@ def stock_valuation_export(request):
         ws.cell(row=row, column=7, value=cur or '').font = Font(name='Arial')
         cost_cell = ws.cell(row=row, column=8, value=cost)
         cost_cell.font = Font(name='Arial')
-        cost_cell.number_format = '#,##0.0000'
+        cost_cell.number_format = '#,##0.00'
 
         qty_ref = f'F{row}'
         cost_ref = f'H{row}'

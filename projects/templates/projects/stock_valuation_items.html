@@ -72,7 +72,7 @@ table.sv-items td.num{text-align:right;font-weight:600;white-space:nowrap;}
           <option value="CAD" {% if item.native_currency == 'CAD' %}selected{% endif %}>C$</option>
           <option value="USD" {% if item.native_currency == 'USD' %}selected{% endif %}>US$</option>
         </select>
-        <input class="sv-edit-input sv-cost-value" data-field="cost_value" data-pk="{{ item.pk }}" type="number" step="0.01" value="{{ item.native_cost|default_if_none:'' }}" style="width:80px;">
+        <input class="sv-edit-input sv-cost-value" data-field="cost_value" data-pk="{{ item.pk }}" type="number" step="0.01" value="{% if item.native_cost is not None %}{{ item.native_cost|floatformat:2 }}{% endif %}" style="width:80px;">
       </div>
     </td>
     <td class="num" id="sv-total-{{ item.pk }}">
