@@ -782,7 +782,7 @@ def stock_valuation_export(request):
     ws = wb.active
     ws.title = 'Stock Valuation'
 
-    headers = ['Description', 'Category', 'Linked Stock Item', 'Price Changed', 'PO Reference', 'Qty', 'Currency', 'Cost', 'Total £']
+    headers = ['Description', 'Linked Stock Item', 'Price Changed', 'PO Reference', 'Qty', 'Currency', 'Cost', 'Total £']
     header_fill = PatternFill(start_color='E8E8E8', end_color='E8E8E8', fill_type='solid')
     for col, h in enumerate(headers, start=1):
         cell = ws.cell(row=1, column=col, value=h)
@@ -799,20 +799,19 @@ def stock_valuation_export(request):
         cost = float(item.native_cost) if item.native_cost is not None else None
 
         ws.cell(row=row, column=1, value=item.description).font = Font(name='Arial')
-        ws.cell(row=row, column=2, value=item.get_category_display()).font = Font(name='Arial')
-        ws.cell(row=row, column=3, value=f"{item.linked_product.code} — {item.linked_product.description}" if item.linked_product else '').font = Font(name='Arial')
-        ws.cell(row=row, column=4, value=item.date_changed).font = Font(name='Arial')
-        ws.cell(row=row, column=5, value=item.po_reference).font = Font(name='Arial')
-        qty_cell = ws.cell(row=row, column=6, value=qty)
+        ws.cell(row=row, column=2, value=f"{item.linked_product.code} — {item.linked_product.description}" if item.linked_product else '').font = Font(name='Arial')
+        ws.cell(row=row, column=3, value=item.date_changed).font = Font(name='Arial')
+        ws.cell(row=row, column=4, value=item.po_reference).font = Font(name='Arial')
+        qty_cell = ws.cell(row=row, column=5, value=qty)
         qty_cell.font = Font(name='Arial', color='008000' if item.linked_product else '000000')
-        ws.cell(row=row, column=7, value=cur or '').font = Font(name='Arial')
-        cost_cell = ws.cell(row=row, column=8, value=cost)
+        ws.cell(row=row, column=6, value=cur or '').font = Font(name='Arial')
+        cost_cell = ws.cell(row=row, column=7, value=cost)
         cost_cell.font = Font(name='Arial')
         cost_cell.number_format = '#,##0.00'
 
-        qty_ref = f'F{row}'
-        cost_ref = f'H{row}'
-        total_cell = ws.cell(row=row, column=9)
+        qty_ref = f'E{row}'
+        cost_ref = f'G{row}'
+        total_cell = ws.cell(row=row, column=8)
         if cur == 'GBP' and cost is not None:
             total_cell.value = f'={qty_ref}*{cost_ref}'
         elif cur and cost is not None and rates.get(cur):
@@ -829,8 +828,8 @@ def stock_valuation_export(request):
 
     last_data_row = row - 1
     total_row = row + 1
-    ws.cell(row=total_row, column=8, value='Total').font = Font(name='Arial', bold=True)
-    grand_total_cell = ws.cell(row=total_row, column=9, value=f'=SUM(I{first_data_row}:I{last_data_row})')
+    ws.cell(row=total_row, column=7, value='Total').font = Font(name='Arial', bold=True)
+    grand_total_cell = ws.cell(row=total_row, column=8, value=f'=SUM(H{first_data_row}:H{last_data_row})')
     grand_total_cell.font = Font(name='Arial', bold=True)
     grand_total_cell.number_format = '#,##0.00'
 
@@ -846,7 +845,7 @@ def stock_valuation_export(request):
             value=f"{len(unconverted_rows)} row(s) have no exchange rate set and show a blank Total — see the Summary page."
         ).font = Font(name='Arial', italic=True, size=9, color='CC0000')
 
-    widths = [34, 14, 30, 13, 20, 9, 9, 11, 12]
+    widths = [34, 30, 13, 20, 9, 9, 11, 12]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
     ws.freeze_panes = 'A2'
@@ -868,10 +867,7 @@ def stock_valuation_items(request):
         return redirect('dashboard')
 
     q = request.GET.get('q', '').strip()
-    category = request.GET.get('category', '')
     items = StockValuationItem.objects.all().order_by('description')
-    if category in ('board_stock', 'non_stock'):
-        items = items.filter(category=category)
     if q:
         items = items.filter(Q(description__icontains=q) | Q(po_reference__icontains=q))
 
@@ -899,7 +895,7 @@ def stock_valuation_items(request):
 
     return render(request, 'projects/stock_valuation_items.html', {
         'items': page_items, 'page_obj': page_obj, 'total_matching': total_matching,
-        'query': q, 'category': category,
+        'query': q,
     })
 
 

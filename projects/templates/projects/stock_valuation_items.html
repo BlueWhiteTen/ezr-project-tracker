@@ -6,9 +6,6 @@ table.sv-items th{text-align:left;padding:.55rem .75rem;font-size:.71rem;text-tr
 table.sv-items td{padding:.5rem .75rem;border-bottom:1px solid var(--bdr);vertical-align:top;}
 table.sv-items tr:last-child td{border-bottom:none;}
 table.sv-items td.num{text-align:right;font-weight:600;white-space:nowrap;}
-.sv-cat-badge{font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.03em;}
-.sv-cat-board{background:var(--acc-bg);color:var(--acc);}
-.sv-cat-non{background:var(--surf2);color:var(--mut);}
 .sv-edit-input{border:1px solid transparent;background:transparent;border-radius:4px;padding:3px 5px;font-size:.82rem;font-family:inherit;color:inherit;}
 .sv-edit-input:hover{border-color:var(--bdr);}
 .sv-edit-input:focus{border-color:var(--acc);background:var(--surf2);outline:none;}
@@ -26,19 +23,14 @@ table.sv-items td.num{text-align:right;font-weight:600;white-space:nowrap;}
 
 <form method="get" style="display:flex;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap;">
   <input class="form-input" name="q" value="{{ query }}" placeholder="Search description or PO…" style="max-width:300px;">
-  <select class="form-input" name="category" style="width:auto;">
-    <option value="">All categories</option>
-    <option value="board_stock" {% if category == 'board_stock' %}selected{% endif %}>Board Stock</option>
-    <option value="non_stock" {% if category == 'non_stock' %}selected{% endif %}>Non Stock</option>
-  </select>
   <button class="btn btn-ghost btn-sm" type="submit">Filter</button>
-  {% if query or category %}<a href="{% url 'stock_valuation_items' %}" class="btn btn-ghost btn-sm">Clear</a>{% endif %}
+  {% if query %}<a href="{% url 'stock_valuation_items' %}" class="btn btn-ghost btn-sm">Clear</a>{% endif %}
 </form>
 
 <div style="overflow-x:auto;">
 <table class="sv-items">
   <thead><tr>
-    <th>Description</th><th>Category</th><th>Linked Stock Item</th><th>Price Changed</th><th>PO Reference</th>
+    <th>Description</th><th>Linked Stock Item</th><th>Price Changed</th><th>PO Reference</th>
     <th style="text-align:right;">Qty</th>
     <th style="text-align:right;">Cost</th>
     <th style="text-align:right;">Total £</th>
@@ -47,7 +39,6 @@ table.sv-items td.num{text-align:right;font-weight:600;white-space:nowrap;}
   {% for item in items %}
   <tr id="sv-row-{{ item.pk }}">
     <td>{{ item.description }}</td>
-    <td><span class="sv-cat-badge {% if item.category == 'board_stock' %}sv-cat-board{% else %}sv-cat-non{% endif %}">{{ item.get_category_display }}</span></td>
     <td style="position:relative;min-width:170px;">
       <input class="sv-edit-input sv-link-search" data-pk="{{ item.pk }}" autocomplete="off"
         value="{% if item.linked_product %}{{ item.linked_product.code }} — {{ item.linked_product.description }}{% endif %}"
@@ -81,7 +72,7 @@ table.sv-items td.num{text-align:right;font-weight:600;white-space:nowrap;}
     </td>
   </tr>
   {% empty %}
-  <tr><td colspan="8" style="text-align:center;color:var(--mut);padding:1.5rem;">No items found.</td></tr>
+  <tr><td colspan="7" style="text-align:center;color:var(--mut);padding:1.5rem;">No items found.</td></tr>
   {% endfor %}
   </tbody>
 </table>
@@ -91,11 +82,11 @@ table.sv-items td.num{text-align:right;font-weight:600;white-space:nowrap;}
 {% if page_obj.paginator.num_pages > 1 %}
 <div style="display:flex;align-items:center;justify-content:center;gap:.6rem;margin-top:1.2rem;">
   {% if page_obj.has_previous %}
-    <a href="?q={{ query }}&category={{ category }}&page={{ page_obj.previous_page_number }}" class="btn btn-ghost btn-sm">← Previous</a>
+    <a href="?q={{ query }}&page={{ page_obj.previous_page_number }}" class="btn btn-ghost btn-sm">← Previous</a>
   {% endif %}
   <span style="font-size:.85rem;color:var(--mut);">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} ({{ total_matching }} item{{ total_matching|pluralize }})</span>
   {% if page_obj.has_next %}
-    <a href="?q={{ query }}&category={{ category }}&page={{ page_obj.next_page_number }}" class="btn btn-ghost btn-sm">Next →</a>
+    <a href="?q={{ query }}&page={{ page_obj.next_page_number }}" class="btn btn-ghost btn-sm">Next →</a>
   {% endif %}
 </div>
 {% endif %}
