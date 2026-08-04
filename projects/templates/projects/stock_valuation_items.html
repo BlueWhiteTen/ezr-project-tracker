@@ -18,7 +18,10 @@ table.sv-items td.num{text-align:right;font-weight:600;white-space:nowrap;}
 
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:.8rem;">
   <h1 style="font-size:1.5rem;font-weight:700;">Stock Valuation — Full Breakdown</h1>
-  <a href="{% url 'stock_valuation' %}" class="btn btn-ghost btn-sm">← Back to Summary</a>
+  <div style="display:flex;gap:.6rem;">
+    <a href="{% url 'stock_valuation_export' %}" class="btn btn-primary btn-sm">⬇ Export to Excel</a>
+    <a href="{% url 'stock_valuation' %}" class="btn btn-ghost btn-sm">← Back to Summary</a>
+  </div>
 </div>
 
 <form method="get" style="display:flex;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap;">

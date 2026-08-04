@@ -764,6 +764,102 @@ def stock_valuation_item_update(request, pk):
 
 
 @login_required
+def stock_valuation_export(request):
+    """Excel export of the full Stock Valuation breakdown, with real Excel
+    formulas (Qty x Cost, converted at the exchange rate) rather than
+    pre-computed numbers, so it recalculates if edited."""
+    if not _can_view_reports(request.user):
+        messages.error(request, "You don't have access to this report. Ask an administrator to enable report access on your Staff Profile.")
+        return redirect('dashboard')
+
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    rates = {r.currency: float(r.rate_to_gbp) if r.rate_to_gbp is not None else None for r in ExchangeRate.objects.all()}
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Stock Valuation'
+
+    headers = ['Description', 'Category', 'Linked Stock Item', 'Price Changed', 'PO Reference', 'Qty', 'Currency', 'Cost', 'Total £']
+    header_fill = PatternFill(start_color='E8E8E8', end_color='E8E8E8', fill_type='solid')
+    for col, h in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = Font(name='Arial', bold=True)
+        cell.fill = header_fill
+
+    items = StockValuationItem.objects.all().order_by('description')
+    row = 2
+    first_data_row = row
+    unconverted_rows = []
+    for item in items:
+        cur = item.native_currency
+        qty = float(item.live_quantity or 0)
+        cost = float(item.native_cost) if item.native_cost is not None else None
+
+        ws.cell(row=row, column=1, value=item.description).font = Font(name='Arial')
+        ws.cell(row=row, column=2, value=item.get_category_display()).font = Font(name='Arial')
+        ws.cell(row=row, column=3, value=f"{item.linked_product.code} — {item.linked_product.description}" if item.linked_product else '').font = Font(name='Arial')
+        ws.cell(row=row, column=4, value=item.date_changed).font = Font(name='Arial')
+        ws.cell(row=row, column=5, value=item.po_reference).font = Font(name='Arial')
+        qty_cell = ws.cell(row=row, column=6, value=qty)
+        qty_cell.font = Font(name='Arial', color='008000' if item.linked_product else '000000')
+        ws.cell(row=row, column=7, value=cur or '').font = Font(name='Arial')
+        cost_cell = ws.cell(row=row, column=8, value=cost)
+        cost_cell.font = Font(name='Arial')
+        cost_cell.number_format = '#,##0.0000'
+
+        qty_ref = f'F{row}'
+        cost_ref = f'H{row}'
+        total_cell = ws.cell(row=row, column=9)
+        if cur == 'GBP' and cost is not None:
+            total_cell.value = f'={qty_ref}*{cost_ref}'
+        elif cur and cost is not None and rates.get(cur):
+            # Rate is embedded as the value in effect at export time — see
+            # the note below the table for why it's not a live formula.
+            total_cell.value = f'={qty_ref}*{cost_ref}*{rates[cur]}'
+        else:
+            total_cell.value = None
+            if cur:
+                unconverted_rows.append(row)
+        total_cell.number_format = '#,##0.00;(#,##0.00);"-"'
+        total_cell.font = Font(name='Arial')
+        row += 1
+
+    last_data_row = row - 1
+    total_row = row + 1
+    ws.cell(row=total_row, column=8, value='Total').font = Font(name='Arial', bold=True)
+    grand_total_cell = ws.cell(row=total_row, column=9, value=f'=SUM(I{first_data_row}:I{last_data_row})')
+    grand_total_cell.font = Font(name='Arial', bold=True)
+    grand_total_cell.number_format = '#,##0.00'
+
+    note_row = total_row + 2
+    ws.cell(row=note_row, column=1,
+        value=f"Note: Total £ = Qty × Cost, converted to GBP using the exchange rate in effect on "
+              f"{timezone.now().strftime('%d %b %Y')} (CAD {rates.get('CAD','not set')}, EUR {rates.get('EUR','not set')}, "
+              f"USD {rates.get('USD','not set')}). The rate is a fixed number in each formula, not a live lookup — "
+              f"editing Qty or Cost recalculates correctly, but the rate itself won't update unless you edit the formula."
+    ).font = Font(name='Arial', italic=True, size=9, color='666666')
+    if unconverted_rows:
+        ws.cell(row=note_row + 1, column=1,
+            value=f"{len(unconverted_rows)} row(s) have no exchange rate set and show a blank Total — see the Summary page."
+        ).font = Font(name='Arial', italic=True, size=9, color='CC0000')
+
+    widths = [34, 14, 30, 13, 20, 9, 9, 11, 12]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.freeze_panes = 'A2'
+
+    from io import BytesIO
+    buf = BytesIO()
+    wb.save(buf)
+    response = HttpResponse(buf.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="Stock-Valuation-{timezone.now().strftime("%Y-%m-%d")}.xlsx"'
+    return response
+
+
+@login_required
 def stock_valuation_items(request):
     """The full itemized breakdown behind the Stock Valuation summary —
     every line from the imported spreadsheet snapshot."""
