@@ -366,7 +366,14 @@ async function quickStatus(sel){
       return;
     }
   }
-  const r = await fetch(`/project/${pk}/status/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},body:JSON.stringify({status:newStatus})});
+  let lostReason = null;
+  if(newStatus === 'cancelled'){
+    lostReason = prompt('Why isn\'t this proceeding? (optional, but helps track patterns over time)', '');
+    if(lostReason === null){ sel.value = old_status; return; }
+  }
+  const body = {status:newStatus};
+  if(lostReason) body.lost_reason = lostReason;
+  const r = await fetch(`/project/${pk}/status/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},body:JSON.stringify(body)});
   const d = await r.json();
   if(d.ok){
     sel.dataset.current = newStatus;

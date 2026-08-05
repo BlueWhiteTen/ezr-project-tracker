@@ -63,6 +63,26 @@
         <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:1rem;">Save Changes</button>
       </form>
     </div>
+
+    <div class="form-card" id="contacts-card">
+      <div class="section-title">Contacts</div>
+      <div id="contacts-list">
+        {% for c in contacts %}
+        <div class="contact-row" data-pk="{{ c.pk }}" style="border:1px solid var(--bdr);border-radius:var(--rad);padding:.7rem;margin-bottom:.6rem;">
+          <div style="display:flex;gap:.5rem;margin-bottom:.4rem;">
+            <input class="form-input contact-field" data-field="name" value="{{ c.name }}" placeholder="Name" style="flex:1;">
+            <input class="form-input contact-field" data-field="role" value="{{ c.role }}" placeholder="Role" style="flex:1;">
+          </div>
+          <div style="display:flex;gap:.5rem;">
+            <input class="form-input contact-field" data-field="phone" value="{{ c.phone }}" placeholder="Phone" style="flex:1;">
+            <input class="form-input contact-field" data-field="email" type="email" value="{{ c.email }}" placeholder="Email" style="flex:1;">
+            <button type="button" class="btn btn-ghost btn-sm contact-remove" title="Remove">✕</button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="contact-add-btn" onclick="addContactRow()">+ Add Contact</button>
+    </div>
   </div>
 
   <!-- Right: project history -->
@@ -75,6 +95,45 @@
     {% endif %}
 
     <div class="form-card">
+      <div class="section-title">Timeline</div>
+      {% if timeline %}
+        <div style="max-height:340px;overflow-y:auto;">
+        {% for e in timeline %}
+        <div class="proj-row" style="align-items:flex-start;">
+          <span style="font-size:1rem;">{{ e.icon }}</span>
+          <div style="flex:1;">
+            {% if e.url %}<a href="{{ e.url }}" style="font-weight:500;color:inherit;text-decoration:none;">{{ e.title }}</a>{% else %}<div style="font-weight:500;">{{ e.title }}</div>{% endif %}
+            {% if e.detail %}<div style="font-size:.8rem;color:var(--mut);margin-top:.15rem;">{{ e.detail }}</div>{% endif %}
+            <div style="font-size:.72rem;color:var(--mut2);margin-top:.15rem;">{{ e.date|date:"d M Y, H:i" }}</div>
+          </div>
+        </div>
+        {% endfor %}
+        </div>
+      {% else %}
+        <div style="color:var(--mut);font-size:.875rem;">No activity yet for {{ customer.name }}.</div>
+      {% endif %}
+    </div>
+
+    <div class="form-card" style="margin-top:1.2rem;">
+      <div class="section-title">Relationship Notes</div>
+      <div id="notes-list">
+      {% for n in relationship_notes %}
+        <div class="proj-row" id="note-row-{{ n.pk }}" style="align-items:flex-start;">
+          <div style="flex:1;">
+            <div style="font-size:.9rem;white-space:pre-wrap;">{{ n.text }}</div>
+            <div style="font-size:.72rem;color:var(--mut);margin-top:.2rem;">{{ n.created_by.get_full_name|default:n.created_by.username }} · {{ n.created_at|date:"d M Y, H:i" }}</div>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="deleteCustomerNote({{ n.pk }})" title="Delete">✕</button>
+        </div>
+      {% empty %}
+        <div id="notes-empty" style="color:var(--mut);font-size:.875rem;">No relationship notes yet.</div>
+      {% endfor %}
+      </div>
+      <textarea class="form-input" id="note-text" rows="2" placeholder="Add a note about this customer relationship…" style="margin-top:.6rem;"></textarea>
+      <button type="button" class="btn btn-ghost btn-sm" style="margin-top:.5rem;" onclick="addCustomerNote()">+ Add Note</button>
+    </div>
+
+    <div class="form-card" style="margin-top:1.2rem;">
       <div class="section-title">Project History ({{ projects|length }})</div>
       {% if projects %}
         {% for p in projects %}
@@ -94,6 +153,7 @@
       {% endif %}
     </div>
 
+    {% if features.purchase_orders %}
     <div class="card" style="margin-top:1.2rem;">
       <div class="section-title">Purchase Orders ({{ pos|length }})</div>
       {% if pos %}
@@ -113,6 +173,105 @@
         <div style="color:var(--mut);font-size:.875rem;">No purchase orders raised for {{ customer.name }}'s projects yet.</div>
       {% endif %}
     </div>
+    {% endif %}
   </div>
 </div>
+
+<script>
+const CUST_PK = {{ customer.pk }};
+const CUST_CSRF = '{{ csrf_token }}';
+
+function addContactRow(){
+  const list = document.getElementById('contacts-list');
+  const row = document.createElement('div');
+  row.className = 'contact-row';
+  row.dataset.pk = '';
+  row.style.cssText = 'border:1px solid var(--bdr);border-radius:var(--rad);padding:.7rem;margin-bottom:.6rem;';
+  row.innerHTML = `
+    <div style="display:flex;gap:.5rem;margin-bottom:.4rem;">
+      <input class="form-input contact-field" data-field="name" placeholder="Name" style="flex:1;">
+      <input class="form-input contact-field" data-field="role" placeholder="Role" style="flex:1;">
+    </div>
+    <div style="display:flex;gap:.5rem;">
+      <input class="form-input contact-field" data-field="phone" placeholder="Phone" style="flex:1;">
+      <input class="form-input contact-field" data-field="email" type="email" placeholder="Email" style="flex:1;">
+      <button type="button" class="btn btn-ghost btn-sm contact-remove" title="Remove">✕</button>
+    </div>`;
+  list.appendChild(row);
+  wireContactRow(row);
+}
+
+async function saveContactRow(row){
+  const fields = {};
+  row.querySelectorAll('.contact-field').forEach(el => { fields[el.dataset.field] = el.value.trim(); });
+  if(!fields.name) return;  // don't save a contact with no name yet
+  const pk = row.dataset.pk;
+  if(pk){
+    await fetch(`/customer-contacts/${pk}/update/`, {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CUST_CSRF}, body: JSON.stringify(fields)
+    });
+  } else {
+    const r = await fetch(`/customers/${CUST_PK}/contacts/add/`, {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CUST_CSRF}, body: JSON.stringify(fields)
+    });
+    const d = await r.json();
+    if(d.ok) row.dataset.pk = d.id;
+  }
+}
+
+function wireContactRow(row){
+  row.querySelectorAll('.contact-field').forEach(el => {
+    el.addEventListener('change', () => saveContactRow(row));
+  });
+  row.querySelector('.contact-remove').addEventListener('click', async () => {
+    const pk = row.dataset.pk;
+    if(pk){
+      await fetch(`/customer-contacts/${pk}/delete/`, {method:'POST', headers:{'X-CSRFToken':CUST_CSRF}});
+    }
+    row.remove();
+  });
+}
+document.querySelectorAll('.contact-row').forEach(wireContactRow);
+// Pad up to 3 contact slots minimum, so there's always room to fill in without hunting for the + button
+while(document.querySelectorAll('#contacts-list .contact-row').length < 3){
+  addContactRow();
+}
+
+async function addCustomerNote(){
+  const textEl = document.getElementById('note-text');
+  const text = textEl.value.trim();
+  if(!text) return;
+  const r = await fetch(`/customers/${CUST_PK}/notes/add/`, {
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CUST_CSRF}, body: JSON.stringify({text})
+  });
+  const d = await r.json();
+  if(d.ok){
+    const empty = document.getElementById('notes-empty');
+    if(empty) empty.remove();
+    const list = document.getElementById('notes-list');
+    const row = document.createElement('div');
+    row.className = 'proj-row';
+    row.id = `note-row-${d.id}`;
+    row.style.alignItems = 'flex-start';
+    row.innerHTML = `
+      <div style="flex:1;">
+        <div style="font-size:.9rem;white-space:pre-wrap;"></div>
+        <div style="font-size:.72rem;color:var(--mut);margin-top:.2rem;">${d.author} · ${d.created_at}</div>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="deleteCustomerNote(${d.id})" title="Delete">✕</button>`;
+    row.querySelector('div div').textContent = text;
+    list.insertBefore(row, list.firstChild);
+    textEl.value = '';
+  }
+}
+
+async function deleteCustomerNote(pk){
+  const r = await fetch(`/customer-notes/${pk}/delete/`, {method:'POST', headers:{'X-CSRFToken':CUST_CSRF}});
+  const d = await r.json();
+  if(d.ok){
+    const row = document.getElementById(`note-row-${pk}`);
+    if(row) row.remove();
+  }
+}
+</script>
 {% endblock %}

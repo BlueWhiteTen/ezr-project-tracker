@@ -264,6 +264,10 @@ def project_quick_status(request, pk):
     old_status_val = p.status
     p.status = new_status
     p.last_edited_by = request.user
+    if new_status == 'cancelled':
+        reason = data.get('lost_reason', '').strip()
+        if reason:
+            p.lost_reason = reason
     # Optionally save payment method at the same time (sent from order_received modal)
     payment = data.get('payment_method', '').strip()
     valid_payments = [v for v,_ in Project.PAYMENT_CHOICES]

@@ -860,18 +860,24 @@ async function statusBarClick(newStatus){
       return;
     }
   }
+  let lostReason = null;
+  if(newStatus === 'cancelled'){
+    lostReason = prompt('Why isn\'t this proceeding? (optional, but helps track patterns over time)', '');
+    if(lostReason === null) return;  // they hit Cancel on the prompt itself
+  }
   // For Order Received, show payment method modal first
   if(newStatus === 'order_received'){
     _pendingStatus = newStatus;
     openPaymentModal(true);
     return;
   }
-  await _doStatusChange(newStatus, null);
+  await _doStatusChange(newStatus, null, lostReason);
 }
 
-async function _doStatusChange(newStatus, paymentMethod){
+async function _doStatusChange(newStatus, paymentMethod, lostReason){
   const body = {status: newStatus};
   if(paymentMethod) body.payment_method = paymentMethod;
+  if(lostReason) body.lost_reason = lostReason;
   const r = await fetch(`/project/{{ project.pk }}/status/`, {
     method: 'POST',
     headers: {'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},

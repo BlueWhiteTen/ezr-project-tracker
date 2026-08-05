@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 import json
 
-from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence
+from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, CustomerContact, CustomerNote
 from ..forms import RegisterForm, ProjectForm
 
 
@@ -242,10 +242,109 @@ def customer_detail(request, pk):
     text_matched = Project.objects.filter(customer__iexact=customer.name).exclude(pk__in=linked_projects.values('pk'))
     projects = (linked_projects | text_matched).order_by('-created_at')
     pos = PurchaseOrder.objects.filter(project__in=projects).select_related('supplier', 'project').order_by('-created_at')
+    contacts = customer.contacts.all()
+    relationship_notes = customer.relationship_notes.select_related('created_by').all()
+
+    # ── Timeline: projects, quotes, notes, and installs, newest first ──────
+    from django.urls import reverse
+    timeline = []
+    for p in projects:
+        timeline.append({'date': p.created_at, 'kind': 'project', 'icon': '📁',
+            'title': f'Project created: {p.project_name}', 'url': reverse('project_edit', args=[p.pk]), 'project': p})
+        if p.status == 'cancelled' and p.lost_reason:
+            timeline.append({'date': p.updated_at, 'kind': 'lost', 'icon': '✕',
+                'title': f'Lost: {p.project_name}', 'detail': p.lost_reason, 'url': reverse('project_edit', args=[p.pk]), 'project': p})
+    quotes = ProjectQuote.objects.filter(project__in=projects).select_related('project')
+    for q in quotes:
+        timeline.append({'date': q.updated_at, 'kind': 'quote', 'icon': '📄',
+            'title': f'Quote for {q.project.project_name}', 'detail': f'£{q.main_price:,.2f}' if q.main_price else None, 'url': reverse('project_edit', args=[q.project.pk]), 'project': q.project})
+    installs = InstallationReport.objects.filter(project__in=projects).select_related('project')
+    for i in installs:
+        timeline.append({'date': i.created_at, 'kind': 'install', 'icon': '🔧',
+            'title': f'Installed: {i.project.project_name}', 'url': reverse('project_edit', args=[i.project.pk]), 'project': i.project})
+    for n in relationship_notes:
+        timeline.append({'date': n.created_at, 'kind': 'note', 'icon': '📝',
+            'title': n.created_by.get_full_name() if n.created_by and n.created_by.get_full_name() else (n.created_by.username if n.created_by else 'Note'),
+            'detail': n.text})
+    timeline.sort(key=lambda e: e['date'], reverse=True)
+
     from ..countries import COUNTRIES
     return render(request, 'projects/customer_detail.html', {
         'customer': customer, 'projects': projects, 'pos': pos, 'countries': COUNTRIES,
+        'contacts': contacts, 'relationship_notes': relationship_notes, 'timeline': timeline,
     })
+
+
+@login_required
+@require_POST
+def customer_contact_add(request, pk):
+    customer = get_object_or_404(CustomerProfile, pk=pk)
+    data = json.loads(request.body)
+    name = (data.get('name') or '').strip()
+    if not name:
+        return JsonResponse({'error': 'Name is required.'}, status=400)
+    next_order = (customer.contacts.count())
+    contact = CustomerContact.objects.create(
+        customer=customer, name=name,
+        role=(data.get('role') or '').strip(),
+        phone=(data.get('phone') or '').strip(),
+        email=(data.get('email') or '').strip(),
+        sort_order=next_order,
+    )
+    return JsonResponse({'ok': True, 'id': contact.pk})
+
+
+@login_required
+@require_POST
+def customer_contact_update(request, pk):
+    contact = get_object_or_404(CustomerContact, pk=pk)
+    data = json.loads(request.body)
+    if 'name' in data:
+        name = (data.get('name') or '').strip()
+        if not name:
+            return JsonResponse({'error': 'Name is required.'}, status=400)
+        contact.name = name
+    if 'role' in data:
+        contact.role = (data.get('role') or '').strip()
+    if 'phone' in data:
+        contact.phone = (data.get('phone') or '').strip()
+    if 'email' in data:
+        contact.email = (data.get('email') or '').strip()
+    contact.save()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_POST
+def customer_contact_delete(request, pk):
+    CustomerContact.objects.filter(pk=pk).delete()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_POST
+def customer_note_add(request, pk):
+    customer = get_object_or_404(CustomerProfile, pk=pk)
+    data = json.loads(request.body)
+    text = (data.get('text') or '').strip()
+    if not text:
+        return JsonResponse({'error': 'Note text is required.'}, status=400)
+    note = CustomerNote.objects.create(customer=customer, text=text, created_by=request.user)
+    return JsonResponse({
+        'ok': True, 'id': note.pk,
+        'author': request.user.get_full_name() or request.user.username,
+        'created_at': note.created_at.strftime('%d %b %Y, %H:%M'),
+    })
+
+
+@login_required
+@require_POST
+def customer_note_delete(request, pk):
+    note = get_object_or_404(CustomerNote, pk=pk)
+    if note.created_by_id and note.created_by_id != request.user.id and not request.user.is_superuser:
+        return JsonResponse({'error': "You can only delete your own notes."}, status=403)
+    note.delete()
+    return JsonResponse({'ok': True})
 
 
 

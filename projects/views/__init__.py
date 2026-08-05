@@ -31,6 +31,8 @@ from .reminders import (
 )
 from .customers import (
     customer_autocomplete, customer_history, customer_list, customer_import,
+    customer_contact_add, customer_contact_update, customer_contact_delete,
+    customer_note_add, customer_note_delete,
     customer_detail, customer_create, customer_delete,
 )
 from .suppliers import (

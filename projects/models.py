@@ -49,6 +49,7 @@ class Project(models.Model):
     location       = models.CharField(max_length=300, blank=True)
     description    = models.CharField(max_length=300, blank=True)
     status         = models.CharField(max_length=30, choices=STATUS_CHOICES, default='enquiry')
+    lost_reason    = models.TextField(blank=True, help_text='Why this didn\'t proceed — captured when marked Cancelled')
     payment_method = models.CharField(max_length=20, blank=True, choices=PAYMENT_CHOICES)
     sales_order    = models.CharField(max_length=5, blank=True)
     project_number = models.PositiveIntegerField(null=True, blank=True, unique=True, db_index=True)
@@ -386,6 +387,40 @@ class CustomerProfile(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class CustomerContact(models.Model):
+    """A named contact at a customer — a customer can have several (site
+    contact, procurement, regional manager, etc.), each independent."""
+    customer   = models.ForeignKey(CustomerProfile, on_delete=models.CASCADE, related_name='contacts')
+    name       = models.CharField(max_length=200)
+    role       = models.CharField(max_length=100, blank=True)
+    phone      = models.CharField(max_length=30, blank=True)
+    email      = models.EmailField(blank=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sort_order', 'created_at']
+
+    def __str__(self):
+        return f"{self.name} ({self.role})" if self.role else self.name
+
+
+class CustomerNote(models.Model):
+    """Account-level relationship notes — separate from project notes,
+    since these are about the customer relationship generally, not any
+    one job (e.g. 'prefers email over calls', 'slow to approve drawings')."""
+    customer   = models.ForeignKey(CustomerProfile, on_delete=models.CASCADE, related_name='relationship_notes')
+    text       = models.TextField()
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.text[:60]
 
 
 class Supplier(models.Model):
