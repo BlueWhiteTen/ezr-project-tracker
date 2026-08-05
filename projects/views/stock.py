@@ -1,5 +1,6 @@
 import math
 import random
+from django.conf import settings
 from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
@@ -14,6 +15,7 @@ import json
 
 from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, ProductPriceChange
 from ..forms import RegisterForm, ProjectForm
+from .utils import require_feature
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -273,6 +275,7 @@ def _low_stock_with_supplier_groups():
 
 
 @login_required
+@require_feature('purchase_orders')
 def stock_draft_pos_preview(request):
     groups, without_supplier = _low_stock_with_supplier_groups()
     return JsonResponse({
@@ -292,6 +295,7 @@ def stock_draft_pos_preview(request):
 
 @login_required
 @require_POST
+@require_feature('purchase_orders')
 def stock_draft_pos_generate(request):
     groups, without_supplier = _low_stock_with_supplier_groups()
     created = []
@@ -423,8 +427,13 @@ def stock_adjust(request, pk):
         product.code        = data.get('code', product.code).strip()
         product.description = data.get('description', product.description).strip()
         old_qty = float(product.quantity)
-        new_qty = float(data.get('quantity', product.quantity) or 0)
-        product.quantity    = new_qty
+        if settings.FEATURE_FLAGS.get('stock_movements', True):
+            new_qty = float(data.get('quantity', product.quantity) or 0)
+            product.quantity = new_qty
+        else:
+            # Quantity is now Sage's job — ignore any quantity sent here
+            # rather than let a stale UI silently overwrite it.
+            new_qty = old_qty
         product.reorder_level = data.get('reorder_level', product.reorder_level)
         if 'reorder_qty' in data:
             product.reorder_qty = data.get('reorder_qty') or 0

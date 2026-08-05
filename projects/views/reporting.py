@@ -14,7 +14,7 @@ import json
 
 from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, ExchangeRate, GoodsInTransit, StockValuationItem
 from ..forms import RegisterForm, ProjectForm
-from .utils import (_calc_sell_price, _calc_cost_breakdown, _can_view_reports)
+from .utils import (_calc_sell_price, _calc_cost_breakdown, _can_view_reports, require_feature)
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -82,6 +82,7 @@ def home(request):
 
 
 @login_required
+@require_feature('daily_accounts_report')
 def daily_accounts_report(request):
     """Printable end-of-day report for the accountant: projects that became
     Completed today (ready to invoice) and POs received today (ready to pay).
@@ -656,6 +657,7 @@ def so_search(request):
 # ── Stock Valuation ────────────────────────────────────────────────────────────
 
 @login_required
+@require_feature('stock_valuation')
 def stock_valuation(request):
     """Total value of stock actually in the warehouse, plus Goods In Transit
     (ordered/invoiced but not yet received) converted to GBP at a manually
@@ -713,6 +715,7 @@ def stock_valuation(request):
 
 @login_required
 @require_POST
+@require_feature('stock_valuation')
 def stock_valuation_item_update(request, pk):
     item = get_object_or_404(StockValuationItem, pk=pk)
     data = json.loads(request.body)
@@ -764,6 +767,7 @@ def stock_valuation_item_update(request, pk):
 
 
 @login_required
+@require_feature('stock_valuation')
 def stock_valuation_export(request):
     """Excel export of the full Stock Valuation breakdown, with real Excel
     formulas (Qty x Cost, converted at the exchange rate) rather than
@@ -859,6 +863,7 @@ def stock_valuation_export(request):
 
 
 @login_required
+@require_feature('stock_valuation')
 def stock_valuation_items(request):
     """The full itemized breakdown behind the Stock Valuation summary —
     every line from the imported spreadsheet snapshot."""
@@ -901,6 +906,7 @@ def stock_valuation_items(request):
 
 @login_required
 @require_POST
+@require_feature('stock_valuation')
 def stock_valuation_rate_update(request):
     data = json.loads(request.body)
     for currency, rate in data.items():
@@ -913,6 +919,7 @@ def stock_valuation_rate_update(request):
 
 @login_required
 @require_POST
+@require_feature('stock_valuation')
 def goods_in_transit_add(request):
     data = json.loads(request.body)
     reference = (data.get('reference') or '').strip()
@@ -931,6 +938,7 @@ def goods_in_transit_add(request):
 
 @login_required
 @require_POST
+@require_feature('stock_valuation')
 def goods_in_transit_delete(request, pk):
     GoodsInTransit.objects.filter(pk=pk).delete()
     return JsonResponse({'ok': True})

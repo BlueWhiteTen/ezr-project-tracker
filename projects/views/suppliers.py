@@ -14,6 +14,7 @@ import json
 
 from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, SupplierDocument
 from ..forms import RegisterForm, ProjectForm
+from .utils import require_feature
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -186,6 +187,7 @@ def supplier_detail(request, pk):
 
 
 @login_required
+@require_feature('supplier_documents')
 def supplier_documents(request, pk):
     supplier = get_object_or_404(Supplier, pk=pk)
     if request.method == 'POST':
@@ -222,6 +224,7 @@ def supplier_documents(request, pk):
 
 
 @login_required
+@require_feature('supplier_documents')
 def supplier_document_download(request, pk):
     doc = get_object_or_404(SupplierDocument, pk=pk)
     if doc.file_data:
@@ -234,6 +237,7 @@ def supplier_document_download(request, pk):
 
 @login_required
 @require_POST
+@require_feature('supplier_documents')
 def supplier_document_delete(request, pk):
     doc = get_object_or_404(SupplierDocument, pk=pk)
     doc.delete()

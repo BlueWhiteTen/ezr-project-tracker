@@ -112,6 +112,28 @@ def _can_view_reports(user):
     return bool(profile and profile.can_view_reports)
 
 
+def require_feature(flag_name):
+    """Blocks a view when the named FEATURE_FLAGS entry is off — used for
+    the operational features (POs, stock valuation, etc.) that are hidden
+    from navigation but whose code and data stay in place, so this stops
+    direct URL access too, not just the nav link. Flip the flag back on in
+    settings.py to restore access with no code changes needed."""
+    from functools import wraps
+    from django.conf import settings
+    from django.contrib import messages as django_messages
+    from django.shortcuts import redirect
+
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapped(request, *args, **kwargs):
+            if not settings.FEATURE_FLAGS.get(flag_name, True):
+                django_messages.error(request, "This feature isn't currently available.")
+                return redirect('dashboard')
+            return view_func(request, *args, **kwargs)
+        return wrapped
+    return decorator
+
+
 def _calc_sell_price(cost):
     """Read-only sell-price calculation from already-saved cost lines."""
     lines = list(cost.lines.all())

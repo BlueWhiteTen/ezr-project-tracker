@@ -14,7 +14,7 @@ import json
 
 from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence
 from ..forms import RegisterForm, ProjectForm
-from .utils import (_calc_sell_price)
+from .utils import (_calc_sell_price, require_feature)
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -214,6 +214,7 @@ def quote_refresh_price(request, pk, cost_pk=None):
 
 
 @login_required
+@require_feature('proforma_invoice')
 def proforma_invoice(request, pk, cost_pk=None):
     project = get_object_or_404(Project, pk=pk)
     if cost_pk:

@@ -64,8 +64,25 @@ TEMPLATES = [{
         'django.template.context_processors.request',
         'django.contrib.auth.context_processors.auth',
         'django.contrib.messages.context_processors.messages',
+        'projects.context_processors.feature_flags',
     ]},
 }]
+
+# ── Feature flags ─────────────────────────────────────────────────────────────
+# The app is being scaled back to focus on project tracking, costing, quoting,
+# and picking lists, since Stock/POs/valuation duties are moving to Sage.
+# Nothing behind these flags is deleted — code, models, and data all stay in
+# place so any of this can be switched back on later just by flipping a flag
+# here and redeploying, with no rebuilding required.
+FEATURE_FLAGS = {
+    'purchase_orders': False,     # PO creation/PDF, draft-PO-from-low-stock, receiving
+    'stock_movements': False,     # stock quantity adjustment/allocation
+    'shortage_warning': False,    # free-stock check when accepting a costing option
+    'stock_valuation': False,     # valuation summary, itemized breakdown, GIT, exchange rates
+    'daily_accounts_report': False,
+    'proforma_invoice': False,
+    'supplier_documents': False,  # price lists/brochures on a Supplier, and PO-ordering side of Suppliers
+}
 
 WSGI_APPLICATION = 'project_tracker.wsgi.application'
 

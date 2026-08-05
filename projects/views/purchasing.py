@@ -14,7 +14,7 @@ import json
 
 from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence
 from ..forms import RegisterForm, ProjectForm
-from .utils import (_log_po_event, _po_locked_response)
+from .utils import (_log_po_event, _po_locked_response, require_feature)
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -25,6 +25,7 @@ from django.contrib.auth.views import (
 )
 
 @login_required
+@require_feature('purchase_orders')
 def po_list(request):
     q = request.GET.get('q', '').strip()
     status = request.GET.get('status', '').strip()
@@ -43,6 +44,7 @@ def po_list(request):
 
 
 @login_required
+@require_feature('purchase_orders')
 def po_detail(request, pk):
     po = get_object_or_404(PurchaseOrder, pk=pk)
     products = Product.objects.filter(is_active=True).order_by('code')
@@ -67,6 +69,7 @@ def po_detail(request, pk):
 
 
 @login_required
+@require_feature('purchase_orders')
 def po_print(request, pk):
     po = get_object_or_404(PurchaseOrder, pk=pk)
     if not po.locked:
@@ -99,6 +102,7 @@ def po_print(request, pk):
 
 @login_required
 @require_POST
+@require_feature('purchase_orders')
 def po_create(request):
     data = json.loads(request.body)
     supplier_id = data.get('supplier_id')
@@ -116,6 +120,7 @@ def po_create(request):
 
 @login_required
 @require_POST
+@require_feature('purchase_orders')
 def po_update(request, pk):
     po = get_object_or_404(PurchaseOrder, pk=pk)
     data = json.loads(request.body)
@@ -170,6 +175,7 @@ def po_update(request, pk):
 
 @login_required
 @require_POST
+@require_feature('purchase_orders')
 def po_cancel(request, pk):
     po = get_object_or_404(PurchaseOrder, pk=pk)
     if po.received:
@@ -184,6 +190,7 @@ def po_cancel(request, pk):
 
 @login_required
 @require_POST
+@require_feature('purchase_orders')
 def po_lock(request, pk):
     po = get_object_or_404(PurchaseOrder, pk=pk)
     po.locked = True
@@ -198,6 +205,7 @@ def po_lock(request, pk):
 
 @login_required
 @require_POST
+@require_feature('purchase_orders')
 def po_unlock(request, pk):
     po = get_object_or_404(PurchaseOrder, pk=pk)
     po.locked = False
@@ -210,6 +218,7 @@ def po_unlock(request, pk):
 
 @login_required
 @require_POST
+@require_feature('purchase_orders')
 def po_line_add(request, pk):
     po = get_object_or_404(PurchaseOrder, pk=pk)
     if po.received:
@@ -249,6 +258,7 @@ def po_line_add(request, pk):
 
 @login_required
 @require_POST
+@require_feature('purchase_orders')
 def po_line_update(request, pk):
     line = get_object_or_404(PurchaseOrderLine, pk=pk)
     if line.purchase_order.received:
@@ -269,6 +279,7 @@ def po_line_update(request, pk):
 
 @login_required
 @require_POST
+@require_feature('purchase_orders')
 def po_line_delete(request, pk):
     line = get_object_or_404(PurchaseOrderLine, pk=pk)
     if line.purchase_order.received:
@@ -285,6 +296,7 @@ def po_line_delete(request, pk):
 
 @login_required
 @require_POST
+@require_feature('purchase_orders')
 def po_receive(request, pk):
     po = get_object_or_404(PurchaseOrder, pk=pk)
     if po.received:
@@ -320,6 +332,7 @@ def po_receive(request, pk):
 
 @login_required
 @require_POST
+@require_feature('purchase_orders')
 def po_receive_partial(request, pk):
     """Book in a (partial) delivery: receive specific quantities per line."""
     po = get_object_or_404(PurchaseOrder, pk=pk)
@@ -370,6 +383,7 @@ def po_receive_partial(request, pk):
 
 @login_required
 @require_POST
+@require_feature('purchase_orders')
 def po_unreceive(request, pk):
     po = get_object_or_404(PurchaseOrder, pk=pk)
     if not po.received:
@@ -399,6 +413,7 @@ def po_unreceive(request, pk):
 
 @login_required
 @require_POST
+@require_feature('purchase_orders')
 def delivery_phase_add(request, pk):
     project = get_object_or_404(Project, pk=pk)
     data = json.loads(request.body)
@@ -416,6 +431,7 @@ def delivery_phase_add(request, pk):
 
 @login_required
 @require_POST
+@require_feature('purchase_orders')
 def delivery_phase_update(request, pk):
     phase = get_object_or_404(DeliveryPhase, pk=pk)
     data = json.loads(request.body)
@@ -443,6 +459,7 @@ def delivery_phase_update(request, pk):
 
 @login_required
 @require_POST
+@require_feature('purchase_orders')
 def delivery_phase_delete(request, pk):
     get_object_or_404(DeliveryPhase, pk=pk).delete()
     return JsonResponse({'ok': True})

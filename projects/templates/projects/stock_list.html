@@ -51,7 +51,9 @@ td:nth-child(3){white-space:normal;word-break:break-word;}
     <span style="font-size:.82rem;color:var(--mut);">{{ products|length }} products</span>
     <button class="btn btn-primary btn-sm" onclick="openNewProduct()">+ New Product</button>
     <button class="btn btn-ghost btn-sm" onclick="openPrintStock()">🖶 Print</button>
+    {% if features.purchase_orders %}
     <button class="btn btn-ghost btn-sm" onclick="openDraftPOs()">📦 Generate Draft POs</button>
+    {% endif %}
     {% if request.user.is_superuser %}
     <label class="btn btn-ghost btn-sm" style="cursor:pointer;" for="import-file">⬆ Import from Excel</label>
     <input type="file" id="import-file" accept=".xlsx" style="display:none;" onchange="importStock(this)">
@@ -181,7 +183,7 @@ td:nth-child(3){white-space:normal;word-break:break-word;}
     </div>
     <div class="form-group" style="margin-bottom:.5rem;">
       <div style="display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:end;gap:.6rem;">
-        <div><label class="form-label">Quantity in Stock</label><input class="form-input" type="number" id="eq-qty" step="1"></div>
+        <div><label class="form-label">Quantity in Stock</label><input class="form-input" type="number" id="eq-qty" step="1" {% if not features.stock_movements %}disabled title="Quantity is now tracked in Sage"{% endif %}>{% if not features.stock_movements %}<div style="font-size:.72rem;color:var(--mut);margin-top:.2rem;">Tracked in Sage</div>{% endif %}</div>
         <div style="width:1px;background:var(--bdr);height:38px;"></div>
         <div><label class="form-label">Reorder Level</label><input class="form-input" type="number" id="eq-reorder" step="1"></div>
         <div style="width:1px;background:var(--bdr);height:38px;"></div>

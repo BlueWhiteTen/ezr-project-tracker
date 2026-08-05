@@ -8,6 +8,8 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 
 from ..models import PurchaseOrder, Project, PickingList, ProjectCost, ProjectQuote, ProformaInvoice
+from .utils import require_feature
+from .utils import require_feature
 
 
 def _pdf_link_callback(uri, rel):
@@ -42,6 +44,7 @@ def _render_pdf(template_name, context, filename):
 
 
 @login_required
+@require_feature('purchase_orders')
 def po_pdf(request, pk):
     po = get_object_or_404(PurchaseOrder, pk=pk)
     lines = po.lines.select_related('product').all()
@@ -64,6 +67,7 @@ def picking_list_pdf(request, project_pk):
 
 
 @login_required
+@require_feature('proforma_invoice')
 def proforma_pdf(request, pk, cost_pk=None):
     """Render the proforma as PDF."""
     from .quotes import proforma_invoice as proforma_view

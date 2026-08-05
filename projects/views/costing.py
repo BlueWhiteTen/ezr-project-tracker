@@ -1,5 +1,6 @@
 import math
 import random
+from django.conf import settings
 from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
@@ -754,30 +755,33 @@ def cost_option_accept(request, pk, cost_pk):
         # Warn (don't block) if any component is already short on free stock —
         # catches a shortfall while it's still cheap to fix, rather than only
         # discovering it later when generating the picking list.
-        try:
-            lines = list(cost.lines.all())
-            total_uprights = sum(int(float(l.quantity)) * 2 for l in lines if l.line_type == 'frame')
-            overrides_map = {o.accessory_id: o.override_qty for o in AccessoryOverride.objects.filter(cost=cost)}
-            acc_with_uprights = [
-                {'code': acc.code, 'uprights': overrides_map.get(acc.id) if overrides_map.get(acc.id) is not None else total_uprights}
-                for acc in cost.accessories.all()
-            ] if hasattr(cost, 'accessories') else []
-            ref = generate_picking_reference(lines, acc_with_uprights, cost.wall_fixings, cost.back_to_back_fixings, cost.mobile_base_sets)
-            codes = [c for c in ref.keys() if not c.startswith('NS2::')]
-            stock_by_code = {p.code.upper(): p for p in Product.objects.filter(code__in=codes)}
-            for code, qty_needed in ref.items():
-                if code.startswith('NS2::'):
-                    continue
-                prod = stock_by_code.get(code.upper())
-                if prod and float(prod.free_stock) < qty_needed:
-                    shortages.append({
-                        'code': prod.code, 'description': prod.description,
-                        'needed': qty_needed, 'free_stock': float(prod.free_stock),
-                    })
-        except Exception:
-            pass  # never block acceptance over a check that itself failed
+        if settings.FEATURE_FLAGS.get('shortage_warning', True):
+            try:
+                lines = list(cost.lines.all())
+                total_uprights = sum(int(float(l.quantity)) * 2 for l in lines if l.line_type == 'frame')
+                overrides_map = {o.accessory_id: o.override_qty for o in AccessoryOverride.objects.filter(cost=cost)}
+                acc_with_uprights = [
+                    {'code': acc.code, 'uprights': overrides_map.get(acc.id) if overrides_map.get(acc.id) is not None else total_uprights}
+                    for acc in cost.accessories.all()
+                ] if hasattr(cost, 'accessories') else []
+                ref = generate_picking_reference(lines, acc_with_uprights, cost.wall_fixings, cost.back_to_back_fixings, cost.mobile_base_sets)
+                codes = [c for c in ref.keys() if not c.startswith('NS2::')]
+                stock_by_code = {p.code.upper(): p for p in Product.objects.filter(code__in=codes)}
+                for code, qty_needed in ref.items():
+                    if code.startswith('NS2::'):
+                        continue
+                    prod = stock_by_code.get(code.upper())
+                    if prod and float(prod.free_stock) < qty_needed:
+                        shortages.append({
+                            'code': prod.code, 'description': prod.description,
+                            'needed': qty_needed, 'free_stock': float(prod.free_stock),
+                        })
+            except Exception:
+                pass  # never block acceptance over a check that itself failed
     from django.urls import reverse
-    proforma_url = reverse('proforma_invoice_option', kwargs={'pk': project.pk, 'cost_pk': cost.pk}) if cost.is_accepted else None
+    proforma_url = None
+    if cost.is_accepted and settings.FEATURE_FLAGS.get('proforma_invoice', True):
+        proforma_url = reverse('proforma_invoice_option', kwargs={'pk': project.pk, 'cost_pk': cost.pk})
     return JsonResponse({'ok': True, 'is_accepted': cost.is_accepted, 'proforma_url': proforma_url, 'shortages': shortages})
 
 

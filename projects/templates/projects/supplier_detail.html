@@ -39,6 +39,7 @@
   </div>
 
   <div>
+    {% if features.purchase_orders %}
     <div class="form-card">
       <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
         <span>Purchase Orders ({{ pos|length }})</span>
@@ -61,7 +62,9 @@
         <div style="color:var(--mut);font-size:.875rem;">No purchase orders yet for {{ supplier.name }}</div>
       {% endif %}
     </div>
+    {% endif %}
 
+    {% if features.supplier_documents %}
     <div class="form-card">
       <div class="section-title">Price Lists &amp; Brochures ({{ documents|length }})</div>
       <div id="sdoc-list" style="margin-bottom:.75rem;">
@@ -107,6 +110,7 @@
         <div id="sdoc-error" style="color:var(--red);font-size:.78rem;margin-top:.4rem;display:none;"></div>
       </div>
     </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

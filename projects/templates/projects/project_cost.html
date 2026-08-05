@@ -87,6 +87,7 @@
       <button type="button" class="btn btn-ghost" onclick="var m=document.getElementById('doc-menu');m.style.display=m.style.display==='block'?'none':'block';event.stopPropagation();">📄 Documents ▾</button>
       <div id="doc-menu" style="display:none;position:absolute;top:100%;left:0;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);box-shadow:var(--shadow-md);z-index:50;min-width:190px;margin-top:2px;" class="doc-menu">
         <a href="{% url 'customer_quote_option' project.pk cost.pk %}" target="_blank" style="display:block;padding:.55rem .9rem;text-decoration:none;color:var(--txt);font-size:.85rem;border-bottom:1px solid var(--bdr);">📄 Quote{% if cost.label %} — {{ cost.label }}{% endif %}</a>
+        {% if features.proforma_invoice %}
         {% with accepted=project.accepted_cost %}
         {% if accepted %}
         <a id="proforma-menu-item" href="{% url 'proforma_invoice_option' project.pk accepted.pk %}" target="_blank" style="display:block;padding:.55rem .9rem;text-decoration:none;color:var(--txt);font-size:.85rem;">🧾 Pro-Forma Invoice</a>
@@ -94,6 +95,7 @@
         <span id="proforma-menu-item" style="display:block;padding:.55rem .9rem;color:var(--mut);font-size:.85rem;">🧾 Pro-Forma (approve an option first)</span>
         {% endif %}
         {% endwith %}
+        {% endif %}
       </div>
     </div>
     <script>
