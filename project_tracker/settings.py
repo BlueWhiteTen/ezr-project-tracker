@@ -82,6 +82,7 @@ FEATURE_FLAGS = {
     'daily_accounts_report': False,
     'proforma_invoice': False,
     'supplier_documents': False,  # price lists/brochures on a Supplier, and PO-ordering side of Suppliers
+    'sales_summary': False,       # sales aren't tracked comprehensively in the app anymore
 }
 
 WSGI_APPLICATION = 'project_tracker.wsgi.application'

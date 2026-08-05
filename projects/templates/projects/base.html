@@ -326,44 +326,10 @@ select.form-input{cursor:pointer;}
   <div class="sb-spacer"></div>
   <div class="sb-bottom">
     <a href="{% url 'price_list' %}" class="{% if request.resolver_match.url_name == 'price_list' %}sb-active{% endif %}" style="display:block;padding:.6rem .85rem;margin-bottom:.4rem;border-radius:var(--rad);font-size:.875rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">💷 Price List</a>
-    <button id="reports-toggle" onclick="toggleReportsMenu()" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:.6rem .85rem;margin-bottom:.4rem;border-radius:var(--rad);font-size:.875rem;font-weight:500;color:#ccc;background:none;border:none;border-left:3px solid transparent;cursor:pointer;text-align:left;">
-      <span>📊 Reports</span>
-      <span id="reports-arrow" style="transition:transform .15s;">▸</span>
-    </button>
-    <div id="reports-submenu" style="display:none;padding-left:.6rem;">
-      <a href="{% url 'monthly_summary' %}" class="{% if request.resolver_match.url_name == 'monthly_summary' %}sb-active{% endif %}" style="display:block;padding:.5rem .85rem;margin-bottom:.3rem;border-radius:var(--rad);font-size:.82rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">Projects Summary</a>
-      {% if request.user.is_superuser or request.user.profile.can_view_reports %}
-      <a href="{% url 'sales_summary' %}" class="{% if request.resolver_match.url_name == 'sales_summary' %}sb-active{% endif %}" style="display:block;padding:.5rem .85rem;margin-bottom:.3rem;border-radius:var(--rad);font-size:.82rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">Sales Summary</a>
-      {% endif %}
-      <a href="{% url 'activity_log' %}" class="{% if request.resolver_match.url_name == 'activity_log' %}sb-active{% endif %}" style="display:block;padding:.5rem .85rem;margin-bottom:.3rem;border-radius:var(--rad);font-size:.82rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">Activity Log</a>
-      {% if request.user.is_superuser or request.user.profile.can_view_reports %}
-      {% if features.daily_accounts_report %}
-      <a href="{% url 'daily_accounts_report' %}" class="{% if request.resolver_match.url_name == 'daily_accounts_report' %}sb-active{% endif %}" style="display:block;padding:.5rem .85rem;margin-bottom:.3rem;border-radius:var(--rad);font-size:.82rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">Daily Accounts Report</a>
-      {% endif %}
-      {% if features.stock_valuation %}
-      <a href="{% url 'stock_valuation' %}" class="{% if request.resolver_match.url_name == 'stock_valuation' %}sb-active{% endif %}" style="display:block;padding:.5rem .85rem;margin-bottom:.3rem;border-radius:var(--rad);font-size:.82rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">Stock Valuation</a>
-      {% endif %}
-      {% endif %}
-    </div>
+    <a href="{% url 'monthly_summary' %}" class="{% if request.resolver_match.url_name == 'monthly_summary' %}sb-active{% endif %}" style="display:block;padding:.6rem .85rem;margin-bottom:.4rem;border-radius:var(--rad);font-size:.875rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">📊 Projects Summary</a>
+    <a href="{% url 'activity_log' %}" class="{% if request.resolver_match.url_name == 'activity_log' %}sb-active{% endif %}" style="display:block;padding:.6rem .85rem;margin-bottom:.4rem;border-radius:var(--rad);font-size:.875rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">📋 Activity Log</a>
     <button id="theme-btn" onclick="toggleTheme()">Dark mode</button>
   </div>
-<script>
-(function(){
-  const reportPages = ['monthly_summary','sales_summary','activity_log','daily_accounts_report','stock_valuation'];
-  const isOnReportPage = reportPages.includes('{{ request.resolver_match.url_name }}');
-  if(isOnReportPage){
-    document.getElementById('reports-submenu').style.display = 'block';
-    document.getElementById('reports-arrow').style.transform = 'rotate(90deg)';
-  }
-})();
-function toggleReportsMenu(){
-  const menu = document.getElementById('reports-submenu');
-  const arrow = document.getElementById('reports-arrow');
-  const isOpen = menu.style.display !== 'none';
-  menu.style.display = isOpen ? 'none' : 'block';
-  arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
-}
-</script>
 </div>
 <div class="mobile-overlay" id="mobile-overlay" onclick="toggleMobileMenu()"></div>
 <div class="main-content">

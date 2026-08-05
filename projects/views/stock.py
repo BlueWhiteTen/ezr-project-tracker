@@ -148,15 +148,21 @@ def stock_list(request):
     columns = [
         {'key':'code',          'label':'Code',        'right':False, 'default_dir':'asc'},
         {'key':'description',   'label':'Description', 'right':False, 'default_dir':'asc'},
-        {'key':'quantity',      'label':'In Stock',    'right':True,  'default_dir':'desc'},
-        {'key':'qty_allocated', 'label':'Allocated',   'right':True,  'default_dir':'desc'},
-        {'key':'qty_on_order',  'label':'On Order',    'right':True,  'default_dir':'desc'},
-        {'key':'free_stock',    'label':'Free Stock',  'right':True,  'default_dir':'asc'},
-        {'key':'reorder_level', 'label':'Reorder Lvl', 'right':True, 'default_dir':'desc'},
-        {'key':'reorder_qty',   'label':'Reorder Qty', 'right':True, 'default_dir':'desc'},
         {'key':'cost_price',    'label':'Buying Price','right':True, 'default_dir':'desc'},
         {'key':'weight',        'label':'Weight (kg)', 'right':True, 'default_dir':'desc'},
     ]
+    if settings.FEATURE_FLAGS.get('stock_movements', True):
+        # Quantity/allocation columns are Sage's job now — kept here, just
+        # not shown, so switching stock_movements back on restores them
+        # automatically with no template changes needed.
+        columns[2:2] = [
+            {'key':'quantity',      'label':'In Stock',    'right':True,  'default_dir':'desc'},
+            {'key':'qty_allocated', 'label':'Allocated',   'right':True,  'default_dir':'desc'},
+            {'key':'qty_on_order',  'label':'On Order',    'right':True,  'default_dir':'desc'},
+            {'key':'free_stock',    'label':'Free Stock',  'right':True,  'default_dir':'asc'},
+            {'key':'reorder_level', 'label':'Reorder Lvl', 'right':True, 'default_dir':'desc'},
+            {'key':'reorder_qty',   'label':'Reorder Qty', 'right':True, 'default_dir':'desc'},
+        ]
     return render(request, 'projects/stock_list.html', {
         'products': products, 'query': q,
         'low_stock_count': low_stock_count,

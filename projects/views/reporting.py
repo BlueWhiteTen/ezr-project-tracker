@@ -321,6 +321,7 @@ def _sales_summary_data(request):
 
 
 @login_required
+@require_feature('sales_summary')
 def sales_summary(request):
     if not _can_view_reports(request.user):
         messages.error(request, "You don't have access to this report. Ask an administrator to enable report access on your Staff Profile.")
@@ -330,6 +331,7 @@ def sales_summary(request):
 
 
 @login_required
+@require_feature('sales_summary')
 def sales_summary_export(request):
     if not _can_view_reports(request.user):
         messages.error(request, "You don't have access to this report. Ask an administrator to enable report access on your Staff Profile.")

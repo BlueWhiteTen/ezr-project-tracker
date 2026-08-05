@@ -104,6 +104,7 @@ td:nth-child(3){white-space:normal;word-break:break-word;}
       <td><input type="checkbox" class="row-sel-cb" value="{{ p.pk }}" onchange="updateBulkBar()"></td>
       <td><span class="code" style="cursor:pointer;" onclick="editProduct({{ p.pk }},'{{ p.code|escapejs }}','{{ p.description|escapejs }}',{{ p.quantity }},{{ p.reorder_level }},{{ p.cost_price }},{% if p.weight is not None %}{{ p.weight }}{% else %}null{% endif %},'{{ p.category|escapejs }}',{{ p.reorder_qty }},{% if p.preferred_supplier_id %}{{ p.preferred_supplier_id }}{% else %}null{% endif %})">{{ p.code }}</span></td>
       <td>{{ p.description }}{% if not p.is_active %} <span style="font-size:.7rem;color:var(--mut);font-style:italic;">(inactive)</span>{% endif %}</td>
+      {% if features.stock_movements %}
       <td style="text-align:right;">
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
           <span class="{% if p.reorder_level > 0 and p.quantity <= p.reorder_level %}qty-low{% elif p.quantity <= 0 %}qty-zero{% else %}qty-ok{% endif %}">{{ p.quantity|floatformat:0 }}</span>
@@ -118,6 +119,7 @@ td:nth-child(3){white-space:normal;word-break:break-word;}
         {{ p.reorder_level|floatformat:0 }}
       </td>
       <td style="text-align:right;color:var(--mut);">{{ p.reorder_qty|floatformat:0 }}</td>
+      {% endif %}
       <td style="text-align:right;font-family:var(--fm);">
         {% if p.cost_price %}£{{ p.cost_price|floatformat:2 }}{% else %}<span style="color:var(--mut);">—</span>{% endif %}
       </td>
@@ -133,7 +135,7 @@ td:nth-child(3){white-space:normal;word-break:break-word;}
       </td>
     </tr>
     {% empty %}
-    <tr><td colspan="12" style="text-align:center;padding:2rem;color:var(--mut);">No products found — import your Excel file to get started</td></tr>
+    <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--mut);">No products found — import your Excel file to get started</td></tr>
     {% endfor %}
     </tbody>
   </table>
