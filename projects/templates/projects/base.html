@@ -290,7 +290,6 @@ select.form-input{cursor:pointer;}
     <a href="{% url 'dashboard' %}" class="nav-btn {% if request.resolver_match.url_name == 'dashboard' %}active-nav{% endif %}">Dashboard</a>
     <a href="{% url 'calendar_view' %}" class="nav-btn {% if request.resolver_match.url_name == 'calendar_view' %}active-nav{% endif %}">Calendar</a>
     <a href="{% url 'week_view' %}" class="nav-btn {% if request.resolver_match.url_name == 'week_view' %}active-nav{% endif %}">Next 2 Weeks</a>
-    <a href="{% url 'crew_capacity' %}" class="nav-btn {% if request.resolver_match.url_name == 'crew_capacity' %}active-nav{% endif %}">Crew Capacity</a>
     <a href="{% url 'board_view' %}" class="nav-btn {% if request.resolver_match.url_name == 'board_view' %}active-nav{% endif %}">Board</a>
   </div>
   <div class="nav-so-wrap">
@@ -316,7 +315,6 @@ select.form-input{cursor:pointer;}
     <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}sb-active{% endif %}">🏠 Dashboard</a>
     <a href="{% url 'calendar_view' %}" class="{% if request.resolver_match.url_name == 'calendar_view' %}sb-active{% endif %}">📅 Calendar</a>
     <a href="{% url 'week_view' %}" class="{% if request.resolver_match.url_name == 'week_view' %}sb-active{% endif %}">📋 Next 2 Weeks</a>
-    <a href="{% url 'crew_capacity' %}" class="{% if request.resolver_match.url_name == 'crew_capacity' %}sb-active{% endif %}">👷 Crew Capacity</a>
     <a href="{% url 'board_view' %}" class="{% if request.resolver_match.url_name == 'board_view' %}sb-active{% endif %}">📊 Board</a>
   </div>
   <div class="sb-section">
@@ -339,6 +337,7 @@ select.form-input{cursor:pointer;}
     <a href="{% url 'price_list' %}" class="{% if request.resolver_match.url_name == 'price_list' %}sb-active{% endif %}" style="display:block;padding:.6rem .85rem;margin-bottom:.4rem;border-radius:var(--rad);font-size:.875rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">💷 Price List</a>
     <a href="{% url 'monthly_summary' %}" class="{% if request.resolver_match.url_name == 'monthly_summary' %}sb-active{% endif %}" style="display:block;padding:.6rem .85rem;margin-bottom:.4rem;border-radius:var(--rad);font-size:.875rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">📊 Projects Summary</a>
     <a href="{% url 'activity_log' %}" class="{% if request.resolver_match.url_name == 'activity_log' %}sb-active{% endif %}" style="display:block;padding:.6rem .85rem;margin-bottom:.4rem;border-radius:var(--rad);font-size:.875rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">📋 Activity Log</a>
+    <a href="{% url 'crew_capacity' %}" class="{% if request.resolver_match.url_name == 'crew_capacity' %}sb-active{% endif %}" style="display:block;padding:.6rem .85rem;margin-bottom:.4rem;border-radius:var(--rad);font-size:.875rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">👷 Crew Capacity</a>
     <button id="theme-btn" onclick="toggleTheme()">Dark mode</button>
   </div>
 </div>

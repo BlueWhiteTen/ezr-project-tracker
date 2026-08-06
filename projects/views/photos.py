@@ -79,6 +79,7 @@ def install_report(request, pk):
         'photos': report.photos.all(),
         'satisfaction_notes': report.satisfaction_notes.all(),
         'project_pk': project.pk,
+        'fitting_crews': FittingCrew.objects.all(),
     })
 
 

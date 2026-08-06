@@ -66,7 +66,10 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
               <div>
                 <label class="form-label">Name</label>
-                <input class="form-input" type="text" name="fitting_crew" id="fitting-crew-name" value="{{ report.fitting_crew }}" placeholder="Crew member names">
+                <input class="form-input" type="text" name="fitting_crew" id="fitting-crew-name" list="fitting-crew-options" value="{{ report.fitting_crew }}" placeholder="Crew member names" autocomplete="off" onchange="fillCrewPhone(this.value)">
+                <datalist id="fitting-crew-options">
+                  {% for crew in fitting_crews %}<option value="{{ crew.name }}" data-phone="{{ crew.phone }}">{% endfor %}
+                </datalist>
               </div>
               <div>
                 <label class="form-label">Mobile</label>
@@ -335,5 +338,12 @@ function enlargePhoto(src){
   document.body.appendChild(ov);
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.querySelector('[style*="zoom-out"]')?.remove();}});
+
+function fillCrewPhone(name){
+  const opt = document.querySelector(`#fitting-crew-options option[value="${CSS.escape(name)}"]`);
+  if(opt && opt.dataset.phone){
+    document.getElementById('fitting-crew-phone').value = opt.dataset.phone;
+  }
+}
 </script>
 {% endblock %}
