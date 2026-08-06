@@ -27,7 +27,7 @@
 <div class="home-grid">
 
   <!-- Dashboard -->
-  <a href="{% url 'dashboard' %}" class="home-tile-link" style="grid-column:span 2;">
+  <a href="{% url 'dashboard' %}" class="home-tile-link">
     <div class="home-tile tile-dashboard tile-action" style="min-height:200px;">
       <div class="big-icon">📊</div>
       <div class="home-tile-title" style="margin-bottom:0;">Dashboard</div>
@@ -42,6 +42,26 @@
       <div class="home-tile-title" style="margin-bottom:0;">New Project</div>
     </div>
   </a>
+
+  <!-- Personal To-Do List — double height -->
+  <div class="home-tile" style="grid-row:span 2;">
+    <div class="home-tile-title">✅ Personal To-Do List</div>
+    <ul class="home-list" id="todo-list" style="overflow-y:auto;flex:1;">
+      {% for t in todo_items %}
+      <li id="todo-row-{{ t.pk }}" style="display:flex;align-items:flex-start;gap:.5rem;">
+        <input type="checkbox" class="todo-check" data-pk="{{ t.pk }}" {% if t.is_done %}checked{% endif %} style="margin-top:.4rem;cursor:pointer;flex-shrink:0;">
+        <span class="home-row" style="flex:1;cursor:default;{% if t.is_done %}text-decoration:line-through;color:var(--mut2);{% endif %}">{{ t.text }}</span>
+        <button onclick="deleteTodo({{ t.pk }})" title="Delete" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:.9rem;padding:.35rem .3rem;line-height:1;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--mut)'">✕</button>
+      </li>
+      {% empty %}
+      <div class="home-empty" id="todo-empty">Nothing on your list yet.</div>
+      {% endfor %}
+    </ul>
+    <div style="display:flex;gap:.4rem;margin-top:.6rem;">
+      <input type="text" id="todo-input" class="form-input" placeholder="Add a to-do…" style="flex:1;font-size:.85rem;padding:.4rem .6rem;" onkeydown="if(event.key==='Enter'){addTodo();}">
+      <button class="btn btn-ghost btn-sm" onclick="addTodo()">+ Add</button>
+    </div>
+  </div>
 
   <!-- My reminders -->
   <div class="home-tile">
@@ -80,28 +100,8 @@
     </div>
   </a>
 
-  <!-- Personal To-Do List -->
+  <!-- Your assigned projects -->
   <div class="home-tile">
-    <div class="home-tile-title">✅ Personal To-Do List</div>
-    <ul class="home-list" id="todo-list" style="overflow-y:auto;flex:1;">
-      {% for t in todo_items %}
-      <li id="todo-row-{{ t.pk }}" style="display:flex;align-items:flex-start;gap:.5rem;">
-        <input type="checkbox" class="todo-check" data-pk="{{ t.pk }}" {% if t.is_done %}checked{% endif %} style="margin-top:.4rem;cursor:pointer;flex-shrink:0;">
-        <span class="home-row" style="flex:1;cursor:default;{% if t.is_done %}text-decoration:line-through;color:var(--mut2);{% endif %}">{{ t.text }}</span>
-        <button onclick="deleteTodo({{ t.pk }})" title="Delete" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:.9rem;padding:.35rem .3rem;line-height:1;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--mut)'">✕</button>
-      </li>
-      {% empty %}
-      <div class="home-empty" id="todo-empty">Nothing on your list yet.</div>
-      {% endfor %}
-    </ul>
-    <div style="display:flex;gap:.4rem;margin-top:.6rem;">
-      <input type="text" id="todo-input" class="form-input" placeholder="Add a to-do…" style="flex:1;font-size:.85rem;padding:.4rem .6rem;" onkeydown="if(event.key==='Enter'){addTodo();}">
-      <button class="btn btn-ghost btn-sm" onclick="addTodo()">+ Add</button>
-    </div>
-  </div>
-
-  <!-- Your assigned projects — double height -->
-  <div class="home-tile" style="grid-row:span 2;">
     <div class="home-tile-title">📁 Your Projects</div>
     <ul class="home-list" style="overflow-y:auto;flex:1;">
       {% for p in my_projects %}
@@ -111,44 +111,8 @@
     </ul>
   </div>
 
-  <!-- Who's off -->
-  <a href="{% url 'leave_overview' %}" class="home-tile-link">
-    <div class="home-tile">
-      <div class="home-tile-title">🌴 Who's Off (Next 7 Days)</div>
-      <ul class="home-list">
-        {% for l in leave_week %}
-        <li class="home-row" style="cursor:default;display:flex;align-items:center;gap:.5rem;">
-          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ l.user.pk|avatar_colour }};flex-shrink:0;"></span>
-          {{ l.user.get_full_name|default:l.user.username }}
-          <div class="home-row-meta">{{ l.date|date:"D d M" }}{% if l.half_day != 'full' %} · {{ l.get_half_day_display }}{% endif %}</div></li>
-        {% empty %}<div class="home-empty">Nobody's off this week.</div>{% endfor %}
-      </ul>
-    </div>
-  </a>
-
-  <!-- Photo Library slideshow -->
-  <a href="{% url 'photo_library' %}" class="home-tile-link">
-    <div class="home-tile" style="padding:0;overflow:hidden;position:relative;min-height:260px;">
-      {% if slideshow_photos %}
-      <div id="slideshow" style="position:relative;width:100%;height:100%;min-height:260px;">
-        {% for p in slideshow_photos %}
-        <img src="{% url 'report_photo_file' p.pk %}" class="slide-img {% if forloop.first %}active{% endif %}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:{% if forloop.first %}1{% else %}0{% endif %};transition:opacity 1s;">
-        {% endfor %}
-        <div style="position:absolute;bottom:0;left:0;right:0;padding:.8rem 1rem .6rem;background:linear-gradient(to top,rgba(0,0,0,.7),transparent);">
-          <div style="color:#fff;font-weight:700;font-size:.95rem;">📷 Photo Library</div>
-        </div>
-      </div>
-      {% else %}
-      <div style="display:flex;align-items:center;justify-content:center;height:260px;flex-direction:column;color:var(--mut);">
-        <div class="home-tile-title" style="margin-bottom:.3rem;">📷 Photo Library</div>
-        <div class="home-empty">No installation photos yet.</div>
-      </div>
-      {% endif %}
-    </div>
-  </a>
-
-  <!-- EZR Chat tile -->
-  <div class="home-tile" style="grid-column:span 2;min-height:320px;">
+  <!-- EZR Chat tile — double height -->
+  <div class="home-tile" style="grid-row:span 2;min-height:320px;">
     <div class="home-tile-title" style="margin-bottom:.6rem;">
       💬 EZR Chat
       <a href="{% url 'team_chat' %}" style="margin-left:auto;font-size:.75rem;color:var(--acc);font-weight:400;text-decoration:none;">View all →</a>
@@ -177,7 +141,22 @@
     </div>
   </div>
 
-  <!-- Latest project updates — alongside chat, same row -->
+  <!-- Who's off -->
+  <a href="{% url 'leave_overview' %}" class="home-tile-link">
+    <div class="home-tile">
+      <div class="home-tile-title">🌴 Who's Off (Next 7 Days)</div>
+      <ul class="home-list">
+        {% for l in leave_week %}
+        <li class="home-row" style="cursor:default;display:flex;align-items:center;gap:.5rem;">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ l.user.pk|avatar_colour }};flex-shrink:0;"></span>
+          {{ l.user.get_full_name|default:l.user.username }}
+          <div class="home-row-meta">{{ l.date|date:"D d M" }}{% if l.half_day != 'full' %} · {{ l.get_half_day_display }}{% endif %}</div></li>
+        {% empty %}<div class="home-empty">Nobody's off this week.</div>{% endfor %}
+      </ul>
+    </div>
+  </a>
+
+  <!-- Latest project updates -->
   <div class="home-tile" style="overflow-y:auto;">
     <div class="home-tile-title">🕓 Latest Updates</div>
     <ul class="home-list" style="flex:1;overflow-y:auto;">
@@ -187,6 +166,27 @@
       {% empty %}<div class="home-empty">No projects yet.</div>{% endfor %}
     </ul>
   </div>
+
+  <!-- Photo Library slideshow -->
+  <a href="{% url 'photo_library' %}" class="home-tile-link">
+    <div class="home-tile" style="padding:0;overflow:hidden;position:relative;min-height:260px;">
+      {% if slideshow_photos %}
+      <div id="slideshow" style="position:relative;width:100%;height:100%;min-height:260px;">
+        {% for p in slideshow_photos %}
+        <img src="{% url 'report_photo_file' p.pk %}" class="slide-img {% if forloop.first %}active{% endif %}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:{% if forloop.first %}1{% else %}0{% endif %};transition:opacity 1s;">
+        {% endfor %}
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:.8rem 1rem .6rem;background:linear-gradient(to top,rgba(0,0,0,.7),transparent);">
+          <div style="color:#fff;font-weight:700;font-size:.95rem;">📷 Photo Library</div>
+        </div>
+      </div>
+      {% else %}
+      <div style="display:flex;align-items:center;justify-content:center;height:260px;flex-direction:column;color:var(--mut);">
+        <div class="home-tile-title" style="margin-bottom:.3rem;">📷 Photo Library</div>
+        <div class="home-empty">No installation photos yet.</div>
+      </div>
+      {% endif %}
+    </div>
+  </a>
 </div>
 {% endblock %}
 {% block extra_js %}
