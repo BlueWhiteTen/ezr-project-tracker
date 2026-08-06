@@ -42,10 +42,13 @@
     {% if request.user.is_superuser %}
     <label class="btn btn-ghost btn-sm" style="cursor:pointer;" for="import-file">⬆ Import from Excel</label>
     <input type="file" id="import-file" accept=".xlsx" style="display:none;" onchange="importCustomers(this)">
+    <label class="btn btn-ghost btn-sm" style="cursor:pointer;" for="import-addr-file">⬆ Import Addresses (Sage)</label>
+    <input type="file" id="import-addr-file" accept=".xlsx" style="display:none;" onchange="importCustomerAddresses(this)">
     {% endif %}
   </div>
 </div>
 <div id="import-msg" style="display:none;padding:.65rem 1rem;border-radius:var(--rad);font-size:.85rem;margin-bottom:1rem;"></div>
+<div id="import-addr-msg" style="display:none;padding:.85rem 1rem;border-radius:var(--rad);font-size:.85rem;margin-bottom:1rem;"></div>
 <form method="get" class="search-row">
   <input class="form-input" name="q" value="{{ query }}" placeholder="Search name, contact, email…" style="max-width:360px;">
   <button class="btn btn-ghost btn-sm" type="submit">Search</button>
@@ -175,6 +178,39 @@ async function importCustomers(inp){
       msg.style.background='var(--grn-bg)';msg.style.color='var(--grn)';msg.style.border='1px solid rgba(22,163,74,.2)';
       msg.textContent=`✓ Imported ${d.created} customer(s)${d.skipped ? ` — ${d.skipped} row(s) skipped (no name)` : ''}. Existing customers were left untouched — any duplicates are there for you to review.`;
       setTimeout(()=>location.reload(),2000);
+    } else {
+      msg.style.background='var(--red-bg)';msg.style.color='var(--red)';msg.style.border='1px solid rgba(220,38,38,.2)';
+      msg.textContent='Error: '+d.error;
+    }
+  } catch(e){
+    msg.style.background='var(--red-bg)';msg.style.color='var(--red)';
+    msg.textContent='Import failed: '+e.message;
+  }
+}
+
+async function importCustomerAddresses(inp){
+  const file = inp.files[0];
+  if(!file) return;
+  const msg = document.getElementById('import-addr-msg');
+  msg.style.display='block';
+  msg.style.background='var(--surf2)';
+  msg.style.color='var(--txt2)';
+  msg.style.border='1px solid var(--bdr)';
+  msg.textContent='Importing addresses… this can take a little while for a large export.';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const r = await fetch('/customers/import-addresses/',{method:'POST',headers:{'X-CSRFToken':'{{ csrf_token }}'},body:fd});
+    const d = await r.json();
+    if(d.ok){
+      msg.style.background='var(--grn-bg)';msg.style.color='var(--grn)';msg.style.border='1px solid rgba(22,163,74,.2)';
+      let html = `✓ Found ${d.total_blocks} customer(s) in the file. Updated the address for ${d.matched}.`;
+      if(d.marked_inactive) html += ` ${d.marked_inactive} marked inactive (Sage's own "***" dead/superseded account markers).`;
+      if(d.not_matched_count){
+        html += `<br><br>${d.not_matched_count} in the file didn't match an existing customer here (by account number), so nothing was created or changed for them:<br>`;
+        html += `<div style="max-height:160px;overflow-y:auto;margin-top:.4rem;font-size:.78rem;color:var(--txt2);">${d.not_matched_sample.map(s=>s.replace(/</g,'&lt;')).join('<br>')}${d.not_matched_count > d.not_matched_sample.length ? `<br>… and ${d.not_matched_count - d.not_matched_sample.length} more` : ''}</div>`;
+      }
+      msg.innerHTML = html;
     } else {
       msg.style.background='var(--red-bg)';msg.style.color='var(--red)';msg.style.border='1px solid rgba(220,38,38,.2)';
       msg.textContent='Error: '+d.error;

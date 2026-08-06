@@ -64,6 +64,127 @@ def customer_history(request, pk):
 
 
 @login_required
+def customer_address_import(request):
+    """Import addresses from a Sage 'Customer Address List' export — a
+    different shape from the regular customer import: one row per
+    address *line*, grouped into blocks under each customer's A/C row.
+    Matches existing customers by account_number; doesn't create new
+    customers. Names containing '***' (Sage's own dead/superseded
+    account markers) get marked inactive rather than imported as live."""
+    if not request.user.is_superuser:
+        return JsonResponse({'error': 'Only administrators can run this import.'}, status=403)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    import openpyxl, re
+    f = request.FILES.get('file')
+    if not f:
+        return JsonResponse({'error': 'No file uploaded.'}, status=400)
+    try:
+        wb = openpyxl.load_workbook(f, data_only=True, read_only=True)
+        ws = wb.active
+    except Exception as e:
+        return JsonResponse({'error': f'Could not read file: {e}'}, status=400)
+
+    postcode_re = re.compile(r'^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$', re.IGNORECASE)
+
+    # Find the header row by content rather than a fixed row number, since
+    # Sage's report adds a few info rows above it that could shift.
+    header_row_idx = None
+    header = None
+    for i, row in enumerate(ws.iter_rows(min_row=1, max_row=20, values_only=True), start=1):
+        cells = [str(c).strip() if c is not None else '' for c in row]
+        if 'A/C' in cells:
+            header_row_idx = i
+            header = cells
+            break
+    if not header_row_idx:
+        return JsonResponse({'error': 'Could not find the header row — expected a column titled "A/C".'}, status=400)
+
+    def col_idx(name):
+        return header.index(name) if name in header else None
+
+    i_ac = col_idx('A/C')
+    i_addr = col_idx('Name & Address')
+    if i_ac is None or i_addr is None:
+        return JsonResponse({'error': 'Missing expected column(s): A/C, Name & Address.'}, status=400)
+
+    def parse_block_addr(lines):
+        """Turn a block's address lines into (addr1, addr2, town, county, postcode)
+        based on the line count pattern found in the real export:
+        5 lines = Addr1/Addr2/Town/County/Postcode, 4 = Addr1/Addr2/Town/Postcode,
+        3 = Addr1/Town/Postcode. Non-UK addresses still use the last line as
+        the postcode slot on a best-effort basis."""
+        remaining = list(lines)
+        postcode = remaining.pop() if remaining else ''
+        addr1 = addr2 = town = county = ''
+        n = len(remaining)
+        if n >= 4:
+            addr1, addr2, town, county = remaining[0], remaining[1], remaining[2], remaining[3]
+        elif n == 3:
+            addr1, addr2, town = remaining[0], remaining[1], remaining[2]
+        elif n == 2:
+            addr1, town = remaining[0], remaining[1]
+        elif n == 1:
+            addr1 = remaining[0]
+        return addr1, addr2, town, county, postcode
+
+    rows = list(ws.iter_rows(min_row=header_row_idx + 1, values_only=True))
+    blocks = []
+    current = None
+    for row in rows:
+        ac = row[i_ac] if i_ac < len(row) else None
+        addr = row[i_addr] if i_addr < len(row) else None
+        if ac is not None and str(ac).strip():
+            if current:
+                blocks.append(current)
+            current = {'ac': str(ac).strip(), 'name': str(addr).strip() if addr else '', 'lines': []}
+        elif addr is not None and str(addr).strip() and current:
+            current['lines'].append(str(addr).strip())
+    if current:
+        blocks.append(current)
+
+    matched = 0
+    marked_inactive = 0
+    not_matched = []
+    to_update = []
+    account_numbers = [b['ac'] for b in blocks]
+    existing_by_ac = {
+        c.account_number: c
+        for c in CustomerProfile.objects.filter(account_number__in=account_numbers)
+    }
+    for b in blocks:
+        customer = existing_by_ac.get(b['ac'])
+        if not customer:
+            not_matched.append(f"{b['ac']} — {b['name']}")
+            continue
+        addr1, addr2, town, county, postcode = parse_block_addr(b['lines'])
+        customer.address_line1 = addr1
+        customer.address_line2 = addr2
+        customer.town = town
+        customer.county = county
+        customer.postcode = postcode
+        if '***' in b['name']:
+            customer.is_active = False
+            marked_inactive += 1
+        to_update.append(customer)
+        matched += 1
+
+    CustomerProfile.objects.bulk_update(
+        to_update, ['address_line1', 'address_line2', 'town', 'county', 'postcode', 'is_active'], batch_size=500
+    )
+
+    return JsonResponse({
+        'ok': True,
+        'total_blocks': len(blocks),
+        'matched': matched,
+        'marked_inactive': marked_inactive,
+        'not_matched_count': len(not_matched),
+        'not_matched_sample': not_matched[:40],
+    })
+
+
+@login_required
 def customer_import(request):
     if not request.user.is_superuser:
         return JsonResponse({'error': 'Only Tasos can import customers from Excel.'}, status=403)

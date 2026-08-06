@@ -69,6 +69,7 @@ urlpatterns = [
     path('report/sat/<int:pk>/file/',      views.satisfaction_note_file, name='satisfaction_note_file'),
     path('customers/',                    views.customer_list,         name='customer_list'),
     path('customers/import/',             views.customer_import,       name='customer_import'),
+    path('customers/import-addresses/',   views.customer_address_import, name='customer_address_import'),
     path('customers/new/',                views.customer_create,       name='customer_create'),
     path('customers/<int:pk>/',           views.customer_detail,       name='customer_detail'),
     path('customers/<int:pk>/contacts/add/', views.customer_contact_add, name='customer_contact_add'),
