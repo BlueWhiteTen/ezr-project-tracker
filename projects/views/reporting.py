@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 import json
 
-from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, ExchangeRate, GoodsInTransit, StockValuationItem
+from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, ExchangeRate, GoodsInTransit, StockValuationItem, TodoItem
 from ..forms import RegisterForm, ProjectForm
 from .utils import (_calc_sell_price, _calc_cost_breakdown, _can_view_reports, require_feature)
 
@@ -65,6 +65,8 @@ def home(request):
     recent_team_messages = list(reversed(list(recent_team_messages)))
     last_team_msg_id = recent_team_messages[-1].pk if recent_team_messages else 0
 
+    todo_items = TodoItem.objects.filter(user=request.user)
+
     return render(request, 'projects/home.html', {
         'my_reminders': my_reminders,
         'upcoming_reminders': upcoming_reminders,
@@ -76,7 +78,36 @@ def home(request):
         'unread_messages': unread_messages,
         'recent_team_messages': recent_team_messages,
         'last_team_msg_id': last_team_msg_id,
+        'todo_items': todo_items,
     })
+
+
+@login_required
+@require_POST
+def todo_add(request):
+    data = json.loads(request.body)
+    text = (data.get('text') or '').strip()
+    if not text:
+        return JsonResponse({'error': 'Text is required.'}, status=400)
+    next_order = TodoItem.objects.filter(user=request.user).count()
+    item = TodoItem.objects.create(user=request.user, text=text, sort_order=next_order)
+    return JsonResponse({'ok': True, 'id': item.pk})
+
+
+@login_required
+@require_POST
+def todo_toggle(request, pk):
+    item = get_object_or_404(TodoItem, pk=pk, user=request.user)
+    item.is_done = not item.is_done
+    item.save(update_fields=['is_done'])
+    return JsonResponse({'ok': True, 'is_done': item.is_done})
+
+
+@login_required
+@require_POST
+def todo_delete(request, pk):
+    TodoItem.objects.filter(pk=pk, user=request.user).delete()
+    return JsonResponse({'ok': True})
 
 
 

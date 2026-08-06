@@ -15,6 +15,7 @@ from .auth import (
 )
 from .reporting import (
     home, daily_accounts_report, activity_log, week_view, crew_capacity,
+    todo_add, todo_toggle, todo_delete,
     stock_valuation, stock_valuation_rate_update, goods_in_transit_add, goods_in_transit_delete, stock_valuation_items, stock_valuation_item_update, stock_valuation_export,
     monthly_summary, calendar_view, board_view, so_search,
     sales_summary, sales_summary_export,
@@ -38,6 +39,7 @@ from .customers import (
 )
 from .suppliers import (
     supplier_list, supplier_import, supplier_detail,
+    supplier_contact_add, supplier_contact_update, supplier_contact_delete,
     supplier_create, supplier_delete, supplier_api_list,
     supplier_documents, supplier_document_download, supplier_document_delete,
 )

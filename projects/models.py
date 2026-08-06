@@ -245,6 +245,21 @@ class Reminder(models.Model):
         return f"Reminder for {self.notify_user} at {self.remind_at}"
 
 
+class TodoItem(models.Model):
+    """A personal to-do item — private to each user, shown on the Home page."""
+    user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='todo_items')
+    text       = models.CharField(max_length=300)
+    is_done    = models.BooleanField(default=False)
+    sort_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['is_done', 'sort_order', 'created_at']
+
+    def __str__(self):
+        return self.text[:60]
+
+
 class TeamMessage(models.Model):
     user      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='team_messages')
     text      = models.TextField()
@@ -489,6 +504,23 @@ class Supplier(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class SupplierContact(models.Model):
+    """A named contact at a supplier — same pattern as CustomerContact."""
+    supplier   = models.ForeignKey(Supplier, on_delete=models.CASCADE, related_name='contacts')
+    name       = models.CharField(max_length=200)
+    role       = models.CharField(max_length=100, blank=True)
+    phone      = models.CharField(max_length=30, blank=True)
+    email      = models.EmailField(blank=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sort_order', 'created_at']
+
+    def __str__(self):
+        return f"{self.name} ({self.role})" if self.role else self.name
 
 
 class ProjectDocument(models.Model):

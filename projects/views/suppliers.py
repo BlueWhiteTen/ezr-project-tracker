@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 import json
 
-from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, SupplierDocument
+from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, SupplierDocument, SupplierContact
 from ..forms import RegisterForm, ProjectForm
 from .utils import require_feature
 
@@ -181,9 +181,56 @@ def supplier_detail(request, pk):
         return redirect('supplier_detail', pk=pk)
     pos = supplier.purchase_orders.all().order_by('-created_at')
     documents = supplier.documents.all()
+    contacts = supplier.contacts.all()
     return render(request, 'projects/supplier_detail.html', {
-        'supplier': supplier, 'pos': pos, 'documents': documents,
+        'supplier': supplier, 'pos': pos, 'documents': documents, 'contacts': contacts,
     })
+
+
+@login_required
+@require_POST
+def supplier_contact_add(request, pk):
+    supplier = get_object_or_404(Supplier, pk=pk)
+    data = json.loads(request.body)
+    name = (data.get('name') or '').strip()
+    if not name:
+        return JsonResponse({'error': 'Name is required.'}, status=400)
+    next_order = supplier.contacts.count()
+    contact = SupplierContact.objects.create(
+        supplier=supplier, name=name,
+        role=(data.get('role') or '').strip(),
+        phone=(data.get('phone') or '').strip(),
+        email=(data.get('email') or '').strip(),
+        sort_order=next_order,
+    )
+    return JsonResponse({'ok': True, 'id': contact.pk})
+
+
+@login_required
+@require_POST
+def supplier_contact_update(request, pk):
+    contact = get_object_or_404(SupplierContact, pk=pk)
+    data = json.loads(request.body)
+    if 'name' in data:
+        name = (data.get('name') or '').strip()
+        if not name:
+            return JsonResponse({'error': 'Name is required.'}, status=400)
+        contact.name = name
+    if 'role' in data:
+        contact.role = (data.get('role') or '').strip()
+    if 'phone' in data:
+        contact.phone = (data.get('phone') or '').strip()
+    if 'email' in data:
+        contact.email = (data.get('email') or '').strip()
+    contact.save()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_POST
+def supplier_contact_delete(request, pk):
+    SupplierContact.objects.filter(pk=pk).delete()
+    return JsonResponse({'ok': True})
 
 
 @login_required

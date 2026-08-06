@@ -80,6 +80,26 @@
     </div>
   </a>
 
+  <!-- Personal To-Do List -->
+  <div class="home-tile">
+    <div class="home-tile-title">✅ Personal To-Do List</div>
+    <ul class="home-list" id="todo-list" style="overflow-y:auto;flex:1;">
+      {% for t in todo_items %}
+      <li id="todo-row-{{ t.pk }}" style="display:flex;align-items:flex-start;gap:.5rem;">
+        <input type="checkbox" class="todo-check" data-pk="{{ t.pk }}" {% if t.is_done %}checked{% endif %} style="margin-top:.4rem;cursor:pointer;flex-shrink:0;">
+        <span class="home-row" style="flex:1;cursor:default;{% if t.is_done %}text-decoration:line-through;color:var(--mut2);{% endif %}">{{ t.text }}</span>
+        <button onclick="deleteTodo({{ t.pk }})" title="Delete" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:.9rem;padding:.35rem .3rem;line-height:1;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--mut)'">✕</button>
+      </li>
+      {% empty %}
+      <div class="home-empty" id="todo-empty">Nothing on your list yet.</div>
+      {% endfor %}
+    </ul>
+    <div style="display:flex;gap:.4rem;margin-top:.6rem;">
+      <input type="text" id="todo-input" class="form-input" placeholder="Add a to-do…" style="flex:1;font-size:.85rem;padding:.4rem .6rem;" onkeydown="if(event.key==='Enter'){addTodo();}">
+      <button class="btn btn-ghost btn-sm" onclick="addTodo()">+ Add</button>
+    </div>
+  </div>
+
   <!-- Your assigned projects — double height -->
   <div class="home-tile" style="grid-row:span 2;">
     <div class="home-tile-title">📁 Your Projects</div>
@@ -273,5 +293,64 @@ async function dismissReminder(pk){
     if(row) row.style.opacity = '1';
   }
 }
+
+async function addTodo(){
+  const TODO_CSRF = '{{ csrf_token }}';
+  const input = document.getElementById('todo-input');
+  const text = input.value.trim();
+  if(!text) return;
+  const r = await fetch('/todo/add/', {
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':TODO_CSRF}, body: JSON.stringify({text})
+  });
+  const d = await r.json();
+  if(d.ok){
+    const empty = document.getElementById('todo-empty');
+    if(empty) empty.remove();
+    const list = document.getElementById('todo-list');
+    const li = document.createElement('li');
+    li.id = `todo-row-${d.id}`;
+    li.style.cssText = 'display:flex;align-items:flex-start;gap:.5rem;';
+    li.innerHTML = `
+      <input type="checkbox" class="todo-check" data-pk="${d.id}" style="margin-top:.4rem;cursor:pointer;flex-shrink:0;">
+      <span class="home-row" style="flex:1;cursor:default;"></span>
+      <button onclick="deleteTodo(${d.id})" title="Delete" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:.9rem;padding:.35rem .3rem;line-height:1;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--mut)'">✕</button>`;
+    li.querySelector('span').textContent = text;
+    list.appendChild(li);
+    li.querySelector('.todo-check').addEventListener('change', (e) => toggleTodo(d.id, e.target));
+    input.value = '';
+  }
+}
+
+async function toggleTodo(pk, checkbox){
+  const TODO_CSRF = '{{ csrf_token }}';
+  const r = await fetch(`/todo/${pk}/toggle/`, {method:'POST', headers:{'X-CSRFToken':TODO_CSRF}});
+  const d = await r.json();
+  if(d.ok){
+    const span = checkbox.nextElementSibling;
+    span.style.textDecoration = d.is_done ? 'line-through' : 'none';
+    span.style.color = d.is_done ? 'var(--mut2)' : '';
+  }
+}
+
+async function deleteTodo(pk){
+  const TODO_CSRF = '{{ csrf_token }}';
+  const r = await fetch(`/todo/${pk}/delete/`, {method:'POST', headers:{'X-CSRFToken':TODO_CSRF}});
+  const d = await r.json();
+  if(d.ok){
+    document.getElementById(`todo-row-${pk}`)?.remove();
+    const list = document.getElementById('todo-list');
+    if(list && !list.querySelector('.todo-check')){
+      const empty = document.createElement('div');
+      empty.className = 'home-empty';
+      empty.id = 'todo-empty';
+      empty.textContent = 'Nothing on your list yet.';
+      list.appendChild(empty);
+    }
+  }
+}
+
+document.querySelectorAll('.todo-check').forEach(cb => {
+  cb.addEventListener('change', () => toggleTodo(cb.dataset.pk, cb));
+});
 </script>
 {% endblock %}

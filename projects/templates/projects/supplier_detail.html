@@ -1,12 +1,13 @@
 {% extends 'projects/base.html' %}
 {% block title %}{{ supplier.name }} — Suppliers{% endblock %}
 {% block extra_style %}
-.layout{display:grid;grid-template-columns:340px 1fr;gap:1.4rem;align-items:start;}
 .form-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.5rem;box-shadow:var(--shadow);margin-bottom:1.2rem;}
 .section-title{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:.85rem;padding-bottom:.4rem;border-bottom:1px solid var(--bdr);}
 .po-row{display:flex;align-items:center;gap:.75rem;padding:.65rem 0;border-bottom:.5px solid var(--bdr);font-size:.875rem;}
 .po-row:last-child{border-bottom:none;}
-@media(max-width:768px){.layout{grid-template-columns:1fr;}}
+.sup-details-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:1rem .9rem;}
+.sup-mid-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start;}
+@media(max-width:768px){.sup-mid-grid{grid-template-columns:1fr;}.sup-details-grid{grid-template-columns:1fr 1fr;}}
 {% endblock %}
 {% block content %}
 <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.4rem;flex-wrap:wrap;padding-top:.5rem;">
@@ -14,113 +15,197 @@
   <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">{{ supplier.name }}</h1>
 </div>
 
-<div class="layout">
-  <div>
-    <div class="form-card">
-      <div class="section-title">Supplier Details</div>
-      <form method="post">
-        {% csrf_token %}
-        <div class="form-group"><label class="form-label">Supplier Name</label><input class="form-input" name="name" value="{{ supplier.name }}"></div>
-        <div class="form-group"><label class="form-label">Account Number</label><input class="form-input" value="{{ supplier.account_number }}" disabled style="background:var(--surf2);color:var(--mut);"></div>
-        <div class="form-group"><label class="form-label">Contact Name</label><input class="form-input" name="contact_name" value="{{ supplier.contact_name }}"></div>
-        <div class="form-group"><label class="form-label">Phone</label><input class="form-input" name="phone" value="{{ supplier.phone }}"></div>
-        <div class="form-group"><label class="form-label">Email</label><input class="form-input" name="email" type="email" value="{{ supplier.email }}"></div>
-        <div class="form-group"><label class="form-label">Payment Terms</label><input class="form-input" name="payment_terms" value="{{ supplier.payment_terms }}" placeholder="e.g. 30 days"></div>
-        <div class="form-group"><label class="form-label">Lead Time (days)</label><input class="form-input" name="lead_time_days" type="number" min="0" value="{{ supplier.lead_time_days }}"></div>
-        <div class="form-group"><label class="form-label">Address Line 1</label><input class="form-input" name="address_line1" value="{{ supplier.address_line1 }}"></div>
-        <div class="form-group"><label class="form-label">Address Line 2</label><input class="form-input" name="address_line2" value="{{ supplier.address_line2 }}"></div>
-        <div class="form-group"><label class="form-label">Town</label><input class="form-input" name="town" value="{{ supplier.town }}"></div>
-        <div class="form-group"><label class="form-label">County</label><input class="form-input" name="county" value="{{ supplier.county }}"></div>
-        <div class="form-group"><label class="form-label">Post Code</label><input class="form-input" name="postcode" value="{{ supplier.postcode }}"></div>
-        <div class="form-group" style="margin-bottom:0;"><label class="form-label">Notes</label><textarea class="form-input" name="notes" rows="3">{{ supplier.notes }}</textarea></div>
-        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:1rem;">Save Changes</button>
-      </form>
+<div class="form-card">
+  <div class="section-title">Company Name &amp; Address</div>
+  <form method="post" id="supplier-form">
+    {% csrf_token %}
+    <div class="sup-details-grid">
+      <div class="form-group"><label class="form-label">Supplier Name</label><input class="form-input" name="name" value="{{ supplier.name }}"></div>
+      <div class="form-group"><label class="form-label">Account Number</label><input class="form-input" value="{{ supplier.account_number }}" disabled style="background:var(--surf2);color:var(--mut);"></div>
+      <div class="form-group"><label class="form-label">Payment Terms</label><input class="form-input" name="payment_terms" value="{{ supplier.payment_terms }}" placeholder="e.g. 30 days"></div>
+      <div class="form-group"><label class="form-label">Lead Time (days)</label><input class="form-input" name="lead_time_days" type="number" min="0" value="{{ supplier.lead_time_days }}"></div>
+      <div class="form-group"><label class="form-label">Address Line 1</label><input class="form-input" name="address_line1" value="{{ supplier.address_line1 }}"></div>
+      <div class="form-group"><label class="form-label">Address Line 2</label><input class="form-input" name="address_line2" value="{{ supplier.address_line2 }}"></div>
+      <div class="form-group"><label class="form-label">Town</label><input class="form-input" name="town" value="{{ supplier.town }}"></div>
+      <div class="form-group"><label class="form-label">County</label><input class="form-input" name="county" value="{{ supplier.county }}"></div>
+      <div class="form-group"><label class="form-label">Post Code</label><input class="form-input" name="postcode" value="{{ supplier.postcode }}"></div>
     </div>
+    <div class="section-title" style="margin-top:1.3rem;">Contact Details</div>
+    <div class="sup-details-grid">
+      <div class="form-group"><label class="form-label">Contact Name</label><input class="form-input" name="contact_name" value="{{ supplier.contact_name }}"></div>
+      <div class="form-group"><label class="form-label">Phone</label><input class="form-input" name="phone" value="{{ supplier.phone }}"></div>
+      <div class="form-group"><label class="form-label">Email</label><input class="form-input" name="email" type="email" value="{{ supplier.email }}"></div>
+    </div>
+    <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Save Changes</button>
+  </form>
+</div>
+
+<div class="sup-mid-grid">
+  <div class="form-card" id="sup-contacts-card" style="margin-bottom:0;">
+    <div class="section-title">Extra Contacts</div>
+    <div id="sup-contacts-list">
+      {% for c in contacts %}
+      <div class="sup-contact-row" data-pk="{{ c.pk }}" style="border:1px solid var(--bdr);border-radius:var(--rad);padding:.7rem;margin-bottom:.6rem;">
+        <div style="display:flex;gap:.5rem;margin-bottom:.4rem;">
+          <input class="form-input sup-contact-field" data-field="name" value="{{ c.name }}" placeholder="Name" style="flex:1;">
+          <input class="form-input sup-contact-field" data-field="role" value="{{ c.role }}" placeholder="Role" style="flex:1;">
+        </div>
+        <div style="display:flex;gap:.5rem;">
+          <input class="form-input sup-contact-field" data-field="phone" value="{{ c.phone }}" placeholder="Phone" style="flex:1;">
+          <input class="form-input sup-contact-field" data-field="email" type="email" value="{{ c.email }}" placeholder="Email" style="flex:1;">
+          <button type="button" class="btn btn-ghost btn-sm sup-contact-remove" title="Remove">✕</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="button" class="btn btn-ghost btn-sm" id="sup-contact-add-btn" onclick="addSupContactRow()">+ Add Contact</button>
   </div>
 
-  <div>
-    {% if features.purchase_orders %}
-    <div class="form-card">
-      <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
-        <span>Purchase Orders ({{ pos|length }})</span>
-        <button class="btn btn-primary btn-sm" onclick="newPOForSupplier()">+ New PO</button>
-      </div>
-      {% if pos %}
-        {% for po in pos %}
-        <div class="po-row">
-          <a href="{% url 'po_detail' po.pk %}" style="font-weight:600;color:var(--acc);text-decoration:none;min-width:90px;">{{ po.po_number }}</a>
-          <div style="flex:1;font-size:.78rem;color:var(--mut);">
-            {% if po.project %}<a href="{% url 'project_edit' po.project.pk %}" style="color:var(--mut);">{{ po.project.project_name }}</a> · {% endif %}
-            {% if po.order_date %}{{ po.order_date|date:"d M Y" }}{% endif %}
-            {% if po.expected_date %} · exp {{ po.expected_date|date:"d M Y" }}{% endif %}
-          </div>
-          <span style="font-weight:600;">£{{ po.total|floatformat:2 }}</span>
-          <span class="badge badge-{{ po.status }}">{{ po.get_status_display }}</span>
-        </div>
-        {% endfor %}
-      {% else %}
-        <div style="color:var(--mut);font-size:.875rem;">No purchase orders yet for {{ supplier.name }}</div>
-      {% endif %}
-    </div>
-    {% endif %}
-
-    {% if features.supplier_documents %}
-    <div class="form-card">
-      <div class="section-title">Price Lists &amp; Brochures ({{ documents|length }})</div>
-      <div id="sdoc-list" style="margin-bottom:.75rem;">
-        {% for d in documents %}
-        <div style="display:flex;align-items:center;gap:.6rem;padding:.45rem 0;border-bottom:.5px solid var(--bdr);font-size:.85rem;" data-doc-id="{{ d.pk }}">
-          <span style="font-family:var(--fm);font-size:.7rem;background:var(--acc-bg);color:var(--acc);padding:1px 6px;border-radius:3px;flex-shrink:0;">{{ d.get_doc_type_display }}{% if d.year %} {{ d.year }}{% endif %}</span>
-          <a href="{% url 'supplier_document_download' d.pk %}" target="_blank" style="flex:1;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ d.name }}</a>
-          <span style="font-size:.75rem;color:var(--mut);flex-shrink:0;">{{ d.uploaded_at|date:"d M Y" }}</span>
-          <button onclick="deleteSupplierDoc({{ d.pk }}, this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;padding:2px 6px;flex-shrink:0;">✕</button>
-        </div>
-        {% empty %}
-        <div style="color:var(--mut);font-size:.875rem;" id="sdoc-empty">No price lists or brochures uploaded for {{ supplier.name }} yet.</div>
-        {% endfor %}
-      </div>
-      <div style="border:2px dashed var(--acc-bdr);border-radius:var(--rad);padding:.75rem;background:var(--acc-bg);">
-        <div class="form-group" style="margin-bottom:.5rem;">
-          <label class="form-label">File <span style="font-weight:400;color:var(--mut2);">(PDF, Excel, or Word)</span></label>
-          <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:.5rem .75rem;font-size:.85rem;color:var(--txt2);" for="sdoc-file">
-            <span style="background:var(--acc);color:#fff;border-radius:4px;padding:3px 10px;font-size:.75rem;font-weight:600;flex-shrink:0;">Choose file</span>
-            <span id="sdoc-file-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">No file chosen</span>
-          </label>
-          <input type="file" id="sdoc-file" accept=".pdf,.xls,.xlsx,.doc,.docx" style="display:none;" onchange="sdocFileChanged(this)">
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 100px;gap:.6rem;margin-bottom:.6rem;">
-          <div class="form-group" style="margin-bottom:0;">
-            <label class="form-label">Type</label>
-            <select id="sdoc-type" class="form-input">
-              <option value="price_list">Price List</option>
-              <option value="brochure">Brochure</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-          <div class="form-group" style="margin-bottom:0;">
-            <label class="form-label">Year</label>
-            <input type="number" id="sdoc-year" class="form-input" placeholder="{% now 'Y' %}" min="2000" max="2100">
-          </div>
-        </div>
-        <div class="form-group" style="margin-bottom:.6rem;">
-          <label class="form-label">Name (optional)</label>
-          <input type="text" id="sdoc-name" class="form-input" placeholder="e.g. 2026 Price List">
-        </div>
-        <button type="button" class="btn btn-primary" onclick="uploadSupplierDoc({{ supplier.pk }})" style="width:100%;justify-content:center;">Upload Document</button>
-        <div id="sdoc-error" style="color:var(--red);font-size:.78rem;margin-top:.4rem;display:none;"></div>
-      </div>
-    </div>
-    {% endif %}
+  <div class="form-card" style="margin-bottom:0;">
+    <div class="section-title">Notes</div>
+    <textarea class="form-input" name="notes" form="supplier-form" rows="8" placeholder="Any notes about this supplier…">{{ supplier.notes }}</textarea>
+    <button type="submit" form="supplier-form" class="btn btn-ghost btn-sm" style="margin-top:.6rem;">Save Notes</button>
   </div>
 </div>
+
+{% if features.purchase_orders %}
+<div class="form-card">
+  <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
+    <span>Purchase Orders ({{ pos|length }})</span>
+    <button class="btn btn-primary btn-sm" onclick="newPOForSupplier()">+ New PO</button>
+  </div>
+  {% if pos %}
+    {% for po in pos %}
+    <div class="po-row">
+      <a href="{% url 'po_detail' po.pk %}" style="font-weight:600;color:var(--acc);text-decoration:none;min-width:90px;">{{ po.po_number }}</a>
+      <div style="flex:1;font-size:.78rem;color:var(--mut);">
+        {% if po.project %}<a href="{% url 'project_edit' po.project.pk %}" style="color:var(--mut);">{{ po.project.project_name }}</a> · {% endif %}
+        {% if po.order_date %}{{ po.order_date|date:"d M Y" }}{% endif %}
+        {% if po.expected_date %} · exp {{ po.expected_date|date:"d M Y" }}{% endif %}
+      </div>
+      <span style="font-weight:600;">£{{ po.total|floatformat:2 }}</span>
+      <span class="badge badge-{{ po.status }}">{{ po.get_status_display }}</span>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div style="color:var(--mut);font-size:.875rem;">No purchase orders yet for {{ supplier.name }}</div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if features.supplier_documents %}
+<div class="form-card">
+  <div class="section-title">Price Lists &amp; Brochures ({{ documents|length }})</div>
+  <div id="sdoc-list" style="margin-bottom:.75rem;">
+    {% for d in documents %}
+    <div style="display:flex;align-items:center;gap:.6rem;padding:.45rem 0;border-bottom:.5px solid var(--bdr);font-size:.85rem;" data-doc-id="{{ d.pk }}">
+      <span style="font-family:var(--fm);font-size:.7rem;background:var(--acc-bg);color:var(--acc);padding:1px 6px;border-radius:3px;flex-shrink:0;">{{ d.get_doc_type_display }}{% if d.year %} {{ d.year }}{% endif %}</span>
+      <a href="{% url 'supplier_document_download' d.pk %}" target="_blank" style="flex:1;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ d.name }}</a>
+      <span style="font-size:.75rem;color:var(--mut);flex-shrink:0;">{{ d.uploaded_at|date:"d M Y" }}</span>
+      <button onclick="deleteSupplierDoc({{ d.pk }}, this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;padding:2px 6px;flex-shrink:0;">✕</button>
+    </div>
+    {% empty %}
+    <div style="color:var(--mut);font-size:.875rem;" id="sdoc-empty">No price lists or brochures uploaded for {{ supplier.name }} yet.</div>
+    {% endfor %}
+  </div>
+  <div style="border:2px dashed var(--acc-bdr);border-radius:var(--rad);padding:.75rem;background:var(--acc-bg);">
+    <div class="form-group" style="margin-bottom:.5rem;">
+      <label class="form-label">File <span style="font-weight:400;color:var(--mut2);">(PDF, Excel, or Word)</span></label>
+      <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:.5rem .75rem;font-size:.85rem;color:var(--txt2);" for="sdoc-file">
+        <span style="background:var(--acc);color:#fff;border-radius:4px;padding:3px 10px;font-size:.75rem;font-weight:600;flex-shrink:0;">Choose file</span>
+        <span id="sdoc-file-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">No file chosen</span>
+      </label>
+      <input type="file" id="sdoc-file" accept=".pdf,.xls,.xlsx,.doc,.docx" style="display:none;" onchange="sdocFileChanged(this)">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 100px;gap:.6rem;margin-bottom:.6rem;">
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">Type</label>
+        <select id="sdoc-type" class="form-input">
+          <option value="price_list">Price List</option>
+          <option value="brochure">Brochure</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">Year</label>
+        <input type="number" id="sdoc-year" class="form-input" placeholder="{% now 'Y' %}" min="2000" max="2100">
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:.6rem;">
+      <label class="form-label">Name (optional)</label>
+      <input type="text" id="sdoc-name" class="form-input" placeholder="e.g. 2026 Price List">
+    </div>
+    <button type="button" class="btn btn-primary" onclick="uploadSupplierDoc({{ supplier.pk }})" style="width:100%;justify-content:center;">Upload Document</button>
+    <div id="sdoc-error" style="color:var(--red);font-size:.78rem;margin-top:.4rem;display:none;"></div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
 {% block extra_js %}
 <script>
 const CSRF = '{{ csrf_token }}';
+const SUP_PK = {{ supplier.pk }};
+
 async function newPOForSupplier(){
   const r = await fetch('/purchase-orders/new/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({supplier_id:{{ supplier.pk }}})});
   const d = await r.json();
   if(d.ok) window.location = `/purchase-orders/${d.pk}/`;
+}
+
+// ── Extra contacts ───────────────────────────────────────────────────────
+function addSupContactRow(){
+  const list = document.getElementById('sup-contacts-list');
+  const row = document.createElement('div');
+  row.className = 'sup-contact-row';
+  row.dataset.pk = '';
+  row.style.cssText = 'border:1px solid var(--bdr);border-radius:var(--rad);padding:.7rem;margin-bottom:.6rem;';
+  row.innerHTML = `
+    <div style="display:flex;gap:.5rem;margin-bottom:.4rem;">
+      <input class="form-input sup-contact-field" data-field="name" placeholder="Name" style="flex:1;">
+      <input class="form-input sup-contact-field" data-field="role" placeholder="Role" style="flex:1;">
+    </div>
+    <div style="display:flex;gap:.5rem;">
+      <input class="form-input sup-contact-field" data-field="phone" placeholder="Phone" style="flex:1;">
+      <input class="form-input sup-contact-field" data-field="email" type="email" placeholder="Email" style="flex:1;">
+      <button type="button" class="btn btn-ghost btn-sm sup-contact-remove" title="Remove">✕</button>
+    </div>`;
+  list.appendChild(row);
+  wireSupContactRow(row);
+}
+
+async function saveSupContactRow(row){
+  const fields = {};
+  row.querySelectorAll('.sup-contact-field').forEach(el => { fields[el.dataset.field] = el.value.trim(); });
+  if(!fields.name) return;
+  const pk = row.dataset.pk;
+  if(pk){
+    await fetch(`/supplier-contacts/${pk}/update/`, {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify(fields)
+    });
+  } else {
+    const r = await fetch(`/suppliers/${SUP_PK}/contacts/add/`, {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify(fields)
+    });
+    const d = await r.json();
+    if(d.ok) row.dataset.pk = d.id;
+  }
+}
+
+function wireSupContactRow(row){
+  row.querySelectorAll('.sup-contact-field').forEach(el => {
+    el.addEventListener('change', () => saveSupContactRow(row));
+  });
+  row.querySelector('.sup-contact-remove').addEventListener('click', async () => {
+    const pk = row.dataset.pk;
+    if(pk){
+      await fetch(`/supplier-contacts/${pk}/delete/`, {method:'POST', headers:{'X-CSRFToken':CSRF}});
+    }
+    row.remove();
+  });
+}
+document.querySelectorAll('.sup-contact-row').forEach(wireSupContactRow);
+while(document.querySelectorAll('#sup-contacts-list .sup-contact-row').length < 3){
+  addSupContactRow();
 }
 
 function sdocFileChanged(input){
