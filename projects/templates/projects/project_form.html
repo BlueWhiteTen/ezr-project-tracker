@@ -366,13 +366,20 @@
       <div class="form-card" id="manual-po-card">
         <div class="section-title">Supplier / PO Reference</div>
         <p style="font-size:.78rem;color:var(--mut2);margin-bottom:.7rem;">POs are raised directly in Sage now — this is just a quick note of which supplier/PO number a job went through.</p>
+        <div style="display:grid;grid-template-columns:1.2fr 1fr 1.3fr 1.3fr 30px;gap:.4rem;margin-bottom:.3rem;">
+          <span style="font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);">Supplier</span>
+          <span style="font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);">PO Number</span>
+          <span style="font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);">Date Ordered</span>
+          <span style="font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);">Date to be Delivered</span>
+          <span></span>
+        </div>
         <div id="manual-po-list">
           {% for m in manual_pos %}
-          <div class="manual-po-row" data-pk="{{ m.pk }}" style="display:flex;gap:.4rem;margin-bottom:.4rem;flex-wrap:wrap;">
-            <input class="form-input manual-po-field" data-field="supplier" value="{{ m.supplier }}" placeholder="Supplier" style="flex:1 1 120px;font-size:.82rem;padding:.35rem .5rem;">
-            <input class="form-input manual-po-field" data-field="po_number" value="{{ m.po_number }}" placeholder="PO Number" style="flex:1 1 100px;font-size:.82rem;padding:.35rem .5rem;">
-            <input class="form-input manual-po-field" data-field="date_ordered" type="date" value="{{ m.date_ordered|date:'Y-m-d' }}" title="Date Ordered" style="flex:1 1 130px;font-size:.82rem;padding:.35rem .5rem;">
-            <input class="form-input manual-po-field" data-field="date_delivery" type="date" value="{{ m.date_delivery|date:'Y-m-d' }}" title="Date to be Delivered" style="flex:1 1 130px;font-size:.82rem;padding:.35rem .5rem;">
+          <div class="manual-po-row" data-pk="{{ m.pk }}" style="display:grid;grid-template-columns:1.2fr 1fr 1.3fr 1.3fr 30px;gap:.4rem;margin-bottom:.4rem;align-items:center;">
+            <input class="form-input manual-po-field" data-field="supplier" value="{{ m.supplier }}" placeholder="Supplier" style="font-size:.82rem;padding:.35rem .5rem;">
+            <input class="form-input manual-po-field" data-field="po_number" value="{{ m.po_number }}" placeholder="PO Number" style="font-size:.82rem;padding:.35rem .5rem;">
+            <input class="form-input manual-po-field" data-field="date_ordered" type="date" value="{{ m.date_ordered|date:'Y-m-d' }}" style="font-size:.82rem;padding:.35rem .5rem;">
+            <input class="form-input manual-po-field" data-field="date_delivery" type="date" value="{{ m.date_delivery|date:'Y-m-d' }}" style="font-size:.82rem;padding:.35rem .5rem;">
             <button type="button" class="btn btn-ghost btn-sm manual-po-remove" title="Remove" style="padding:.35rem .5rem;">✕</button>
           </div>
           {% endfor %}
@@ -1118,12 +1125,12 @@ function addManualPoRow(){
   const row = document.createElement('div');
   row.className = 'manual-po-row';
   row.dataset.pk = '';
-  row.style.cssText = 'display:flex;gap:.4rem;margin-bottom:.4rem;flex-wrap:wrap;';
+  row.style.cssText = 'display:grid;grid-template-columns:1.2fr 1fr 1.3fr 1.3fr 30px;gap:.4rem;margin-bottom:.4rem;align-items:center;';
   row.innerHTML = `
-    <input class="form-input manual-po-field" data-field="supplier" placeholder="Supplier" style="flex:1 1 120px;font-size:.82rem;padding:.35rem .5rem;">
-    <input class="form-input manual-po-field" data-field="po_number" placeholder="PO Number" style="flex:1 1 100px;font-size:.82rem;padding:.35rem .5rem;">
-    <input class="form-input manual-po-field" data-field="date_ordered" type="date" title="Date Ordered" style="flex:1 1 130px;font-size:.82rem;padding:.35rem .5rem;">
-    <input class="form-input manual-po-field" data-field="date_delivery" type="date" title="Date to be Delivered" style="flex:1 1 130px;font-size:.82rem;padding:.35rem .5rem;">
+    <input class="form-input manual-po-field" data-field="supplier" placeholder="Supplier" style="font-size:.82rem;padding:.35rem .5rem;">
+    <input class="form-input manual-po-field" data-field="po_number" placeholder="PO Number" style="font-size:.82rem;padding:.35rem .5rem;">
+    <input class="form-input manual-po-field" data-field="date_ordered" type="date" style="font-size:.82rem;padding:.35rem .5rem;">
+    <input class="form-input manual-po-field" data-field="date_delivery" type="date" style="font-size:.82rem;padding:.35rem .5rem;">
     <button type="button" class="btn btn-ghost btn-sm manual-po-remove" title="Remove" style="padding:.35rem .5rem;">✕</button>`;
   list.appendChild(row);
   wireManualPoRow(row);

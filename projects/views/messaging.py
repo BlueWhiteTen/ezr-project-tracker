@@ -28,7 +28,11 @@ from django.contrib.auth.views import (
 def notification_count(request):
     notif_count = Notification.objects.filter(user=request.user, read=False).count()
     msg_count   = Message.objects.filter(recipient=request.user, read=False).count()
-    latest_notif = Notification.objects.filter(user=request.user, read=False).order_by('-timestamp').first()
+    # Excludes type='message' — sending a private message already creates both
+    # a Message and a matching Notification, and that Notification is only
+    # needed for the notifications list/badge count (still included above),
+    # not for a second toast on top of the one latest_msg already produces.
+    latest_notif = Notification.objects.filter(user=request.user, read=False).exclude(type='message').order_by('-timestamp').first()
     latest_msg = Message.objects.filter(recipient=request.user, read=False).order_by('-timestamp').select_related('sender').first()
     return JsonResponse({
         'count': notif_count, 'messages': msg_count,
