@@ -22,13 +22,16 @@
 .close-btn{background:transparent;border:1px solid var(--bdr);border-radius:var(--rad);color:var(--mut);font-size:.9rem;cursor:pointer;padding:3px 9px;}
 .close-btn:hover{background:var(--red-bg);color:var(--red);}
 .cust-shell{display:flex;flex-direction:column;gap:1rem;}
-.cust-index{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow);padding:.6rem .7rem;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:2px;}
-.cust-index-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);padding:.3rem .6rem;margin-right:.2rem;}
-.cust-index a{display:flex;align-items:center;gap:.3rem;padding:.3rem .5rem;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;color:var(--txt2);}
+.cust-index{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow);padding:.55rem .5rem;display:flex;flex-direction:row;flex-wrap:wrap;align-items:stretch;gap:1px;}
+.cust-index-title{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);padding:.3rem .5rem;margin-right:.3rem;align-self:center;}
+.cust-index a{display:flex;flex-direction:column;align-items:center;min-width:30px;padding:.3rem .3rem .25rem;border-radius:6px;text-decoration:none;color:var(--txt2);}
+.cust-index a .idx-char{font-size:.78rem;font-weight:700;line-height:1.3;}
+.cust-index a .idx-sep{width:14px;height:1px;background:var(--bdr);margin:.15rem 0;}
+.cust-index a.active .idx-sep{background:rgba(255,255,255,.35);}
 .cust-index a:hover{background:var(--surf2);}
 .cust-index a.active{background:var(--acc);color:#fff;}
-.cust-index a.empty{color:var(--mut2);opacity:.4;pointer-events:none;}
-.cust-index .idx-count{font-size:.65rem;font-weight:500;color:inherit;opacity:.75;}
+.cust-index a.empty{color:var(--mut2);opacity:.35;pointer-events:none;}
+.cust-index .idx-count{font-size:.62rem;font-weight:500;color:inherit;opacity:.7;line-height:1.2;}
 .cust-main{flex:1;min-width:0;}
 {% endblock %}
 {% block content %}
@@ -61,7 +64,9 @@
     {% for idx in index_chars %}
     <a href="?letter={{ idx.char }}{% if show_inactive %}&show_inactive=1{% endif %}"
        class="{% if not query and letter == idx.char %}active{% endif %}{% if not idx.count %} empty{% endif %}">
-      {{ idx.char }}<span class="idx-count">{{ idx.count }}</span>
+      <span class="idx-char">{{ idx.char }}</span>
+      <div class="idx-sep"></div>
+      <span class="idx-count">{{ idx.count }}</span>
     </a>
     {% endfor %}
   </nav>
