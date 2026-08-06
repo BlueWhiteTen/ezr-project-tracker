@@ -21,7 +21,7 @@
   <a href="{% url 'template_list' %}" class="btn btn-ghost btn-sm">← Templates</a>
   <h1 style="font-size:1.4rem;font-weight:600;letter-spacing:-.02em;">{{ tmpl.name }}</h1>
   {% if tmpl.customer %}<span style="font-size:.85rem;color:var(--mut);">{{ tmpl.customer }}</span>{% endif %}
-  <div style="display:flex;align-items:center;gap:.4rem;">
+  <div style="display:none;align-items:center;gap:.4rem;">
     <label style="font-size:.82rem;color:var(--mut);">Price for costing:</label>
     <span style="color:var(--mut);">£</span>
     <input type="number" id="tmpl-price" class="form-input" style="width:100px;" step="0.01" min="0" value="{{ tmpl.price|floatformat:2 }}" onchange="saveTemplatePrice(this.value)">

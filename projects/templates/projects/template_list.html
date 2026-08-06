@@ -37,7 +37,6 @@
       {% if t.customer %}<div class="tmpl-customer">{{ t.customer }}</div>{% endif %}
     </div>
     <span class="tmpl-count">{{ t.items.count }} items</span>
-    {% if t.price %}<span class="tmpl-count" style="color:var(--acc);border-color:var(--acc-bdr);">£{{ t.price|floatformat:2 }}</span>{% else %}<span class="tmpl-count" style="color:var(--mut2);">not costed</span>{% endif %}
     <a href="{% url 'template_detail' t.pk %}" class="btn btn-ghost btn-sm">Edit</a>
   </div>
   {% empty %}

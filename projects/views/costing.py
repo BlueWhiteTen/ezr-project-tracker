@@ -1362,7 +1362,6 @@ def calc_shelf_price(shelf_type, width_in, depth_in, melamine, chipboard_price, 
 
 
 @login_required
-@require_POST
 def fitting_crew_api(request):
     if request.method == 'GET':
         crews = list(FittingCrew.objects.values('id', 'name', 'phone'))
