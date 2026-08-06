@@ -14,7 +14,7 @@ from .auth import (
     password_reset_confirm, password_reset_complete,
 )
 from .reporting import (
-    home, daily_accounts_report, activity_log, week_view,
+    home, daily_accounts_report, activity_log, week_view, crew_capacity,
     stock_valuation, stock_valuation_rate_update, goods_in_transit_add, goods_in_transit_delete, stock_valuation_items, stock_valuation_item_update, stock_valuation_export,
     monthly_summary, calendar_view, board_view, so_search,
     sales_summary, sales_summary_export,
@@ -22,7 +22,7 @@ from .reporting import (
 from .projects import (
     project_create, project_quick_create, project_edit, project_delete,
     project_data, project_quick_status, project_payment_method, project_add_comment,
-    project_manual_po_add, project_manual_po_update, project_manual_po_delete,
+    project_manual_po_add, project_manual_po_update, project_manual_po_delete, project_toggle_blocked,
     project_presence, project_duplicate, bulk_status_update,
     save_dashboard_filters, dashboard, add_comment_with_tags,
     projects_search, project_address_save,

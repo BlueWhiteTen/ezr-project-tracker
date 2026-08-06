@@ -196,6 +196,7 @@ tbody tr:hover td{background:var(--surf3) !important;}
     <td style="max-width:0;">
       <a href="{% url 'project_edit' p.pk %}" class="pname" style="text-decoration:none;">
         {% if p.is_overdue %}<span style="background:var(--red-bg);color:var(--red);font-size:.65rem;font-weight:600;padding:1px 6px;border-radius:4px;margin-right:4px;border:1px solid rgba(220,38,38,.2);">OVERDUE</span>{% endif %}
+        {% if p.is_blocked %}<span style="background:var(--red-bg);color:var(--red);font-size:.65rem;font-weight:600;padding:1px 6px;border-radius:4px;margin-right:4px;border:1px solid rgba(220,38,38,.2);" title="{{ p.blocked_reason }}">🚩 BLOCKED</span>{% endif %}
         {{ p.project_name }}
       </a>
       {% if p.description %}<div class="psub" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ p.description }}</div>{% endif %}

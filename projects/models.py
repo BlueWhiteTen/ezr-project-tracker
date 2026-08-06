@@ -50,6 +50,9 @@ class Project(models.Model):
     description    = models.CharField(max_length=300, blank=True)
     status         = models.CharField(max_length=30, choices=STATUS_CHOICES, default='enquiry')
     lost_reason    = models.TextField(blank=True, help_text='Why this didn\'t proceed — captured when marked Cancelled')
+    is_blocked     = models.BooleanField(default=False, help_text='Flagged as stalled/at risk')
+    blocked_reason = models.CharField(max_length=300, blank=True, help_text='Why this is blocked, e.g. waiting on customer, drawing sign-off, site not ready')
+    blocked_at     = models.DateTimeField(null=True, blank=True)
     payment_method = models.CharField(max_length=20, blank=True, choices=PAYMENT_CHOICES)
     sales_order    = models.CharField(max_length=5, blank=True)
     project_number = models.PositiveIntegerField(null=True, blank=True, unique=True, db_index=True)
@@ -431,6 +434,8 @@ class ProjectManualPO(models.Model):
     project    = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='manual_pos')
     supplier   = models.CharField(max_length=200, blank=True)
     po_number  = models.CharField(max_length=100, blank=True)
+    date_ordered = models.DateField(null=True, blank=True)
+    date_delivery = models.DateField(null=True, blank=True, help_text='Date to be delivered')
     sort_order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 

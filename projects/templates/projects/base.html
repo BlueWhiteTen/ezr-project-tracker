@@ -262,10 +262,19 @@ select.form-input{cursor:pointer;}
   .container { padding: .75rem .5rem; }
   .form-header { flex-direction: column; align-items: flex-start; gap: .5rem; }
   .form-header > div { flex-wrap: wrap; }
-}
+}/* ── Toast notifications ─────────────────────────────────────────────── */
+#toast-stack{position:fixed;bottom:1.2rem;right:1.2rem;z-index:3000;display:flex;flex-direction:column-reverse;gap:.6rem;max-width:340px;}
+.toast{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:0 8px 24px rgba(0,0,0,.18);padding:.8rem .9rem;cursor:pointer;position:relative;animation:toast-in .2s ease-out;text-decoration:none;color:inherit;display:block;}
+.toast:hover{border-color:var(--acc);}
+.toast-close{position:absolute;top:.4rem;right:.5rem;background:none;border:none;color:var(--mut);font-size:.85rem;cursor:pointer;padding:2px 5px;line-height:1;}
+.toast-close:hover{color:var(--red);}
+.toast-kind{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--acc);margin-bottom:.25rem;padding-right:1.2rem;}
+.toast-body{font-size:.85rem;color:var(--txt);padding-right:1.2rem;line-height:1.4;}
+@keyframes toast-in{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 </style>
 </head>
 <body>
+<div id="toast-stack"></div>
 
 <nav class="top-nav">
   <div style="display:flex;align-items:center;gap:.75rem;">
@@ -281,6 +290,7 @@ select.form-input{cursor:pointer;}
     <a href="{% url 'dashboard' %}" class="nav-btn {% if request.resolver_match.url_name == 'dashboard' %}active-nav{% endif %}">Dashboard</a>
     <a href="{% url 'calendar_view' %}" class="nav-btn {% if request.resolver_match.url_name == 'calendar_view' %}active-nav{% endif %}">Calendar</a>
     <a href="{% url 'week_view' %}" class="nav-btn {% if request.resolver_match.url_name == 'week_view' %}active-nav{% endif %}">Next 2 Weeks</a>
+    <a href="{% url 'crew_capacity' %}" class="nav-btn {% if request.resolver_match.url_name == 'crew_capacity' %}active-nav{% endif %}">Crew Capacity</a>
     <a href="{% url 'board_view' %}" class="nav-btn {% if request.resolver_match.url_name == 'board_view' %}active-nav{% endif %}">Board</a>
   </div>
   <div class="nav-so-wrap">
@@ -306,6 +316,7 @@ select.form-input{cursor:pointer;}
     <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}sb-active{% endif %}">🏠 Dashboard</a>
     <a href="{% url 'calendar_view' %}" class="{% if request.resolver_match.url_name == 'calendar_view' %}sb-active{% endif %}">📅 Calendar</a>
     <a href="{% url 'week_view' %}" class="{% if request.resolver_match.url_name == 'week_view' %}sb-active{% endif %}">📋 Next 2 Weeks</a>
+    <a href="{% url 'crew_capacity' %}" class="{% if request.resolver_match.url_name == 'crew_capacity' %}sb-active{% endif %}">👷 Crew Capacity</a>
     <a href="{% url 'board_view' %}" class="{% if request.resolver_match.url_name == 'board_view' %}sb-active{% endif %}">📊 Board</a>
   </div>
   <div class="sb-section">
@@ -411,6 +422,29 @@ if(soInput){
   });
 }
 
+let _toastBaselineSet = false;
+let _lastNotifId = null;
+let _lastMsgId = null;
+
+function showToast(kind, text, link, dismissId){
+  const stack = document.getElementById('toast-stack');
+  if(!stack) return;
+  const el = document.createElement('a');
+  el.className = 'toast';
+  el.href = link || '#';
+  el.innerHTML = `
+    <button type="button" class="toast-close" title="Close">✕</button>
+    <div class="toast-kind">${kind}</div>
+    <div class="toast-body"></div>`;
+  el.querySelector('.toast-body').textContent = text;
+  el.querySelector('.toast-close').addEventListener('click', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    el.remove();
+  });
+  stack.appendChild(el);
+  setTimeout(() => { if(el.parentNode) el.remove(); }, 10000);
+}
+
 async function pollCounts(){
   try{
     var r = await fetch('/notifications/count/');
@@ -419,6 +453,24 @@ async function pollCounts(){
     if(nb){ nb.textContent=d.count; nb.style.display=d.count>0?'flex':'none'; }
     var mb = document.getElementById('msg-badge');
     if(mb){ mb.textContent=d.messages; mb.style.display=d.messages>0?'flex':'none'; }
+
+    // Toast for genuinely new items only — the first poll after page load
+    // just records what's already there as the baseline, without popping
+    // a toast for notifications that were sitting unread before we arrived.
+    if(!_toastBaselineSet){
+      _lastNotifId = d.latest_notif ? d.latest_notif.id : null;
+      _lastMsgId = d.latest_msg ? d.latest_msg.id : null;
+      _toastBaselineSet = true;
+    } else {
+      if(d.latest_notif && d.latest_notif.id !== _lastNotifId){
+        showToast('Notification', d.latest_notif.text, d.latest_notif.link);
+        _lastNotifId = d.latest_notif.id;
+      }
+      if(d.latest_msg && d.latest_msg.id !== _lastMsgId){
+        showToast(`Message from ${d.latest_msg.sender}`, d.latest_msg.text, d.latest_msg.link);
+        _lastMsgId = d.latest_msg.id;
+      }
+    }
   }catch(e){}
 }
 pollCounts();

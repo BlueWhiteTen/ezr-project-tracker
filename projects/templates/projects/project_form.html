@@ -113,6 +113,17 @@
   {% endfor %}
 </div>
 
+{% if project %}
+<div id="blocked-banner" style="display:{% if project.is_blocked %}flex{% else %}none{% endif %};align-items:center;gap:.6rem;background:var(--red-bg,#fef2f2);border:1px solid rgba(220,38,38,.25);border-radius:var(--rad);padding:.6rem .9rem;margin-bottom:1rem;">
+  <span style="font-weight:700;color:var(--red,#dc2626);">🚩 Blocked</span>
+  <span id="blocked-reason-display" style="color:var(--txt2);font-size:.85rem;flex:1;">{{ project.blocked_reason }}</span>
+  <button type="button" class="btn btn-ghost btn-sm" onclick="toggleBlocked(false)">Clear</button>
+</div>
+<div id="block-toggle-row" style="display:{% if project.is_blocked %}none{% else %}flex{% endif %};align-items:center;gap:.6rem;margin-bottom:1rem;">
+  <button type="button" class="btn btn-ghost btn-sm" onclick="openBlockPrompt()">🚩 Flag as Blocked</button>
+</div>
+{% endif %}
+
 <!-- Payment method badge -->
 <div style="margin-bottom:1rem;display:flex;align-items:center;gap:.6rem;">
   <span style="font-size:.78rem;color:var(--mut);">Payment:</span>
@@ -357,10 +368,12 @@
         <p style="font-size:.78rem;color:var(--mut2);margin-bottom:.7rem;">POs are raised directly in Sage now — this is just a quick note of which supplier/PO number a job went through.</p>
         <div id="manual-po-list">
           {% for m in manual_pos %}
-          <div class="manual-po-row" data-pk="{{ m.pk }}" style="display:flex;gap:.5rem;margin-bottom:.5rem;">
-            <input class="form-input manual-po-field" data-field="supplier" value="{{ m.supplier }}" placeholder="Supplier" style="flex:1;">
-            <input class="form-input manual-po-field" data-field="po_number" value="{{ m.po_number }}" placeholder="PO Number" style="flex:1;">
-            <button type="button" class="btn btn-ghost btn-sm manual-po-remove" title="Remove">✕</button>
+          <div class="manual-po-row" data-pk="{{ m.pk }}" style="display:flex;gap:.4rem;margin-bottom:.4rem;flex-wrap:wrap;">
+            <input class="form-input manual-po-field" data-field="supplier" value="{{ m.supplier }}" placeholder="Supplier" style="flex:1 1 120px;font-size:.82rem;padding:.35rem .5rem;">
+            <input class="form-input manual-po-field" data-field="po_number" value="{{ m.po_number }}" placeholder="PO Number" style="flex:1 1 100px;font-size:.82rem;padding:.35rem .5rem;">
+            <input class="form-input manual-po-field" data-field="date_ordered" type="date" value="{{ m.date_ordered|date:'Y-m-d' }}" title="Date Ordered" style="flex:1 1 130px;font-size:.82rem;padding:.35rem .5rem;">
+            <input class="form-input manual-po-field" data-field="date_delivery" type="date" value="{{ m.date_delivery|date:'Y-m-d' }}" title="Date to be Delivered" style="flex:1 1 130px;font-size:.82rem;padding:.35rem .5rem;">
+            <button type="button" class="btn btn-ghost btn-sm manual-po-remove" title="Remove" style="padding:.35rem .5rem;">✕</button>
           </div>
           {% endfor %}
         </div>
@@ -1078,17 +1091,40 @@ document.getElementById('project-form').addEventListener('submit', function(e){
 
 // ── Supplier / PO reference (manual) ────────────────────────────────────────
 {% if project %}
+async function toggleBlocked(isBlocked, reason){
+  const csrf = '{{ csrf_token }}';
+  const payload = {is_blocked: isBlocked};
+  if(isBlocked) payload.blocked_reason = reason || '';
+  const r = await fetch(`/project/{{ project.pk }}/toggle-blocked/`, {
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrf}, body: JSON.stringify(payload)
+  });
+  const d = await r.json();
+  if(d.ok){
+    document.getElementById('blocked-banner').style.display = d.is_blocked ? 'flex' : 'none';
+    document.getElementById('block-toggle-row').style.display = d.is_blocked ? 'none' : 'flex';
+    document.getElementById('blocked-reason-display').textContent = d.blocked_reason;
+  }
+}
+function openBlockPrompt(){
+  const reason = prompt('Why is this project blocked? (e.g. waiting on customer, drawing sign-off, site not ready)', '');
+  if(reason === null) return;  // cancelled
+  toggleBlocked(true, reason);
+}
+{% endif %}
+{% if project %}
 function addManualPoRow(){
   const list = document.getElementById('manual-po-list');
   if(!list) return;
   const row = document.createElement('div');
   row.className = 'manual-po-row';
   row.dataset.pk = '';
-  row.style.cssText = 'display:flex;gap:.5rem;margin-bottom:.5rem;';
+  row.style.cssText = 'display:flex;gap:.4rem;margin-bottom:.4rem;flex-wrap:wrap;';
   row.innerHTML = `
-    <input class="form-input manual-po-field" data-field="supplier" placeholder="Supplier" style="flex:1;">
-    <input class="form-input manual-po-field" data-field="po_number" placeholder="PO Number" style="flex:1;">
-    <button type="button" class="btn btn-ghost btn-sm manual-po-remove" title="Remove">✕</button>`;
+    <input class="form-input manual-po-field" data-field="supplier" placeholder="Supplier" style="flex:1 1 120px;font-size:.82rem;padding:.35rem .5rem;">
+    <input class="form-input manual-po-field" data-field="po_number" placeholder="PO Number" style="flex:1 1 100px;font-size:.82rem;padding:.35rem .5rem;">
+    <input class="form-input manual-po-field" data-field="date_ordered" type="date" title="Date Ordered" style="flex:1 1 130px;font-size:.82rem;padding:.35rem .5rem;">
+    <input class="form-input manual-po-field" data-field="date_delivery" type="date" title="Date to be Delivered" style="flex:1 1 130px;font-size:.82rem;padding:.35rem .5rem;">
+    <button type="button" class="btn btn-ghost btn-sm manual-po-remove" title="Remove" style="padding:.35rem .5rem;">✕</button>`;
   list.appendChild(row);
   wireManualPoRow(row);
 }
@@ -1096,7 +1132,7 @@ function addManualPoRow(){
 async function saveManualPoRow(row){
   const fields = {};
   row.querySelectorAll('.manual-po-field').forEach(el => { fields[el.dataset.field] = el.value.trim(); });
-  if(!fields.supplier && !fields.po_number) return;  // nothing to save yet
+  if(!fields.supplier && !fields.po_number && !fields.date_ordered && !fields.date_delivery) return;  // nothing to save yet
   const pk = row.dataset.pk;
   const csrf = '{{ csrf_token }}';
   if(pk){

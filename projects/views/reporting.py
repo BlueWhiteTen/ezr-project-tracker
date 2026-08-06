@@ -229,6 +229,60 @@ def week_view(request):
     return render(request, 'projects/week_view.html', {'days_data': days_data, 'today': today})
 
 
+@login_required
+def crew_capacity(request):
+    """A calendar-style view of what each fitting crew is booked into,
+    week by week — matches Project.fitting_crew (free text) against the
+    FittingCrew list since there's no formal link between them."""
+    week_param = request.GET.get('week')
+    if week_param:
+        try:
+            ref_date = date.fromisoformat(week_param)
+        except ValueError:
+            ref_date = date.today()
+    else:
+        ref_date = date.today()
+    week_start = ref_date - timedelta(days=ref_date.weekday())  # Monday
+    week_end = week_start + timedelta(days=6)
+    days = [week_start + timedelta(days=i) for i in range(7)]
+
+    crews = list(FittingCrew.objects.all())
+    reports = InstallationReport.objects.exclude(fitting_crew='').exclude(project__status='cancelled').select_related('project', 'project__customer_profile')
+
+    # For each report in range, work out its project's effective install date
+    dated_projects = []
+    for rep in reports:
+        p = rep.project
+        eff_date = p.get_effective_installation_date()
+        if eff_date and week_start <= eff_date <= week_end:
+            dated_projects.append((eff_date, p, rep.fitting_crew))
+
+    crew_rows = []
+    unmatched = []
+    matched_project_ids = set()
+    for crew in crews:
+        cells = []
+        for d in days:
+            day_projects = [p for (pd, p, fc) in dated_projects if pd == d and crew.name.strip().lower() in (fc or '').strip().lower()]
+            for p in day_projects:
+                matched_project_ids.add(p.pk)
+            cells.append({'date': d, 'projects': day_projects})
+        crew_rows.append({'crew': crew, 'cells': cells})
+
+    for (pd, p, fc) in dated_projects:
+        if p.pk not in matched_project_ids:
+            unmatched.append((pd, p, fc))
+    unmatched.sort(key=lambda t: t[0])
+
+    return render(request, 'projects/crew_capacity.html', {
+        'crew_rows': crew_rows, 'days': days, 'week_start': week_start, 'week_end': week_end,
+        'prev_week': (week_start - timedelta(days=7)).isoformat(),
+        'next_week': (week_start + timedelta(days=7)).isoformat(),
+        'this_week': date.today().isoformat(),
+        'today': date.today(), 'unmatched': unmatched,
+    })
+
+
 
 
 def _sales_summary_data(request):

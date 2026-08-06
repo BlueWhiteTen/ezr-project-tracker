@@ -255,6 +255,8 @@ def project_manual_po_add(request, pk):
         project=project,
         supplier=(data.get('supplier') or '').strip(),
         po_number=(data.get('po_number') or '').strip(),
+        date_ordered=data.get('date_ordered') or None,
+        date_delivery=data.get('date_delivery') or None,
         sort_order=next_order,
     )
     return JsonResponse({'ok': True, 'id': mpo.pk})
@@ -269,6 +271,10 @@ def project_manual_po_update(request, pk):
         mpo.supplier = (data.get('supplier') or '').strip()
     if 'po_number' in data:
         mpo.po_number = (data.get('po_number') or '').strip()
+    if 'date_ordered' in data:
+        mpo.date_ordered = data.get('date_ordered') or None
+    if 'date_delivery' in data:
+        mpo.date_delivery = data.get('date_delivery') or None
     mpo.save()
     return JsonResponse({'ok': True})
 
@@ -278,6 +284,23 @@ def project_manual_po_update(request, pk):
 def project_manual_po_delete(request, pk):
     ProjectManualPO.objects.filter(pk=pk).delete()
     return JsonResponse({'ok': True})
+
+
+@login_required
+@require_POST
+def project_toggle_blocked(request, pk):
+    project = get_object_or_404(Project, pk=pk)
+    data = json.loads(request.body)
+    blocked = bool(data.get('is_blocked'))
+    project.is_blocked = blocked
+    if blocked:
+        project.blocked_reason = (data.get('blocked_reason') or '').strip()
+        project.blocked_at = timezone.now()
+    else:
+        project.blocked_reason = ''
+        project.blocked_at = None
+    project.save(update_fields=['is_blocked', 'blocked_reason', 'blocked_at'])
+    return JsonResponse({'ok': True, 'is_blocked': project.is_blocked, 'blocked_reason': project.blocked_reason})
 
 
 @login_required

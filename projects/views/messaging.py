@@ -28,7 +28,18 @@ from django.contrib.auth.views import (
 def notification_count(request):
     notif_count = Notification.objects.filter(user=request.user, read=False).count()
     msg_count   = Message.objects.filter(recipient=request.user, read=False).count()
-    return JsonResponse({'count': notif_count, 'messages': msg_count})
+    latest_notif = Notification.objects.filter(user=request.user, read=False).order_by('-timestamp').first()
+    latest_msg = Message.objects.filter(recipient=request.user, read=False).order_by('-timestamp').select_related('sender').first()
+    return JsonResponse({
+        'count': notif_count, 'messages': msg_count,
+        'latest_notif': {'id': latest_notif.id, 'text': latest_notif.text, 'link': latest_notif.link or '/notifications/'} if latest_notif else None,
+        'latest_msg': {
+            'id': latest_msg.id,
+            'text': latest_msg.text[:120],
+            'sender': latest_msg.sender.get_full_name() or latest_msg.sender.username,
+            'link': f'/messages/{latest_msg.sender_id}/',
+        } if latest_msg else None,
+    })
 
 
 
