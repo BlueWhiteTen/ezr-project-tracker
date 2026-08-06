@@ -423,6 +423,24 @@ class CustomerNote(models.Model):
         return self.text[:60]
 
 
+class ProjectManualPO(models.Model):
+    """A manually-noted supplier/PO reference on a project — since real POs
+    are now raised directly in Sage, this is just a quick reference so
+    staff can see at a glance which supplier/PO a job went through,
+    without the app needing to track the PO itself."""
+    project    = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='manual_pos')
+    supplier   = models.CharField(max_length=200, blank=True)
+    po_number  = models.CharField(max_length=100, blank=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sort_order', 'created_at']
+
+    def __str__(self):
+        return f"{self.po_number} — {self.supplier}"
+
+
 class Supplier(models.Model):
     name           = models.CharField(max_length=200, unique=True)
     contact_name   = models.CharField(max_length=200, blank=True)

@@ -39,7 +39,7 @@ td:nth-child(3){white-space:normal;word-break:break-word;}
 <div class="page-hdr">
   <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
     <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">Stock</h1>
-    {% if low_stock_count %}
+    {% if low_stock_count and features.stock_movements %}
     <a href="?{% if query %}q={{ query }}&{% endif %}low={% if low_only %}0{% else %}1{% endif %}"
        style="font-size:.82rem;font-weight:600;padding:3px 10px;border-radius:99px;text-decoration:none;
               {% if low_only %}background:var(--red);color:#fff;{% else %}background:var(--red-bg);color:var(--red);border:1px solid rgba(220,38,38,.3);{% endif %}">

@@ -321,7 +321,7 @@
         <div class="chk-row">{{ form.rams_sent }}<label for="{{ form.rams_sent.id_for_label }}">RAMS sent</label></div>
       </div>
 
-      {% if project %}
+      {% if project and features.purchase_orders %}
       <div class="form-card">
         <div class="section-title">Linked Purchase Orders</div>
         {% if linked_pos %}
@@ -348,6 +348,23 @@
         {% else %}
         <p style="font-size:.82rem;color:var(--mut2);">No purchase orders linked to this project yet.</p>
         {% endif %}
+      </div>
+      {% endif %}
+
+      {% if project %}
+      <div class="form-card" id="manual-po-card">
+        <div class="section-title">Supplier / PO Reference</div>
+        <p style="font-size:.78rem;color:var(--mut2);margin-bottom:.7rem;">POs are raised directly in Sage now — this is just a quick note of which supplier/PO number a job went through.</p>
+        <div id="manual-po-list">
+          {% for m in manual_pos %}
+          <div class="manual-po-row" data-pk="{{ m.pk }}" style="display:flex;gap:.5rem;margin-bottom:.5rem;">
+            <input class="form-input manual-po-field" data-field="supplier" value="{{ m.supplier }}" placeholder="Supplier" style="flex:1;">
+            <input class="form-input manual-po-field" data-field="po_number" value="{{ m.po_number }}" placeholder="PO Number" style="flex:1;">
+            <button type="button" class="btn btn-ghost btn-sm manual-po-remove" title="Remove">✕</button>
+          </div>
+          {% endfor %}
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="addManualPoRow()">+ Add Supplier / PO</button>
       </div>
       {% endif %}
 
@@ -1058,6 +1075,61 @@ document.getElementById('project-form').addEventListener('submit', function(e){
   const s = document.getElementById('id_status');
   if(s) s.dataset.original = s.value;
 })();
+
+// ── Supplier / PO reference (manual) ────────────────────────────────────────
+{% if project %}
+function addManualPoRow(){
+  const list = document.getElementById('manual-po-list');
+  if(!list) return;
+  const row = document.createElement('div');
+  row.className = 'manual-po-row';
+  row.dataset.pk = '';
+  row.style.cssText = 'display:flex;gap:.5rem;margin-bottom:.5rem;';
+  row.innerHTML = `
+    <input class="form-input manual-po-field" data-field="supplier" placeholder="Supplier" style="flex:1;">
+    <input class="form-input manual-po-field" data-field="po_number" placeholder="PO Number" style="flex:1;">
+    <button type="button" class="btn btn-ghost btn-sm manual-po-remove" title="Remove">✕</button>`;
+  list.appendChild(row);
+  wireManualPoRow(row);
+}
+
+async function saveManualPoRow(row){
+  const fields = {};
+  row.querySelectorAll('.manual-po-field').forEach(el => { fields[el.dataset.field] = el.value.trim(); });
+  if(!fields.supplier && !fields.po_number) return;  // nothing to save yet
+  const pk = row.dataset.pk;
+  const csrf = '{{ csrf_token }}';
+  if(pk){
+    await fetch(`/project-manual-po/${pk}/update/`, {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrf}, body: JSON.stringify(fields)
+    });
+  } else {
+    const r = await fetch(`/project/{{ project.pk }}/manual-po/add/`, {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrf}, body: JSON.stringify(fields)
+    });
+    const d = await r.json();
+    if(d.ok) row.dataset.pk = d.id;
+  }
+}
+
+function wireManualPoRow(row){
+  row.querySelectorAll('.manual-po-field').forEach(el => {
+    el.addEventListener('change', () => saveManualPoRow(row));
+  });
+  row.querySelector('.manual-po-remove').addEventListener('click', async () => {
+    const pk = row.dataset.pk;
+    if(pk){
+      const csrf = '{{ csrf_token }}';
+      await fetch(`/project-manual-po/${pk}/delete/`, {method:'POST', headers:{'X-CSRFToken':csrf}});
+    }
+    row.remove();
+  });
+}
+document.querySelectorAll('.manual-po-row').forEach(wireManualPoRow);
+if(document.querySelectorAll('#manual-po-list .manual-po-row').length === 0){
+  addManualPoRow();
+}
+{% endif %}
 </script>
 
 {% if project %}

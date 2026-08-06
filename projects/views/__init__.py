@@ -22,6 +22,7 @@ from .reporting import (
 from .projects import (
     project_create, project_quick_create, project_edit, project_delete,
     project_data, project_quick_status, project_payment_method, project_add_comment,
+    project_manual_po_add, project_manual_po_update, project_manual_po_delete,
     project_presence, project_duplicate, bulk_status_update,
     save_dashboard_filters, dashboard, add_comment_with_tags,
     projects_search, project_address_save,

@@ -1,7 +1,6 @@
 {% extends 'projects/base.html' %}
 {% block title %}{{ customer.name }} — Customers{% endblock %}
 {% block extra_style %}
-.layout{display:grid;grid-template-columns:320px 1fr;gap:1.4rem;align-items:start;}
 .form-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.5rem;box-shadow:var(--shadow);margin-bottom:1.2rem;}
 .section-title{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:.85rem;padding-bottom:.4rem;border-bottom:1px solid var(--bdr);}
 .proj-row{display:flex;align-items:center;gap:.75rem;padding:.65rem 0;border-bottom:.5px solid var(--bdr);font-size:.875rem;}
@@ -10,7 +9,11 @@
 .stat-box{background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--rad);padding:.85rem;text-align:center;}
 .stat-val{font-size:1.5rem;font-weight:700;color:var(--acc);}
 .stat-lbl{font-size:.72rem;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;}
-@media(max-width:768px){.layout{grid-template-columns:1fr;}}
+.details-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:1rem .9rem;}
+.details-grid .form-group{margin-bottom:0;}
+.mid-grid{display:grid;grid-template-columns:repeat(3, 1fr);gap:1.2rem;align-items:start;}
+@media(max-width:1000px){.mid-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:700px){.mid-grid{grid-template-columns:1fr;}.details-grid{grid-template-columns:1fr 1fr;}}
 {% endblock %}
 {% block content %}
 <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.4rem;flex-wrap:wrap;padding-top:.5rem;">
@@ -18,164 +21,154 @@
   <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">{{ customer.name }}</h1>
 </div>
 
-<div class="layout">
-  <!-- Left: edit form + stats -->
-  <div>
-    <div class="stat-grid">
-      <div class="stat-box"><div class="stat-val">{{ projects|length }}</div><div class="stat-lbl">Total Projects</div></div>
-      <div class="stat-box"><div class="stat-val">{{ projects|length }}</div><div class="stat-lbl">This Year</div></div>
-    </div>
-    <div class="form-card">
-      <div class="section-title">Contact Details</div>
-      <form method="post">
-        {% csrf_token %}
-        <div class="form-group" style="background:var(--acc-bg);border:1px solid var(--acc-bdr);border-radius:var(--rad);padding:.85rem;margin-bottom:.85rem;">
-          <label class="form-label" style="color:var(--acc);font-weight:600;">⚠ Important Notes</label>
-          <textarea class="form-input" name="important_notes" rows="4" placeholder="e.g. Always use blue posts, max shelf depth 400mm, RAL9016 finish…" style="background:var(--surf);">{{ customer.important_notes }}</textarea>
-        </div>
-        <div class="form-group"><label class="form-label">Company Name</label><input class="form-input" name="name" value="{{ customer.name }}"></div>
-        <div class="form-group"><label class="form-label">Contact Name</label><input class="form-input" name="contact_name" value="{{ customer.contact_name }}" placeholder="John Smith"></div>
-        <div class="form-group"><label class="form-label">Phone</label><input class="form-input" name="phone" value="{{ customer.phone }}" placeholder="+44 7700 000000"></div>
-        <div class="form-group"><label class="form-label">Email 1 (priority)</label><input class="form-input" name="email" type="email" value="{{ customer.email }}" placeholder="contact@company.com"></div>
-        <div class="form-group"><label class="form-label">Email 2</label><input class="form-input" name="email2" type="email" value="{{ customer.email2 }}" placeholder="accounts@company.com"></div>
-        <div class="form-group"><label class="form-label">Email 3</label><input class="form-input" name="email3" type="email" value="{{ customer.email3 }}" placeholder="orders@company.com"></div>
-        <div class="form-group"><label class="form-label">Address Line 1</label><input class="form-input" name="address_line1" value="{{ customer.address_line1 }}"></div>
-        <div class="form-group"><label class="form-label">Address Line 2</label><input class="form-input" name="address_line2" value="{{ customer.address_line2 }}"></div>
-        <div class="form-group"><label class="form-label">Town</label><input class="form-input" name="town" value="{{ customer.town }}"></div>
-        <div class="form-group"><label class="form-label">County</label><input class="form-input" name="county" value="{{ customer.county }}"></div>
-        <div class="form-group"><label class="form-label">Post Code</label><input class="form-input" name="postcode" value="{{ customer.postcode }}"></div>
-        <div class="form-group"><label class="form-label">Country</label>
-          <select class="form-input" name="country">
-            {% for c in countries %}<option value="{{ c }}" {% if customer.country == c or not customer.country and c == 'United Kingdom' %}selected{% endif %}>{{ c }}</option>{% endfor %}
-          </select>
-        </div>
-        <div class="form-group"><label class="form-label">VAT Number</label><input class="form-input" name="vat_number" value="{{ customer.vat_number }}" placeholder="GB123456789"></div>
-        <div class="form-group"><label class="form-label">Company Reg. Number</label><input class="form-input" name="company_reg_number" value="{{ customer.company_reg_number }}"></div>
-        <div class="form-group">
-          <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;font-size:.88rem;">
-            <input type="checkbox" name="is_active" {% if customer.is_active %}checked{% endif %}>
-            <span>Active customer <span style="font-weight:400;color:var(--mut2);">(unticking marks them inactive — hidden from the main list by default)</span></span>
-          </label>
-        </div>
-        <div class="form-group"><label class="form-label">EORI Number</label><input class="form-input" name="eori_number" value="{{ customer.eori_number }}" placeholder="GB123456789000"></div>
-        <div class="form-group"><label class="form-label">Sage Account Ref.</label><input class="form-input" name="account_number" value="{{ customer.account_number }}" placeholder="e.g. SKE001"></div>
-        <div class="form-group" style="margin-bottom:0;"><label class="form-label">Notes</label><textarea class="form-input" name="notes" rows="3" placeholder="Any notes about this customer…">{{ customer.notes }}</textarea></div>
-        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:1rem;">Save Changes</button>
-      </form>
-    </div>
+<div class="stat-grid" style="grid-template-columns:repeat(4, 1fr);max-width:600px;">
+  <div class="stat-box"><div class="stat-val">{{ projects|length }}</div><div class="stat-lbl">Total Projects</div></div>
+  <div class="stat-box"><div class="stat-val">{{ projects|length }}</div><div class="stat-lbl">This Year</div></div>
+</div>
 
-    <div class="form-card" id="contacts-card">
-      <div class="section-title">Contacts</div>
-      <div id="contacts-list">
-        {% for c in contacts %}
-        <div class="contact-row" data-pk="{{ c.pk }}" style="border:1px solid var(--bdr);border-radius:var(--rad);padding:.7rem;margin-bottom:.6rem;">
-          <div style="display:flex;gap:.5rem;margin-bottom:.4rem;">
-            <input class="form-input contact-field" data-field="name" value="{{ c.name }}" placeholder="Name" style="flex:1;">
-            <input class="form-input contact-field" data-field="role" value="{{ c.role }}" placeholder="Role" style="flex:1;">
-          </div>
-          <div style="display:flex;gap:.5rem;">
-            <input class="form-input contact-field" data-field="phone" value="{{ c.phone }}" placeholder="Phone" style="flex:1;">
-            <input class="form-input contact-field" data-field="email" type="email" value="{{ c.email }}" placeholder="Email" style="flex:1;">
-            <button type="button" class="btn btn-ghost btn-sm contact-remove" title="Remove">✕</button>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      <button type="button" class="btn btn-ghost btn-sm" id="contact-add-btn" onclick="addContactRow()">+ Add Contact</button>
+<div class="form-card">
+  <div class="section-title">Contact Details</div>
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-group" style="background:var(--acc-bg);border:1px solid var(--acc-bdr);border-radius:var(--rad);padding:.85rem;margin-bottom:1rem;">
+      <label class="form-label" style="color:var(--acc);font-weight:600;">⚠ Important Notes</label>
+      <textarea class="form-input" name="important_notes" rows="2" placeholder="e.g. Always use blue posts, max shelf depth 400mm, RAL9016 finish…" style="background:var(--surf);">{{ customer.important_notes }}</textarea>
     </div>
+    <div class="details-grid">
+      <div class="form-group"><label class="form-label">Company Name</label><input class="form-input" name="name" value="{{ customer.name }}"></div>
+      <div class="form-group"><label class="form-label">Contact Name</label><input class="form-input" name="contact_name" value="{{ customer.contact_name }}" placeholder="John Smith"></div>
+      <div class="form-group"><label class="form-label">Phone</label><input class="form-input" name="phone" value="{{ customer.phone }}" placeholder="+44 7700 000000"></div>
+      <div class="form-group"><label class="form-label">Email 1 (priority)</label><input class="form-input" name="email" type="email" value="{{ customer.email }}" placeholder="contact@company.com"></div>
+      <div class="form-group"><label class="form-label">Email 2</label><input class="form-input" name="email2" type="email" value="{{ customer.email2 }}" placeholder="accounts@company.com"></div>
+      <div class="form-group"><label class="form-label">Email 3</label><input class="form-input" name="email3" type="email" value="{{ customer.email3 }}" placeholder="orders@company.com"></div>
+      <div class="form-group"><label class="form-label">Address Line 1</label><input class="form-input" name="address_line1" value="{{ customer.address_line1 }}"></div>
+      <div class="form-group"><label class="form-label">Address Line 2</label><input class="form-input" name="address_line2" value="{{ customer.address_line2 }}"></div>
+      <div class="form-group"><label class="form-label">Town</label><input class="form-input" name="town" value="{{ customer.town }}"></div>
+      <div class="form-group"><label class="form-label">County</label><input class="form-input" name="county" value="{{ customer.county }}"></div>
+      <div class="form-group"><label class="form-label">Post Code</label><input class="form-input" name="postcode" value="{{ customer.postcode }}"></div>
+      <div class="form-group"><label class="form-label">Country</label>
+        <select class="form-input" name="country">
+          {% for c in countries %}<option value="{{ c }}" {% if customer.country == c or not customer.country and c == 'United Kingdom' %}selected{% endif %}>{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">VAT Number</label><input class="form-input" name="vat_number" value="{{ customer.vat_number }}" placeholder="GB123456789"></div>
+      <div class="form-group"><label class="form-label">Company Reg. Number</label><input class="form-input" name="company_reg_number" value="{{ customer.company_reg_number }}"></div>
+      <div class="form-group"><label class="form-label">EORI Number</label><input class="form-input" name="eori_number" value="{{ customer.eori_number }}" placeholder="GB123456789000"></div>
+      <div class="form-group"><label class="form-label">Sage Account Ref.</label><input class="form-input" name="account_number" value="{{ customer.account_number }}" placeholder="e.g. SKE001"></div>
+      <div class="form-group" style="display:flex;align-items:end;">
+        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;font-size:.88rem;">
+          <input type="checkbox" name="is_active" {% if customer.is_active %}checked{% endif %}>
+          <span>Active customer</span>
+        </label>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:1rem;margin-bottom:0;"><label class="form-label">Notes</label><textarea class="form-input" name="notes" rows="2" placeholder="Any notes about this customer…">{{ customer.notes }}</textarea></div>
+    <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Save Changes</button>
+  </form>
+</div>
+
+<div class="mid-grid">
+  <div class="form-card" id="contacts-card" style="margin-bottom:0;">
+    <div class="section-title">Contacts</div>
+    <div id="contacts-list">
+      {% for c in contacts %}
+      <div class="contact-row" data-pk="{{ c.pk }}" style="border:1px solid var(--bdr);border-radius:var(--rad);padding:.7rem;margin-bottom:.6rem;">
+        <div style="display:flex;gap:.5rem;margin-bottom:.4rem;">
+          <input class="form-input contact-field" data-field="name" value="{{ c.name }}" placeholder="Name" style="flex:1;">
+          <input class="form-input contact-field" data-field="role" value="{{ c.role }}" placeholder="Role" style="flex:1;">
+        </div>
+        <div style="display:flex;gap:.5rem;">
+          <input class="form-input contact-field" data-field="phone" value="{{ c.phone }}" placeholder="Phone" style="flex:1;">
+          <input class="form-input contact-field" data-field="email" type="email" value="{{ c.email }}" placeholder="Email" style="flex:1;">
+          <button type="button" class="btn btn-ghost btn-sm contact-remove" title="Remove">✕</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="button" class="btn btn-ghost btn-sm" id="contact-add-btn" onclick="addContactRow()">+ Add Contact</button>
   </div>
 
-  <!-- Right: project history -->
-  <div>
-    {% if customer.important_notes %}
-    <div class="form-card" style="border-color:rgba(212,112,10,.4);background:var(--acc-bg);margin-bottom:1.2rem;">
-      <div class="section-title" style="color:var(--acc);">⚠ Important Notes</div>
-      <p style="font-size:.9rem;color:var(--txt);white-space:pre-wrap;line-height:1.6;">{{ customer.important_notes }}</p>
-    </div>
-    {% endif %}
-
-    <div class="form-card">
-      <div class="section-title">Timeline</div>
-      {% if timeline %}
-        <div style="max-height:340px;overflow-y:auto;">
-        {% for e in timeline %}
-        <div class="proj-row" style="align-items:flex-start;">
-          <span style="font-size:1rem;">{{ e.icon }}</span>
-          <div style="flex:1;">
-            {% if e.url %}<a href="{{ e.url }}" style="font-weight:500;color:inherit;text-decoration:none;">{{ e.title }}</a>{% else %}<div style="font-weight:500;">{{ e.title }}</div>{% endif %}
-            {% if e.detail %}<div style="font-size:.8rem;color:var(--mut);margin-top:.15rem;">{{ e.detail }}</div>{% endif %}
-            <div style="font-size:.72rem;color:var(--mut2);margin-top:.15rem;">{{ e.date|date:"d M Y, H:i" }}</div>
-          </div>
+  <div class="form-card" style="margin-bottom:0;">
+    <div class="section-title">Timeline</div>
+    {% if timeline %}
+      <div style="max-height:340px;overflow-y:auto;">
+      {% for e in timeline %}
+      <div class="proj-row" style="align-items:flex-start;">
+        <span style="font-size:1rem;">{{ e.icon }}</span>
+        <div style="flex:1;">
+          {% if e.url %}<a href="{{ e.url }}" style="font-weight:500;color:inherit;text-decoration:none;">{{ e.title }}</a>{% else %}<div style="font-weight:500;">{{ e.title }}</div>{% endif %}
+          {% if e.detail %}<div style="font-size:.8rem;color:var(--mut);margin-top:.15rem;">{{ e.detail }}</div>{% endif %}
+          <div style="font-size:.72rem;color:var(--mut2);margin-top:.15rem;">{{ e.date|date:"d M Y, H:i" }}</div>
         </div>
-        {% endfor %}
-        </div>
-      {% else %}
-        <div style="color:var(--mut);font-size:.875rem;">No activity yet for {{ customer.name }}.</div>
-      {% endif %}
-    </div>
-
-    <div class="form-card" style="margin-top:1.2rem;">
-      <div class="section-title">Relationship Notes</div>
-      <div id="notes-list">
-      {% for n in relationship_notes %}
-        <div class="proj-row" id="note-row-{{ n.pk }}" style="align-items:flex-start;">
-          <div style="flex:1;">
-            <div style="font-size:.9rem;white-space:pre-wrap;">{{ n.text }}</div>
-            <div style="font-size:.72rem;color:var(--mut);margin-top:.2rem;">{{ n.created_by.get_full_name|default:n.created_by.username }} · {{ n.created_at|date:"d M Y, H:i" }}</div>
-          </div>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="deleteCustomerNote({{ n.pk }})" title="Delete">✕</button>
-        </div>
-      {% empty %}
-        <div id="notes-empty" style="color:var(--mut);font-size:.875rem;">No relationship notes yet.</div>
+      </div>
       {% endfor %}
       </div>
-      <textarea class="form-input" id="note-text" rows="2" placeholder="Add a note about this customer relationship…" style="margin-top:.6rem;"></textarea>
-      <button type="button" class="btn btn-ghost btn-sm" style="margin-top:.5rem;" onclick="addCustomerNote()">+ Add Note</button>
-    </div>
-
-    <div class="form-card" style="margin-top:1.2rem;">
-      <div class="section-title">Project History ({{ projects|length }})</div>
-      {% if projects %}
-        {% for p in projects %}
-        <div class="proj-row">
-          <div style="flex:1;">
-            <div style="font-weight:500;">{{ p.project_name }}</div>
-            <div style="font-size:.75rem;color:var(--mut);">
-              {% if p.sales_order %}SO {{ p.sales_order }} · {% endif %}{% if p.installation_date %}Installed {{ p.installation_date|date:"d M Y" }}{% elif p.delivery_date %}Delivery {{ p.delivery_date|date:"d M Y" }}{% else %}Created {{ p.created_at|date:"d M Y" }}{% endif %}
-            </div>
-          </div>
-          <span class="badge badge-{{ p.status }}">{{ p.get_status_display }}</span>
-          <a href="{% url 'project_edit' p.pk %}" class="btn btn-ghost btn-sm">Open</a>
-        </div>
-        {% endfor %}
-      {% else %}
-        <div style="color:var(--mut);font-size:.875rem;">No projects found for {{ customer.name }}</div>
-      {% endif %}
-    </div>
-
-    {% if features.purchase_orders %}
-    <div class="card" style="margin-top:1.2rem;">
-      <div class="section-title">Purchase Orders ({{ pos|length }})</div>
-      {% if pos %}
-        {% for po in pos %}
-        <div class="proj-row">
-          <div style="flex:1;">
-            <div style="font-weight:500;">{{ po.po_number }} <span style="font-weight:400;color:var(--mut);">— {{ po.supplier.name }}</span></div>
-            <div style="font-size:.75rem;color:var(--mut);">
-              For {{ po.project.project_name }}{% if po.order_date %} · Ordered {{ po.order_date|date:"d M Y" }}{% endif %}
-            </div>
-          </div>
-          <span class="badge badge-{{ po.status }}">{{ po.get_status_display }}</span>
-          <a href="{% url 'po_detail' po.pk %}" class="btn btn-ghost btn-sm">Open</a>
-        </div>
-        {% endfor %}
-      {% else %}
-        <div style="color:var(--mut);font-size:.875rem;">No purchase orders raised for {{ customer.name }}'s projects yet.</div>
-      {% endif %}
-    </div>
+    {% else %}
+      <div style="color:var(--mut);font-size:.875rem;">No activity yet for {{ customer.name }}.</div>
     {% endif %}
   </div>
+
+  <div class="form-card" style="margin-bottom:0;">
+    <div class="section-title">Relationship Notes</div>
+    <div id="notes-list">
+    {% for n in relationship_notes %}
+      <div class="proj-row" id="note-row-{{ n.pk }}" style="align-items:flex-start;">
+        <div style="flex:1;">
+          <div style="font-size:.9rem;white-space:pre-wrap;">{{ n.text }}</div>
+          <div style="font-size:.72rem;color:var(--mut);margin-top:.2rem;">{{ n.created_by.get_full_name|default:n.created_by.username }} · {{ n.created_at|date:"d M Y, H:i" }}</div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="deleteCustomerNote({{ n.pk }})" title="Delete">✕</button>
+      </div>
+    {% empty %}
+      <div id="notes-empty" style="color:var(--mut);font-size:.875rem;">No relationship notes yet.</div>
+    {% endfor %}
+    </div>
+    <textarea class="form-input" id="note-text" rows="2" placeholder="Add a note about this customer relationship…" style="margin-top:.6rem;"></textarea>
+    <button type="button" class="btn btn-ghost btn-sm" style="margin-top:.5rem;" onclick="addCustomerNote()">+ Add Note</button>
+  </div>
 </div>
+
+<div class="form-card" style="margin-top:1.2rem;">
+  <div class="section-title">Project History ({{ projects|length }})</div>
+  {% if projects %}
+    {% for p in projects %}
+    <div class="proj-row">
+      <div style="flex:1;">
+        <div style="font-weight:500;">{{ p.project_name }}</div>
+        <div style="font-size:.75rem;color:var(--mut);">
+          {% if p.sales_order %}SO {{ p.sales_order }} · {% endif %}{% if p.installation_date %}Installed {{ p.installation_date|date:"d M Y" }}{% elif p.delivery_date %}Delivery {{ p.delivery_date|date:"d M Y" }}{% else %}Created {{ p.created_at|date:"d M Y" }}{% endif %}
+        </div>
+      </div>
+      <span class="badge badge-{{ p.status }}">{{ p.get_status_display }}</span>
+      <a href="{% url 'project_edit' p.pk %}" class="btn btn-ghost btn-sm">Open</a>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div style="color:var(--mut);font-size:.875rem;">No projects found for {{ customer.name }}</div>
+  {% endif %}
+</div>
+
+{% if features.purchase_orders %}
+<div class="card" style="margin-top:1.2rem;">
+  <div class="section-title">Purchase Orders ({{ pos|length }})</div>
+  {% if pos %}
+    {% for po in pos %}
+    <div class="proj-row">
+      <div style="flex:1;">
+        <div style="font-weight:500;">{{ po.po_number }} <span style="font-weight:400;color:var(--mut);">— {{ po.supplier.name }}</span></div>
+        <div style="font-size:.75rem;color:var(--mut);">
+          For {{ po.project.project_name }}{% if po.order_date %} · Ordered {{ po.order_date|date:"d M Y" }}{% endif %}
+        </div>
+      </div>
+      <span class="badge badge-{{ po.status }}">{{ po.get_status_display }}</span>
+      <a href="{% url 'po_detail' po.pk %}" class="btn btn-ghost btn-sm">Open</a>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div style="color:var(--mut);font-size:.875rem;">No purchase orders raised for {{ customer.name }}'s projects yet.</div>
+  {% endif %}
+</div>
+{% endif %}
 
 <script>
 const CUST_PK = {{ customer.pk }};

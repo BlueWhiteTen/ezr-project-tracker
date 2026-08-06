@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 import json
 
-from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence
+from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, ProjectManualPO
 from ..forms import RegisterForm, ProjectForm
 from .utils import (_handle_quoted_status_reminders, _log_changes, _next_project_number, _snap)
 
@@ -161,11 +161,12 @@ def project_edit(request, pk):
     staff_users = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
     from ..countries import COUNTRIES
     linked_pos = project.purchase_orders.select_related('supplier').order_by('-order_date', '-id')
+    manual_pos = project.manual_pos.all()
     completed_log = project.logs.filter(field='Status', new_value='Completed').order_by('timestamp').first()
     return render(request, 'projects/project_form.html', {
         'form': form, 'action': 'Edit', 'project': project, 'logs': logs,
         'comments': comments, 'staff_users': staff_users, 'countries': COUNTRIES,
-        'linked_pos': linked_pos, 'completed_log': completed_log,
+        'linked_pos': linked_pos, 'manual_pos': manual_pos, 'completed_log': completed_log,
         'project_pk': project.pk,
     })
 
@@ -242,6 +243,41 @@ def project_data(request, pk):
     })
 
 
+
+
+@login_required
+@require_POST
+def project_manual_po_add(request, pk):
+    project = get_object_or_404(Project, pk=pk)
+    data = json.loads(request.body)
+    next_order = project.manual_pos.count()
+    mpo = ProjectManualPO.objects.create(
+        project=project,
+        supplier=(data.get('supplier') or '').strip(),
+        po_number=(data.get('po_number') or '').strip(),
+        sort_order=next_order,
+    )
+    return JsonResponse({'ok': True, 'id': mpo.pk})
+
+
+@login_required
+@require_POST
+def project_manual_po_update(request, pk):
+    mpo = get_object_or_404(ProjectManualPO, pk=pk)
+    data = json.loads(request.body)
+    if 'supplier' in data:
+        mpo.supplier = (data.get('supplier') or '').strip()
+    if 'po_number' in data:
+        mpo.po_number = (data.get('po_number') or '').strip()
+    mpo.save()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_POST
+def project_manual_po_delete(request, pk):
+    ProjectManualPO.objects.filter(pk=pk).delete()
+    return JsonResponse({'ok': True})
 
 
 @login_required
