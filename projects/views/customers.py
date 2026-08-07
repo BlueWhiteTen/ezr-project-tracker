@@ -28,7 +28,7 @@ def customer_autocomplete(request):
     q = request.GET.get('q','').strip()
     if len(q) < 1:
         return JsonResponse([], safe=False)
-    results = CustomerProfile.objects.filter(name__icontains=q).values('id', 'name')[:8]
+    results = CustomerProfile.objects.filter(name__icontains=q, is_active=True).values('id', 'name')[:8]
     return JsonResponse(list(results), safe=False)
 
 
