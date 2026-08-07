@@ -217,6 +217,22 @@ def quote_generate_link(request, pk, cost_pk=None):
             'accepted_at': timezone.localtime(cost.accepted_online_at).strftime('%d %b %Y, %H:%M') if cost.accepted_online_at else '',
         })
 
+    # Correct a couple of things that can otherwise go stale or blank on
+    # the public page, which has no logged-in user to fall back on the
+    # way the internal editor does — fixed here, at the moment of
+    # generating a link, rather than guessed at display time.
+    quote_changed = False
+    if not quote.signature_name:
+        quote.signature_name = request.user.get_full_name() or request.user.username
+        quote_changed = True
+    has_install_now = float(cost.labour) > 0
+    site_survey_line = "Our price is subject to site survey and is based on a clear and level site with light and power, good access and normal working hours."
+    if not has_install_now and site_survey_line in quote.terms_text:
+        quote.terms_text = quote.terms_text.replace(f"\n\n{site_survey_line}", "").replace(site_survey_line, "").strip()
+        quote_changed = True
+    if quote_changed:
+        quote.save()
+
     QuoteShareLink.objects.filter(quote=quote, is_retired=False).update(is_retired=True)
     token = secrets.token_urlsafe(24)
     link = QuoteShareLink.objects.create(
@@ -301,7 +317,7 @@ def quote_public_view(request, token):
         'thank_you': quote.thank_you or default_thank_you,
         'supply_line': quote.supply_line or default_supply_line,
         'closing': quote.closing or default_closing,
-        'signature_name': quote.signature_name,
+        'signature_name': quote.signature_name or (link.created_by.get_full_name() or link.created_by.username if link.created_by else ''),
         'main_price_label': quote.main_price_label or default_price_label,
     }
 
