@@ -128,6 +128,53 @@
   </div>
 </div>
 
+<div class="form-card">
+  <div class="section-title">📍 Project Locations</div>
+  <p style="font-size:.78rem;color:var(--mut2);margin-bottom:.7rem;margin-top:-.5rem;">Builds up automatically from the Delivery Address entered on this customer's projects — add or edit one directly here too.</p>
+  <div id="delivery-addr-list" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:.7rem;margin-bottom:.7rem;">
+    {% for a in delivery_addresses %}
+    <div class="da-row" data-pk="{{ a.pk }}" data-line1="{{ a.line1 }}" data-line2="{{ a.line2 }}" data-city="{{ a.city }}" data-county="{{ a.county }}" data-postcode="{{ a.postcode }}" data-country="{{ a.country }}" data-fao="{{ a.fao }}" data-phone="{{ a.phone }}" style="border:1px solid var(--bdr);border-radius:var(--rad);padding:.7rem;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.4rem;">
+        <div style="font-size:.85rem;line-height:1.4;">
+          {% if a.line1 %}{{ a.line1 }}<br>{% endif %}
+          {% if a.line2 %}{{ a.line2 }}<br>{% endif %}
+          {% if a.city %}{{ a.city }}{% if a.county %}, {{ a.county }}{% endif %}<br>{% endif %}
+          {% if a.postcode %}<strong>{{ a.postcode }}</strong><br>{% endif %}
+          {% if a.fao %}<span style="color:var(--mut);">FAO: {{ a.fao }}</span><br>{% endif %}
+          {% if a.phone %}<span style="color:var(--mut);">{{ a.phone }}</span>{% endif %}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.3rem;flex-shrink:0;">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="editDeliveryAddress({{ a.pk }})" title="Edit" style="padding:.25rem .4rem;">✎</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="deleteDeliveryAddress({{ a.pk }})" title="Delete" style="padding:.25rem .4rem;">✕</button>
+        </div>
+      </div>
+      {% if a.source_project %}<a href="{% url 'project_edit' a.source_project.pk %}" style="font-size:.72rem;color:var(--acc);text-decoration:none;display:block;margin-top:.4rem;">{{ a.source_project.project_name }} →</a>{% endif %}
+    </div>
+    {% empty %}
+    <div id="delivery-addr-empty" style="color:var(--mut);font-size:.875rem;">No delivery addresses yet — these appear automatically once entered on a project, or add one directly.</div>
+    {% endfor %}
+  </div>
+  <button type="button" class="btn btn-ghost btn-sm" onclick="openDeliveryAddressForm()">+ Add Address</button>
+
+  <div id="da-form" style="display:none;border:1px solid var(--bdr);border-radius:var(--rad);padding:.8rem;margin-top:.7rem;background:var(--surf2);">
+    <input type="hidden" id="da-pk" value="">
+    <div class="details-grid" style="margin-bottom:.6rem;">
+      <div class="form-group" style="margin-bottom:0;"><label class="form-label">Address Line 1</label><input class="form-input" id="da-line1" placeholder="Street address"></div>
+      <div class="form-group" style="margin-bottom:0;"><label class="form-label">Address Line 2</label><input class="form-input" id="da-line2" placeholder="Unit, floor, etc."></div>
+      <div class="form-group" style="margin-bottom:0;"><label class="form-label">City / Town</label><input class="form-input" id="da-city"></div>
+      <div class="form-group" style="margin-bottom:0;"><label class="form-label">County</label><input class="form-input" id="da-county"></div>
+      <div class="form-group" style="margin-bottom:0;"><label class="form-label">Post Code</label><input class="form-input" id="da-postcode"></div>
+      <div class="form-group" style="margin-bottom:0;"><label class="form-label">Country</label><input class="form-input" id="da-country" value="United Kingdom"></div>
+      <div class="form-group" style="margin-bottom:0;"><label class="form-label">FAO</label><input class="form-input" id="da-fao" placeholder="Contact name"></div>
+      <div class="form-group" style="margin-bottom:0;"><label class="form-label">Phone</label><input class="form-input" id="da-phone"></div>
+    </div>
+    <div style="display:flex;gap:.5rem;">
+      <button type="button" class="btn btn-primary btn-sm" onclick="saveDeliveryAddress()">Save Address</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="closeDeliveryAddressForm()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="form-card" style="margin-top:1.2rem;">
   <div class="section-title">Project History ({{ projects|length }})</div>
   {% if projects %}
@@ -264,6 +311,71 @@ async function deleteCustomerNote(pk){
   if(d.ok){
     const row = document.getElementById(`note-row-${pk}`);
     if(row) row.remove();
+  }
+}
+
+// ── Project Locations (delivery addresses) ──────────────────────────────────
+function openDeliveryAddressForm(){
+  document.getElementById('da-pk').value = '';
+  ['line1','line2','city','county','postcode','fao','phone'].forEach(f => { document.getElementById(`da-${f}`).value = ''; });
+  document.getElementById('da-country').value = 'United Kingdom';
+  document.getElementById('da-form').style.display = 'block';
+}
+
+function closeDeliveryAddressForm(){
+  document.getElementById('da-form').style.display = 'none';
+}
+
+function editDeliveryAddress(pk){
+  const row = document.querySelector(`.da-row[data-pk="${pk}"]`);
+  if(!row) return;
+  document.getElementById('da-pk').value = pk;
+  document.getElementById('da-line1').value = row.dataset.line1 || '';
+  document.getElementById('da-line2').value = row.dataset.line2 || '';
+  document.getElementById('da-city').value = row.dataset.city || '';
+  document.getElementById('da-county').value = row.dataset.county || '';
+  document.getElementById('da-postcode').value = row.dataset.postcode || '';
+  document.getElementById('da-country').value = row.dataset.country || 'United Kingdom';
+  document.getElementById('da-fao').value = row.dataset.fao || '';
+  document.getElementById('da-phone').value = row.dataset.phone || '';
+  document.getElementById('da-form').style.display = 'block';
+  document.getElementById('da-form').scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+async function saveDeliveryAddress(){
+  const pk = document.getElementById('da-pk').value;
+  const fields = {
+    line1: document.getElementById('da-line1').value.trim(),
+    line2: document.getElementById('da-line2').value.trim(),
+    city: document.getElementById('da-city').value.trim(),
+    county: document.getElementById('da-county').value.trim(),
+    postcode: document.getElementById('da-postcode').value.trim(),
+    country: document.getElementById('da-country').value.trim(),
+    fao: document.getElementById('da-fao').value.trim(),
+    phone: document.getElementById('da-phone').value.trim(),
+  };
+  if(!fields.line1 && !fields.postcode){
+    alert('Enter at least an address line or postcode.');
+    return;
+  }
+  if(pk){
+    await fetch(`/customer-delivery-addresses/${pk}/update/`, {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CUST_CSRF}, body: JSON.stringify(fields)
+    });
+  } else {
+    await fetch(`/customers/${CUST_PK}/delivery-addresses/add/`, {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CUST_CSRF}, body: JSON.stringify(fields)
+    });
+  }
+  location.reload();
+}
+
+async function deleteDeliveryAddress(pk){
+  if(!confirm('Remove this address?')) return;
+  const r = await fetch(`/customer-delivery-addresses/${pk}/delete/`, {method:'POST', headers:{'X-CSRFToken':CUST_CSRF}});
+  const d = await r.json();
+  if(d.ok){
+    document.querySelector(`.da-row[data-pk="${pk}"]`)?.remove();
   }
 }
 </script>

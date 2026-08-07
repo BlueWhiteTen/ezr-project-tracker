@@ -35,6 +35,7 @@ from .customers import (
     customer_autocomplete, customer_history, customer_list, customer_import, customer_address_import,
     customer_contact_add, customer_contact_update, customer_contact_delete,
     customer_note_add, customer_note_delete,
+    customer_delivery_address_add, customer_delivery_address_update, customer_delivery_address_delete,
     customer_detail, customer_create, customer_delete,
 )
 from .suppliers import (

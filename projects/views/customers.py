@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 import json
 
-from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, CustomerContact, CustomerNote
+from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, CustomerContact, CustomerNote, CustomerDeliveryAddress
 from ..forms import RegisterForm, ProjectForm
 
 
@@ -364,6 +364,7 @@ def customer_detail(request, pk):
     projects = (linked_projects | text_matched).order_by('-created_at')
     pos = PurchaseOrder.objects.filter(project__in=projects).select_related('supplier', 'project').order_by('-created_at')
     contacts = customer.contacts.all()
+    delivery_addresses = customer.delivery_addresses.select_related('source_project').all()
     relationship_notes = customer.relationship_notes.select_related('created_by').all()
 
     # ── Timeline: projects, quotes, notes, and installs, newest first ──────
@@ -393,6 +394,7 @@ def customer_detail(request, pk):
     return render(request, 'projects/customer_detail.html', {
         'customer': customer, 'projects': projects, 'pos': pos, 'countries': COUNTRIES,
         'contacts': contacts, 'relationship_notes': relationship_notes, 'timeline': timeline,
+        'delivery_addresses': delivery_addresses,
     })
 
 
@@ -465,6 +467,46 @@ def customer_note_delete(request, pk):
     if note.created_by_id and note.created_by_id != request.user.id and not request.user.is_superuser:
         return JsonResponse({'error': "You can only delete your own notes."}, status=403)
     note.delete()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_POST
+def customer_delivery_address_add(request, pk):
+    customer = get_object_or_404(CustomerProfile, pk=pk)
+    data = json.loads(request.body)
+    next_order = customer.delivery_addresses.count()
+    addr = CustomerDeliveryAddress.objects.create(
+        customer=customer,
+        line1=(data.get('line1') or '').strip(),
+        line2=(data.get('line2') or '').strip(),
+        city=(data.get('city') or '').strip(),
+        county=(data.get('county') or '').strip(),
+        postcode=(data.get('postcode') or '').strip(),
+        country=(data.get('country') or '').strip() or 'United Kingdom',
+        fao=(data.get('fao') or '').strip(),
+        phone=(data.get('phone') or '').strip(),
+        sort_order=next_order,
+    )
+    return JsonResponse({'ok': True, 'id': addr.pk})
+
+
+@login_required
+@require_POST
+def customer_delivery_address_update(request, pk):
+    addr = get_object_or_404(CustomerDeliveryAddress, pk=pk)
+    data = json.loads(request.body)
+    for field in ['line1', 'line2', 'city', 'county', 'postcode', 'country', 'fao', 'phone']:
+        if field in data:
+            setattr(addr, field, (data.get(field) or '').strip())
+    addr.save()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_POST
+def customer_delivery_address_delete(request, pk):
+    CustomerDeliveryAddress.objects.filter(pk=pk).delete()
     return JsonResponse({'ok': True})
 
 

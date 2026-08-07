@@ -461,6 +461,32 @@ class ProjectManualPO(models.Model):
         return f"{self.po_number} — {self.supplier}"
 
 
+class CustomerDeliveryAddress(models.Model):
+    """A delivery/site address for a customer — builds up automatically
+    from the Delivery Address entered on that customer's projects, one
+    entry per distinct address, and can also be added or edited by hand
+    directly from the customer's page."""
+    customer       = models.ForeignKey(CustomerProfile, on_delete=models.CASCADE, related_name='delivery_addresses')
+    source_project = models.ForeignKey('Project', null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+                        help_text='The project this address was first captured from, if any')
+    line1          = models.CharField(max_length=200, blank=True)
+    line2          = models.CharField(max_length=200, blank=True)
+    city           = models.CharField(max_length=100, blank=True)
+    county         = models.CharField(max_length=100, blank=True)
+    postcode       = models.CharField(max_length=20, blank=True)
+    country        = models.CharField(max_length=60, blank=True, default='United Kingdom')
+    fao            = models.CharField(max_length=200, blank=True)
+    phone          = models.CharField(max_length=30, blank=True)
+    sort_order     = models.PositiveIntegerField(default=0)
+    created_at     = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sort_order', 'created_at']
+
+    def __str__(self):
+        return f"{self.line1}, {self.postcode}" if self.line1 else (self.postcode or 'Address')
+
+
 class Supplier(models.Model):
     name           = models.CharField(max_length=200, unique=True)
     contact_name   = models.CharField(max_length=200, blank=True)

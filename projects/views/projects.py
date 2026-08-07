@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 import json
 
-from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, ProjectManualPO
+from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, ProjectManualPO, CustomerDeliveryAddress
 from ..forms import RegisterForm, ProjectForm
 from .utils import (_handle_quoted_status_reminders, _log_changes, _next_project_number, _snap)
 
@@ -725,6 +725,24 @@ def project_address_save(request, pk):
     project.addr_phone   = data.get('addr_phone', '').strip()
     project.save()
     has_address = bool(project.addr_line1 or project.addr_postcode)
+
+    # Build up the customer's own address list — one entry per distinct
+    # address, so repeat multi-site customers get a reusable history.
+    if has_address and project.customer_profile_id:
+        already_exists = CustomerDeliveryAddress.objects.filter(
+            customer_id=project.customer_profile_id,
+            line1__iexact=project.addr_line1,
+            postcode__iexact=project.addr_postcode,
+        ).exists()
+        if not already_exists:
+            next_order = CustomerDeliveryAddress.objects.filter(customer_id=project.customer_profile_id).count()
+            CustomerDeliveryAddress.objects.create(
+                customer_id=project.customer_profile_id, source_project=project,
+                line1=project.addr_line1, line2=project.addr_line2, city=project.addr_city,
+                county=project.addr_county, postcode=project.addr_postcode, country=project.addr_country,
+                fao=project.addr_fao, phone=project.addr_phone, sort_order=next_order,
+            )
+
     return JsonResponse({'ok': True, 'has_address': has_address})
 
 
