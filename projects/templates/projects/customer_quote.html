@@ -367,6 +367,18 @@ function rtfCmd(btn, command){
 }
 document.querySelectorAll('.rtf-editable').forEach(el => {
   el.addEventListener('input', () => syncRtf(el));
+  el.addEventListener('keydown', e => {
+    // Enter would otherwise let the browser insert a <div> for the new
+    // line, which isn't in the sanitizer's whitelist — it then gets
+    // stripped and the whole field's content gets reset, which wipes
+    // the cursor back to the start. Inserting a real <br> directly
+    // avoids that path entirely.
+    if(e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      document.execCommand('insertLineBreak');
+      syncRtf(el);
+    }
+  });
   el.addEventListener('paste', e => {
     // Paste as plain text only — formatted pastes from Word/Outlook etc.
     // carry a lot of markup we don't want to have to sanitize line by line.
