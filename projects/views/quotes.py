@@ -105,12 +105,12 @@ def customer_quote(request, pk, cost_pk=None):
         quote.main_price_label = f'Our price to {supply_verb.lower().replace("to ", "")}:'
         quote.lead_time = '4-5 weeks from receipt of PO and approved drawing.'
         quote.payment_terms = '30 days from the date of invoice, please'
-        quote.terms_text = (
-            "Our prices are exclusive of VAT and remain open for acceptance for 30 days.\n\n"
-            "Our price is subject to site survey and is based on a clear and level site with light and power, good access and normal working hours.\n\n"
-            "Title of all goods supplied remains the property of E-Z-Rect Ltd t/a EZR Shelving until paid for in full. Our trading terms apply.\n\n"
-            "We have not made any allowance for MCD or retention within our costs."
-        )
+        terms_parts = ["Our prices are exclusive of VAT and remain open for acceptance for 30 days."]
+        if has_install:
+            terms_parts.append("Our price is subject to site survey and is based on a clear and level site with light and power, good access and normal working hours.")
+        terms_parts.append("Title of all goods supplied remains the property of E-Z-Rect Ltd t/a EZR Shelving until paid for in full. Our trading terms apply.")
+        terms_parts.append("We have not made any allowance for MCD or retention within our costs.")
+        quote.terms_text = "\n\n".join(terms_parts)
         quote.intro = ''
         quote.save()
 
@@ -129,7 +129,7 @@ def customer_quote(request, pk, cost_pk=None):
     import datetime as _dt
     today = _dt.date.today()
     default_date = today.strftime('%d %B %Y').lstrip('0')
-    default_ref = f"{project.customer}\n{project.project_name}"
+    default_ref = f"{project.customer}\n{project.location}" if project.location else project.customer
     default_greeting = f"Dear {first_name}," if first_name else "Dear Sir/Madam,"
     default_closing = "We trust the above meets with your approval and if you require any further information, please do not hesitate to contact me."
     sig = request.user.get_full_name() or request.user.username
