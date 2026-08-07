@@ -56,7 +56,7 @@
        which several rounds of testing showed behaves inconsistently
        between different browsers' print paths. No manual space-reservation
        needed either; the table lays it out correctly on its own. */
-    .page-table{width:100%;border-collapse:collapse;min-height:26.5cm;}
+    .page-table{width:100%;border-collapse:collapse;min-height:27.5cm;}
     tfoot{display:table-footer-group;}
     @page { margin:0.5cm; size:A4; }
   }
@@ -258,7 +258,9 @@
 
   <!-- Photos rendered on the quote (screen + print) -->
   {% if attached_photos %}
-  <div class="view-only photos-page" style="margin-top:1.5rem;">
+  <div class="view-only photos-page">
+  <table class="page-table" style="width:100%;border-collapse:collapse;">
+  <tbody><tr><td style="margin-top:1.5rem;">
     <div style="display:grid;grid-template-columns:repeat({{ quote.photo_columns }}, 1fr);gap:1rem;align-items:start;">
       {% for ph in attached_photos %}
       <div style="text-align:center;{% if ph.size == 'small' %}max-width:55%;margin:0 auto;{% elif ph.size == 'large' %}grid-column:1 / -1;{% endif %}">
@@ -266,6 +268,15 @@
       </div>
       {% endfor %}
     </div>
+  </td></tr></tbody>
+  <tfoot><tr><td>
+    <div class="footer">
+      Unit 8c Witan Park, Avenue Two Station Lane, Witney, OX28 4FH &nbsp; T: 01993 779494 &nbsp; F: 01993 704111<br>
+      E: sales@ezrshelving.com | www.ezrshelving.com<br>
+      E-Z-Rect Ltd trading as EZR Shelving. Registered in England &amp; Wales. Company no. 2874065
+    </div>
+  </td></tr></tfoot>
+  </table>
   </div>
   {% endif %}
 

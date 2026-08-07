@@ -28,6 +28,11 @@
 .msg-meta-me{text-align:right;}
 .chat-input-row{padding:.6rem 1.1rem;border-top:1px solid var(--bdr);display:flex;gap:.6rem;background:var(--surf2);flex-shrink:0;}
 .chat-input{flex:1;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);color:var(--txt);padding:8px 12px;font-size:.875rem;outline:none;font-family:var(--f);}
+.chat-input-wrap{position:relative;flex:1;}
+.mention-dd{position:absolute;bottom:100%;left:0;right:0;background:var(--surf);border:1px solid var(--acc);border-radius:var(--rad) var(--rad) 0 0;box-shadow:var(--shadow-md);z-index:50;max-height:180px;overflow-y:auto;display:none;}
+.mention-item{padding:8px 12px;cursor:pointer;font-size:.85rem;display:flex;align-items:center;gap:.6rem;color:var(--txt2);}
+.mention-item:hover{background:var(--acc-bg);color:var(--acc);}
+.mention-av{width:22px;height:22px;border-radius:50%;background:#d4700a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:700;flex-shrink:0;}
 .chat-input:focus{border-color:var(--acc);}
 .chat-send{background:var(--acc);color:#fff;border:none;border-radius:var(--rad);padding:8px 16px;font-size:.85rem;font-weight:600;cursor:pointer;font-family:var(--f);}
 .empty-chat{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;color:var(--mut);gap:.5rem;}
@@ -141,7 +146,10 @@
       {% endfor %}
     </div>
     <div class="chat-input-row">
-      <input class="chat-input" id="chat-input" placeholder="Type a message…" autocomplete="off">
+      <div class="chat-input-wrap">
+        <input class="chat-input" id="chat-input" placeholder="Type a message… (# to tag a project)" autocomplete="off" style="width:100%;box-sizing:border-box;">
+        <div class="mention-dd" id="mention-dd"></div>
+      </div>
       <button class="chat-send" onclick="sendMsg()">Send</button>
     </div>
   </div>
@@ -213,6 +221,49 @@ async function sendMsg(){
 }
 
 document.getElementById('chat-input').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); sendMsg(); } });
+
+let mentionStart = -1;
+document.getElementById('chat-input').addEventListener('input', async function(){
+  const val = this.value;
+  const pos = this.selectionStart;
+  const before = val.slice(0, pos);
+  const dd = document.getElementById('mention-dd');
+
+  const hashIdx = before.lastIndexOf('#');
+  if(hashIdx >= 0 && !before.slice(hashIdx+1).includes(' ')){
+    mentionStart = hashIdx;
+    const q = before.slice(hashIdx+1).toLowerCase();
+    if(q.length < 1){ dd.style.display='none'; return; }
+    const r = await fetch(`/api/projects-search/?q=${encodeURIComponent(q)}`);
+    const projs = await r.json();
+    if(projs.length){
+      dd.innerHTML = projs.map(p=>`
+        <div class="mention-item" onclick="insertTag('${p.project_name.replace(/'/g,"\\'")}',${p.id})">
+          <div class="mention-av" style="background:var(--acc);border-radius:4px;">#</div>${p.project_name} <span style="color:var(--mut);font-size:.75rem;margin-left:.3rem;">${p.customer}</span>
+        </div>`).join('');
+      dd.style.display='block';
+    } else { dd.style.display='none'; }
+  } else {
+    mentionStart=-1;
+    dd.style.display='none';
+  }
+});
+
+function insertTag(name, id){
+  const inp = document.getElementById('chat-input');
+  const val = inp.value;
+  const before = val.slice(0, mentionStart);
+  const after  = val.slice(inp.selectionStart);
+  inp.value = before + `#[${name}](${id}) ` + after;
+  document.getElementById('mention-dd').style.display='none';
+  mentionStart=-1;
+  inp.focus();
+}
+
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.chat-input-wrap'))
+    document.getElementById('mention-dd').style.display='none';
+});
 
 // Scroll to bottom — multiple attempts since layout may not be ready
 function scrollToBottom(){
