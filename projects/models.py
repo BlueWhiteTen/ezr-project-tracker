@@ -1161,6 +1161,38 @@ class ProjectQuote(models.Model):
         return f"Quote — {self.project.project_name}"
 
 
+class QuoteShareLink(models.Model):
+    """A customer-facing, no-login link to view a quote — access is by
+    possession of the unguessable token, not by account. Expires 30 days
+    after creation, and goes stale (view-only, no Accept) if the quote
+    is edited after the link was generated."""
+    quote               = models.ForeignKey(ProjectQuote, on_delete=models.CASCADE, related_name='share_links')
+    token               = models.CharField(max_length=64, unique=True, db_index=True)
+    quote_updated_snapshot = models.DateTimeField(help_text='quote.updated_at at the moment this link was generated')
+    created_at          = models.DateTimeField(auto_now_add=True)
+    created_by          = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+
+    EXPIRY_DAYS = 30
+
+    @property
+    def expires_at(self):
+        from datetime import timedelta
+        return self.created_at + timedelta(days=self.EXPIRY_DAYS)
+
+    @property
+    def is_expired(self):
+        from django.utils import timezone
+        return timezone.now() > self.expires_at
+
+    @property
+    def is_stale(self):
+        """True if the quote has been edited since this link was generated."""
+        return self.quote.updated_at > self.quote_updated_snapshot
+
+    def __str__(self):
+        return f"Share link for {self.quote}"
+
+
 class ProformaInvoice(models.Model):
     cost           = models.OneToOneField('ProjectCost', on_delete=models.CASCADE, related_name='proforma', null=True, blank=True)
     project        = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='proformas', null=True, blank=True)

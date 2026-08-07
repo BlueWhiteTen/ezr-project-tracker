@@ -80,6 +80,7 @@ from .picking import (
 )
 from .quotes import (
     customer_quote, quote_refresh_price, proforma_invoice,
+    quote_generate_link, quote_public_view, quote_public_accept,
     quote_photo_attach, quote_attached_photo_update,
     quote_attached_photo_delete, quote_attached_photo_file,
     quote_photos_list, quote_photo_upload, quote_photo_update,

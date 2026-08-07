@@ -2,6 +2,7 @@ import math
 import random
 from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -12,7 +13,7 @@ from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 import json
 
-from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence
+from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, QuoteShareLink
 from ..forms import RegisterForm, ProjectForm
 from .utils import (_calc_sell_price, require_feature)
 
@@ -181,6 +182,135 @@ def customer_quote(request, pk, cost_pk=None):
     })
 
 
+@login_required
+@require_POST
+def quote_generate_link(request, pk, cost_pk=None):
+    """Generate a fresh customer-facing share link for this quote. Always
+    creates a new token rather than reusing an old one, so an expired or
+    stale link never quietly starts working again — 'fresh link' means a
+    fresh 30-day window and a fresh staleness snapshot."""
+    import secrets
+    project = get_object_or_404(Project, pk=pk)
+    if cost_pk:
+        cost = get_object_or_404(ProjectCost, pk=cost_pk, project=project)
+    else:
+        cost = project.costs.filter(is_accepted=True).first() or project.costs.first()
+    quote = get_object_or_404(ProjectQuote, cost=cost)
+
+    token = secrets.token_urlsafe(24)
+    link = QuoteShareLink.objects.create(
+        quote=quote, token=token, quote_updated_snapshot=quote.updated_at, created_by=request.user,
+    )
+    share_url = request.build_absolute_uri(reverse('quote_public_view', kwargs={'token': token}))
+    return JsonResponse({'ok': True, 'url': share_url, 'expires_at': link.expires_at.strftime('%d %b %Y')})
+
+
+def _quote_safe_html(text):
+    """Same rule as the internal quote editor: tell real HTML (from the
+    rich-text editor) apart from older plain text by whether it contains
+    a '<' at all."""
+    from django.utils.html import escape
+    from django.utils.safestring import mark_safe
+    if not text:
+        return ''
+    if '<' in text:
+        return mark_safe(text)
+    return mark_safe(escape(text).replace('\n', '<br>'))
+
+
+def quote_public_view(request, token):
+    """No-login, customer-facing view of a quote — access is by
+    possession of the token, not by account.
+
+    Quote fields are usually blank in the DB and rely on computed
+    fallback defaults (see customer_quote) unless staff have actually
+    edited and saved them — this mirrors that same fallback logic so
+    the public page shows the same content staff see internally,
+    without touching that view's own working code."""
+    from django.middleware.csrf import get_token
+    get_token(request)  # ensures the CSRF cookie is set for the Accept button's POST
+    link = get_object_or_404(QuoteShareLink, token=token)
+    quote = link.quote
+    project = quote.project
+    cost = quote.cost
+
+    cp = CustomerProfile.objects.filter(name__iexact=project.customer).first()
+    contact_name = cp.contact_name if cp and cp.contact_name else ''
+    first_name = contact_name.split()[0] if contact_name else ''
+
+    proj_label = project.project_name
+    if project.location and project.location not in project.project_name:
+        proj_label = f"{project.project_name} - {project.location}"
+
+    has_delivery = cost and float(cost.delivery) > 0
+    has_install = cost and float(cost.labour) > 0
+    if has_delivery and has_install:
+        default_supply_verb = "To supply, deliver and install"
+    elif has_delivery and not has_install:
+        default_supply_verb = "To supply and deliver"
+    else:
+        default_supply_verb = "To supply only (ex. works)"
+    drawing_ref = project.drawing_number or '[drawing number]'
+    default_supply_line = (
+        f"{default_supply_verb} Trimline shelving to give the layout as shown on the drawing "
+        f"{drawing_ref}, and as described below:"
+    )
+
+    addr_lines = []
+    if cp:
+        if cp.contact_name: addr_lines.append(cp.contact_name)
+        addr_lines.append(cp.name)
+        for part in [cp.address_line1, cp.address_line2, cp.town, cp.county, cp.postcode]:
+            if part: addr_lines.append(part)
+    default_address_block = '\n'.join(addr_lines)
+
+    import datetime as _dt
+    default_date = _dt.date.today().strftime('%d %B %Y').lstrip('0')
+    default_ref = f"{project.customer}\n{project.location}" if project.location else project.customer
+    default_greeting = f"Dear {first_name}," if first_name else "Dear Sir/Madam,"
+    default_thank_you = f"Thank you for your enquiry for shelving at {proj_label}, for which we now have the pleasure of quoting as follows:"
+    default_closing = "We trust the above meets with your approval and if you require any further information, please do not hesitate to contact me."
+    default_price_label = f'Our price to {default_supply_verb.lower().replace("to ", "")}:'
+
+    display = {
+        'quote_date': quote.quote_date or default_date,
+        'address_block': quote.address_block or default_address_block,
+        'header_ref': quote.header_ref or default_ref,
+        'greeting': quote.greeting or default_greeting,
+        'thank_you': quote.thank_you or default_thank_you,
+        'supply_line': quote.supply_line or default_supply_line,
+        'closing': quote.closing or default_closing,
+        'signature_name': quote.signature_name,
+        'main_price_label': quote.main_price_label or default_price_label,
+    }
+
+    return render(request, 'projects/quote_public.html', {
+        'link': link, 'quote': quote, 'project': project, 'cost': cost, 'display': display,
+        'is_expired': link.is_expired, 'is_stale': link.is_stale,
+        'capacity_html': _quote_safe_html(quote.capacity),
+        'bay_breakdown_html': _quote_safe_html(quote.bay_breakdown),
+        'is_accepted': cost.is_accepted if cost else False,
+        'photos': quote.attached_photos.all(),
+    })
+
+
+@require_POST
+def quote_public_accept(request, token):
+    """No-login accept action from the public quote page."""
+    link = get_object_or_404(QuoteShareLink, token=token)
+    if link.is_expired or link.is_stale:
+        return JsonResponse({'error': 'This link is no longer valid.'}, status=400)
+    quote = link.quote
+    cost = quote.cost
+    if not cost:
+        return JsonResponse({'error': 'No costing found for this quote.'}, status=400)
+    project = cost.project
+    project.costs.exclude(pk=cost.pk).update(is_accepted=False)
+    cost.is_accepted = True
+    cost.save(update_fields=['is_accepted'])
+    ProjectLog.objects.create(project=project, user=None, field='Quote accepted',
+        old_value='', new_value=f'Accepted online via share link ({cost.label})')
+    return JsonResponse({'ok': True})
 
 
 @login_required

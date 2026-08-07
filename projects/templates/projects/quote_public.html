@@ -1,0 +1,146 @@
+{% load static humanize %}
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quotation — EZR Shelving</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#222;margin:0;background:#f4f4f2;}
+  .wrap{max-width:800px;margin:0 auto;padding:1.5rem 1rem 3rem;}
+  .banner{border-radius:8px;padding:.9rem 1.1rem;margin-bottom:1.2rem;font-size:.92rem;}
+  .banner-expired{background:#fef2f2;color:#b91c1c;border:1px solid rgba(185,28,28,.2);}
+  .banner-stale{background:#fef3c7;color:#92400e;border:1px solid rgba(146,64,14,.2);}
+  .banner-accepted{background:#f0fdf4;color:#166534;border:1px solid rgba(22,101,52,.2);}
+  .page{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:2.2rem 2.4rem;}
+  .qhead{width:100%;border-collapse:collapse;margin-bottom:1.5rem;}
+  .qhead td{vertical-align:top;}
+  .addr .date{color:#666;margin-bottom:.6rem;}
+  .logo img{max-width:170px;}
+  .proj{white-space:pre-line;margin-top:.4rem;}
+  .title{text-align:center;font-weight:700;font-size:1.15rem;margin-bottom:1.2rem;}
+  .field{margin-top:1rem;}
+  .price-row{width:100%;border-collapse:collapse;margin:.5rem 0;font-weight:700;}
+  .price-row td{padding:.2rem 0;}
+  .terms{white-space:pre-line;color:#444;font-size:.88rem;margin-top:1.5rem;}
+  .sig{margin-top:1rem;}
+  .footer{margin-top:2rem;padding-top:1rem;border-top:1px solid #ddd;font-size:.75rem;color:#888;text-align:center;}
+  .accept-box{margin-top:2rem;padding-top:1.5rem;border-top:2px solid #eee;text-align:center;}
+  .accept-btn{background:#d4700a;color:#fff;border:none;border-radius:8px;padding:.85rem 2.2rem;font-size:1rem;font-weight:700;cursor:pointer;}
+  .accept-btn:hover{background:#b85e08;}
+  .accept-btn:disabled{background:#ccc;cursor:not-allowed;}
+  @media print{body{background:#fff;}.page{box-shadow:none;}.accept-box{display:none;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  {% if is_expired %}
+  <div class="banner banner-expired">⚠ This link has expired — please contact us for an up-to-date quote.</div>
+  {% elif is_stale %}
+  <div class="banner banner-stale">⚠ This quote has changed since this link was sent — the details below may be out of date. Please contact us for the current quote.</div>
+  {% elif is_accepted %}
+  <div class="banner banner-accepted">✓ This quote has been accepted. Thank you!</div>
+  {% endif %}
+
+  <div class="page">
+    <table class="qhead">
+      <tr>
+        <td style="width:60%;">
+          <div class="addr">
+            <div class="date">{{ display.quote_date }}</div>
+            <div style="white-space:pre-line;">{{ display.address_block|linebreaksbr }}</div>
+          </div>
+        </td>
+        <td style="width:40%;text-align:right;">
+          <div class="logo"><img src="{% static 'logo.png' %}" alt="EZR Shelving"></div>
+          <div class="proj">{{ display.header_ref|linebreaksbr }}</div>
+        </td>
+      </tr>
+    </table>
+
+    <div class="title">Quotation</div>
+
+    <div>{{ display.greeting }}</div>
+    <div class="field">{{ display.thank_you }}</div>
+    <div class="field">{{ display.supply_line }}</div>
+
+    {% if quote.capacity %}<div class="field">{{ capacity_html }}</div>{% endif %}
+    {% if quote.bay_breakdown %}<div class="field">{{ bay_breakdown_html }}</div>{% endif %}
+
+    <table class="price-row">
+      <tr>
+        <td style="text-align:left;">{{ display.main_price_label }}</td>
+        <td style="text-align:right;white-space:nowrap;">£{{ quote.main_price|floatformat:2|intcomma }}</td>
+      </tr>
+      {% if quote.extra_label %}
+      <tr>
+        <td style="text-align:left;">{{ quote.extra_label }}</td>
+        <td style="text-align:right;white-space:nowrap;">{% if quote.extra_price is not None %}£{{ quote.extra_price|floatformat:2|intcomma }}{% endif %}</td>
+      </tr>
+      {% endif %}
+    </table>
+
+    <p style="margin-top:1rem;"><strong>Delivery lead time:</strong> {{ quote.lead_time }}</p>
+    <p style="margin-top:.5rem;"><strong>Payment Terms:</strong> {{ quote.payment_terms }}</p>
+
+    <div class="terms">{{ quote.terms_text }}</div>
+
+    <div class="sig">
+      <p>{{ display.closing }}</p>
+      <p>Yours sincerely,<br>{{ display.signature_name }}</p>
+    </div>
+
+    {% if photos %}
+    <div style="margin-top:1.5rem;display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem;">
+      {% for p in photos %}<img src="{{ p.image.url }}" style="width:100%;border-radius:6px;">{% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="footer">
+      Unit 8c Witan Park, Avenue Two Station Lane, Witney, OX28 4FH &nbsp; T: 01993 779494 &nbsp; F: 01993 704111<br>
+      E: sales@ezrshelving.com | www.ezrshelving.com<br>
+      E-Z-Rect Ltd trading as EZR Shelving. Registered in England &amp; Wales. Company no. 2874065
+    </div>
+  </div>
+
+  {% if not is_expired and not is_stale and not is_accepted %}
+  <div class="accept-box">
+    <button class="accept-btn" id="accept-btn" onclick="acceptQuote()">Accept this Quote</button>
+    <div id="accept-msg" style="margin-top:.7rem;font-size:.85rem;color:#666;"></div>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+async function acceptQuote(){
+  const btn = document.getElementById('accept-btn');
+  const msg = document.getElementById('accept-msg');
+  btn.disabled = true;
+  btn.textContent = 'Accepting…';
+  try{
+    const r = await fetch('{% url "quote_public_accept" link.token %}', {method:'POST', headers:{'X-CSRFToken': getCookie('csrftoken')}});
+    const d = await r.json();
+    if(d.ok){
+      location.reload();
+    } else {
+      msg.textContent = d.error || 'Something went wrong — please try again or contact us.';
+      msg.style.color = '#b91c1c';
+      btn.disabled = false;
+      btn.textContent = 'Accept this Quote';
+    }
+  } catch(e){
+    msg.textContent = 'Something went wrong — please try again or contact us.';
+    msg.style.color = '#b91c1c';
+    btn.disabled = false;
+    btn.textContent = 'Accept this Quote';
+  }
+}
+function getCookie(name){
+  const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  return v ? v.pop() : '';
+}
+</script>
+</body>
+</html>
