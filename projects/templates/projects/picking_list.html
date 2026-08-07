@@ -160,10 +160,10 @@
         </td>
       </tr>
       {% else %}
-      <tr {% if item.picked %}class="picked"{% endif %} id="row-{{ item.pk }}" data-item-pk="{{ item.pk }}" data-product-pk="{{ item.product.pk }}" data-qty="{{ item.quantity }}" data-code="{{ item.product.code|upper }}" data-desc="{{ item.ns_description|default:item.product.description }}">
+      <tr {% if item.picked %}class="picked"{% endif %} id="row-{{ item.pk }}" data-item-pk="{{ item.pk }}" data-product-pk="{{ item.product.pk }}" data-qty="{{ item.quantity }}" data-code="{{ item.product.code|upper }}" data-desc="{% if item.ns_description %}{{ item.ns_description }}{% elif item.product %}{{ item.product.description }}{% endif %}">
         <td><input type="checkbox" class="form-checkbox" {% if item.picked %}checked{% endif %} onchange="togglePicked({{ item.pk }}, this.checked)"></td>
         <td><span class="code">{{ item.product.code }}</span>{% if item.is_short %} <span title="Stock short by {{ item.short_by }}" style="color:var(--red);font-weight:700;cursor:help;">⚠</span>{% endif %}</td>
-        <td style="font-size:.95rem;">{{ item.ns_description|default:item.product.description }}</td>
+        <td style="font-size:.95rem;">{% if item.ns_description %}{{ item.ns_description }}{% elif item.product %}{{ item.product.description }}{% endif %}</td>
         <td class="qty-cell">
           {% if item.item_type != 'message' %}
           <input type="number" value="{{ item.quantity|floatformat:0 }}" min="1" step="1" {% if pl.allocated %}disabled title="Locked — release stock to edit"{% endif %}

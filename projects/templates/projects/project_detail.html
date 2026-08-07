@@ -121,7 +121,7 @@
         </div>
         <div class="detail-field">
             <div class="detail-field-label">Assigned To</div>
-            <div class="detail-field-value">{{ project.assigned_to.get_full_name|default:project.assigned_to.username|default:"Unassigned" }}</div>
+            <div class="detail-field-value">{% if project.assigned_to %}{{ project.assigned_to.get_full_name|default:project.assigned_to.username }}{% else %}Unassigned{% endif %}</div>
         </div>
     </div>
 </div>

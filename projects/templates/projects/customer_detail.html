@@ -131,7 +131,7 @@
       <div class="proj-row" id="note-row-{{ n.pk }}" style="align-items:flex-start;">
         <div style="flex:1;">
           <div style="font-size:.9rem;white-space:pre-wrap;">{{ n.text }}</div>
-          <div style="font-size:.72rem;color:var(--mut);margin-top:.2rem;">{{ n.created_by.get_full_name|default:n.created_by.username }} · {{ n.created_at|date:"d M Y, H:i" }}</div>
+          <div style="font-size:.72rem;color:var(--mut);margin-top:.2rem;">{% if n.created_by %}{{ n.created_by.get_full_name|default:n.created_by.username }}{% else %}Unknown{% endif %} · {{ n.created_at|date:"d M Y, H:i" }}</div>
         </div>
         <button type="button" class="btn btn-ghost btn-sm" onclick="deleteCustomerNote({{ n.pk }})" title="Delete">✕</button>
       </div>

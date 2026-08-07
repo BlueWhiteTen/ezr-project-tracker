@@ -30,7 +30,7 @@
   {% if logs %}
   {% for log in logs %}
   <div class="log-row">
-    <div class="log-av">{% with n=log.user.get_full_name|default:log.user.username %}{% with p=n.split %}{{ p.0|slice:":1"|upper }}{% if p|length > 1 %}{{ p|last|slice:":1"|upper }}{% endif %}{% endwith %}{% endwith %}</div>
+    <div class="log-av">{% if log.user %}{% with n=log.user.get_full_name|default:log.user.username %}{% with p=n.split %}{{ p.0|slice:":1"|upper }}{% if p|length > 1 %}{{ p|last|slice:":1"|upper }}{% endif %}{% endwith %}{% endwith %}{% else %}·{% endif %}</div>
     <div class="log-body">
       <strong>{% if log.user %}{{ log.user.get_full_name|default:log.user.username }}{% else %}Unknown{% endif %}</strong>
       {% if log.field == "Project created" %}
