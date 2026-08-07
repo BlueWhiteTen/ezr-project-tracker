@@ -342,6 +342,15 @@ def customer_detail(request, pk):
         customer.country       = request.POST.get('country', '').strip() or 'United Kingdom'
         customer.notes           = request.POST.get('notes', '').strip()
         customer.important_notes = request.POST.get('important_notes', '').strip()
+        markup_raw = request.POST.get('recommended_markup', '').strip()
+        if markup_raw:
+            try:
+                customer.recommended_markup = float(markup_raw)
+            except ValueError:
+                pass
+        else:
+            customer.recommended_markup = None
+        customer.recommended_payment_terms = request.POST.get('recommended_payment_terms', '').strip()
         customer.save()
         # Cascade name change to all projects that reference the old name
         if customer.name and customer.name != old_name:

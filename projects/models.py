@@ -397,6 +397,8 @@ class CustomerProfile(models.Model):
     address      = models.TextField(blank=True)
     notes            = models.TextField(blank=True)
     important_notes  = models.TextField(blank=True)
+    recommended_markup = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, help_text='Recommended markup % — shown as a reference when costing a job for this customer')
+    recommended_payment_terms = models.CharField(max_length=100, blank=True, help_text='e.g. 30 days, Pro forma, 50% deposit')
     created_at       = models.DateTimeField(auto_now_add=True)
     updated_at       = models.DateTimeField(auto_now=True)
 
