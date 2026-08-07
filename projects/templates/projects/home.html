@@ -101,7 +101,7 @@
   </a>
 
   <!-- Your assigned projects -->
-  <div class="home-tile">
+  <div class="home-tile" style="min-height:130px;max-height:130px;align-self:start;">
     <div class="home-tile-title">📁 Your Projects</div>
     <ul class="home-list" style="overflow-y:auto;flex:1;">
       {% for p in my_projects %}
@@ -157,7 +157,7 @@
   </a>
 
   <!-- Latest project updates -->
-  <div class="home-tile" style="overflow-y:auto;">
+  <div class="home-tile" style="overflow-y:auto;min-height:130px;max-height:130px;align-self:start;">
     <div class="home-tile-title">🕓 Latest Updates</div>
     <ul class="home-list" style="flex:1;overflow-y:auto;">
       {% for p in latest_updates %}

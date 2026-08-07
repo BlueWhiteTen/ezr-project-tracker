@@ -80,6 +80,7 @@ urlpatterns = [
     path('customers/<int:pk>/delete/',    views.customer_delete,       name='customer_delete'),
     path('suppliers/',                    views.supplier_list,         name='supplier_list'),
     path('suppliers/import/',             views.supplier_import,       name='supplier_import'),
+    path('suppliers/import-addresses/',   views.supplier_address_import, name='supplier_address_import'),
     path('suppliers/new/',                views.supplier_create,       name='supplier_create'),
     path('suppliers/<int:pk>/',           views.supplier_detail,       name='supplier_detail'),
     path('suppliers/<int:pk>/contacts/add/', views.supplier_contact_add, name='supplier_contact_add'),

@@ -38,9 +38,13 @@
   <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">Suppliers</h1>
   <div style="display:flex;gap:.5rem;">
     <label class="btn btn-ghost" style="cursor:pointer;">📥 Import from Sage<input type="file" accept=".xlsx" onchange="importSuppliers(this)" style="display:none;"></label>
+    {% if request.user.is_superuser %}
+    <label class="btn btn-ghost" style="cursor:pointer;">⬆ Import Addresses (Sage)<input type="file" accept=".xlsx" onchange="importSupplierAddresses(this)" style="display:none;"></label>
+    {% endif %}
     <button class="btn btn-primary" onclick="openNew()">+ New Supplier</button>
   </div>
 </div>
+<div id="import-addr-msg" style="display:none;padding:.85rem 1rem;border-radius:var(--rad);font-size:.85rem;margin-bottom:1rem;"></div>
 <form method="get" class="search-row">
   <input class="form-input" name="q" value="{{ query }}" placeholder="Search name, contact, email, account…" style="max-width:360px;">
   <button class="btn btn-ghost btn-sm" type="submit">Search</button>
@@ -173,6 +177,42 @@ async function importSuppliers(inp){
     alert(d.error || 'Import failed');
   }
   inp.value='';
+}
+
+async function importSupplierAddresses(inp){
+  const file = inp.files[0];
+  if(!file) return;
+  const msg = document.getElementById('import-addr-msg');
+  msg.style.display='block';
+  msg.style.background='var(--surf2)';
+  msg.style.color='var(--txt2)';
+  msg.style.border='1px solid var(--bdr)';
+  msg.textContent='Importing addresses…';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const r = await fetch('{% url "supplier_address_import" %}',{method:'POST',headers:{'X-CSRFToken':CSRF},body:fd});
+    const d = await r.json();
+    if(d.ok){
+      msg.style.background='var(--grn-bg)';msg.style.color='var(--grn)';msg.style.border='1px solid rgba(22,163,74,.2)';
+      let html = `✓ Found ${d.total_blocks} supplier(s) in the file. Updated the address for ${d.matched}.`;
+      if(d.star_marked && d.star_marked.length){
+        html += `<br><br>${d.star_marked.length} of those have "***" in the name (Sage's own dead/superseded markers) — suppliers don't have an active/inactive flag here, so these were updated like any other but worth a look:<br>`;
+        html += `<div style="max-height:120px;overflow-y:auto;margin-top:.4rem;font-size:.78rem;color:var(--txt2);">${d.star_marked.map(s=>s.replace(/</g,'&lt;')).join('<br>')}</div>`;
+      }
+      if(d.not_matched_count){
+        html += `<br><br>${d.not_matched_count} in the file didn't match an existing supplier here (by account number), so nothing was created or changed for them:<br>`;
+        html += `<div style="max-height:160px;overflow-y:auto;margin-top:.4rem;font-size:.78rem;color:var(--txt2);">${d.not_matched_sample.map(s=>s.replace(/</g,'&lt;')).join('<br>')}${d.not_matched_count > d.not_matched_sample.length ? `<br>… and ${d.not_matched_count - d.not_matched_sample.length} more` : ''}</div>`;
+      }
+      msg.innerHTML = html;
+    } else {
+      msg.style.background='var(--red-bg)';msg.style.color='var(--red)';msg.style.border='1px solid rgba(220,38,38,.2)';
+      msg.textContent='Error: '+d.error;
+    }
+  } catch(e){
+    msg.style.background='var(--red-bg)';msg.style.color='var(--red)';
+    msg.textContent='Import failed: '+e.message;
+  }
 }
 function openNew(){ document.getElementById('nc-overlay').classList.add('open'); document.getElementById('nc-modal').classList.add('open'); setTimeout(()=>document.getElementById('nc-name').focus(),100); }
 function closeNew(){ document.getElementById('nc-overlay').classList.remove('open'); document.getElementById('nc-modal').classList.remove('open'); }

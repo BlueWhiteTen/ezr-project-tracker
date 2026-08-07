@@ -85,6 +85,119 @@ def supplier_list(request):
 
 
 @login_required
+def supplier_address_import(request):
+    """Import addresses from a Sage 'Supplier Address List' export — same
+    multi-row block format as the customer address import, but the
+    address-line column is headed 'Name' rather than 'Name & Address'
+    and columns sit one position further right."""
+    if not request.user.is_superuser:
+        return JsonResponse({'error': 'Only administrators can run this import.'}, status=403)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    import openpyxl, re
+    f = request.FILES.get('file')
+    if not f:
+        return JsonResponse({'error': 'No file uploaded.'}, status=400)
+    try:
+        wb = openpyxl.load_workbook(f, data_only=True, read_only=True)
+        ws = wb.active
+    except Exception as e:
+        return JsonResponse({'error': f'Could not read file: {e}'}, status=400)
+
+    postcode_re = re.compile(r'^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$', re.IGNORECASE)
+
+    header_row_idx = None
+    header = None
+    for i, row in enumerate(ws.iter_rows(min_row=1, max_row=20, values_only=True), start=1):
+        cells = [str(c).strip() if c is not None else '' for c in row]
+        if 'A/C' in cells:
+            header_row_idx = i
+            header = cells
+            break
+    if not header_row_idx:
+        return JsonResponse({'error': 'Could not find the header row — expected a column titled "A/C".'}, status=400)
+
+    def col_idx(name):
+        return header.index(name) if name in header else None
+
+    i_ac = col_idx('A/C')
+    i_addr = col_idx('Name & Address')
+    if i_addr is None:
+        i_addr = col_idx('Name')
+    if i_ac is None or i_addr is None:
+        return JsonResponse({'error': 'Missing expected column(s): A/C, Name.'}, status=400)
+
+    def parse_block_addr(lines):
+        remaining = list(lines)
+        postcode = remaining.pop() if remaining else ''
+        addr1 = addr2 = town = county = ''
+        n = len(remaining)
+        if n >= 4:
+            addr1, addr2, town, county = remaining[0], remaining[1], remaining[2], remaining[3]
+        elif n == 3:
+            addr1, addr2, town = remaining[0], remaining[1], remaining[2]
+        elif n == 2:
+            addr1, town = remaining[0], remaining[1]
+        elif n == 1:
+            addr1 = remaining[0]
+        return addr1, addr2, town, county, postcode
+
+    rows = list(ws.iter_rows(min_row=header_row_idx + 1, values_only=True))
+    blocks = []
+    current = None
+    for row in rows:
+        ac = row[i_ac] if i_ac < len(row) else None
+        addr = row[i_addr] if i_addr < len(row) else None
+        if ac is not None and str(ac).strip():
+            if current:
+                blocks.append(current)
+            current = {'ac': str(ac).strip(), 'name': str(addr).strip() if addr else '', 'lines': []}
+        elif addr is not None and str(addr).strip() and current:
+            current['lines'].append(str(addr).strip())
+    if current:
+        blocks.append(current)
+
+    matched = 0
+    star_marked = []
+    not_matched = []
+    to_update = []
+    account_numbers = [b['ac'] for b in blocks]
+    existing_by_ac = {
+        s.account_number: s
+        for s in Supplier.objects.filter(account_number__in=account_numbers)
+    }
+    for b in blocks:
+        supplier = existing_by_ac.get(b['ac'])
+        if not supplier:
+            not_matched.append(f"{b['ac']} — {b['name']}")
+            continue
+        addr1, addr2, town, county, postcode = parse_block_addr(b['lines'])
+        supplier.address_line1 = addr1
+        supplier.address_line2 = addr2
+        supplier.town = town
+        supplier.county = county
+        supplier.postcode = postcode
+        if '***' in b['name']:
+            star_marked.append(f"{b['ac']} — {b['name']}")
+        to_update.append(supplier)
+        matched += 1
+
+    Supplier.objects.bulk_update(
+        to_update, ['address_line1', 'address_line2', 'town', 'county', 'postcode'], batch_size=500
+    )
+
+    return JsonResponse({
+        'ok': True,
+        'total_blocks': len(blocks),
+        'matched': matched,
+        'star_marked': star_marked,
+        'not_matched_count': len(not_matched),
+        'not_matched_sample': not_matched[:40],
+    })
+
+
+@login_required
 def supplier_import(request):
     """Import suppliers from a Sage export (.xlsx) with columns: A/C, Name, Contact, Telephone."""
     f = request.FILES.get('file')

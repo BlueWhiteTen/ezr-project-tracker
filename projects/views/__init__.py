@@ -38,7 +38,7 @@ from .customers import (
     customer_detail, customer_create, customer_delete,
 )
 from .suppliers import (
-    supplier_list, supplier_import, supplier_detail,
+    supplier_list, supplier_import, supplier_address_import, supplier_detail,
     supplier_contact_add, supplier_contact_update, supplier_contact_delete,
     supplier_create, supplier_delete, supplier_api_list,
     supplier_documents, supplier_document_download, supplier_document_delete,
