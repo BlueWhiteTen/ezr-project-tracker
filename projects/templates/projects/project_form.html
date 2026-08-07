@@ -225,31 +225,29 @@
         <div id="doc-list" style="margin-bottom:.75rem;min-height:20px;"></div>
         <div style="border:2px dashed rgba(37,99,235,.3);border-radius:var(--rad);padding:.75rem;background:rgba(37,99,235,.03);">
           <div class="form-group" style="margin-bottom:.5rem;">
-            <label class="form-label">File</label>
+            <label class="form-label">Files <span style="font-weight:400;color:var(--mut2);">(select one or several)</span></label>
             <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:.5rem .75rem;font-size:.85rem;color:var(--txt2);" for="doc-file">
-              <span style="background:#2563eb;color:#fff;border-radius:4px;padding:3px 10px;font-size:.75rem;font-weight:600;flex-shrink:0;">Choose file</span>
-              <span id="doc-file-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">No file chosen</span>
+              <span style="background:#2563eb;color:#fff;border-radius:4px;padding:3px 10px;font-size:.75rem;font-weight:600;flex-shrink:0;">Choose files</span>
+              <span id="doc-file-name">No files chosen</span>
             </label>
-            <input type="file" id="doc-file" style="display:none;" onchange="docFileChanged(this)">
+            <input type="file" id="doc-file" multiple style="display:none;" onchange="docFilesChanged(this)">
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem;">
-            <div class="form-group" style="margin-bottom:0;">
-              <label class="form-label">Type</label>
-              <select id="doc-type" class="form-input">
-                <option value="drawing">Drawing</option>
-                <option value="quote">Quote</option>
-                <option value="contract">Contract</option>
-                <option value="rams">RAMS</option>
-                <option value="photo">Photo</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-            <div class="form-group" style="margin-bottom:0;">
-              <label class="form-label">Name (optional)</label>
-              <input type="text" id="doc-name" class="form-input" placeholder="e.g. Floor plan v2">
-            </div>
+
+          <div id="doc-staged-list" style="display:none;margin-bottom:.6rem;"></div>
+
+          <div class="form-group" style="margin-bottom:.6rem;">
+            <label class="form-label">Type <span style="font-weight:400;color:var(--mut2);">(applies to all selected files)</span></label>
+            <select id="doc-type" class="form-input">
+              <option value="drawing">Drawing</option>
+              <option value="quote">Quote</option>
+              <option value="contract">Contract</option>
+              <option value="rams">RAMS</option>
+              <option value="survey">Survey</option>
+              <option value="photo">Photo</option>
+              <option value="other">Other</option>
+            </select>
           </div>
-          <button type="button" class="btn btn-primary" onclick="uploadDoc({{ project.pk }})" style="width:100%;justify-content:center;background:#2563eb;">Upload Document</button>
+          <button type="button" class="btn btn-primary" id="doc-upload-btn" onclick="uploadDoc({{ project.pk }})" style="width:100%;justify-content:center;background:#2563eb;" disabled>Upload Document</button>
           <div id="doc-error" style="color:var(--red);font-size:.78rem;margin-top:.4rem;display:none;"></div>
         </div>
       </div>
@@ -636,34 +634,73 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAddress();});
 {% endif %}
 
 // ── Document upload ──────────────────────────────────────────────────────────
-function docFileChanged(input){
+let stagedDocFiles = [];  // held here since a real FileList can't be edited in place
+
+function docFilesChanged(input){
+  stagedDocFiles = Array.from(input.files).map(f => ({file: f, name: f.name}));
+  renderStagedDocs();
+}
+
+function renderStagedDocs(){
   const label = document.getElementById('doc-file-name');
-  if(label) label.textContent = input.files.length ? input.files[0].name : 'No file chosen';
+  const stagedBox = document.getElementById('doc-staged-list');
+  const uploadBtn = document.getElementById('doc-upload-btn');
+
+  if(!stagedDocFiles.length){
+    if(label) label.textContent = 'No files chosen';
+    stagedBox.style.display = 'none';
+    stagedBox.innerHTML = '';
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = 'Upload Document';
+    return;
+  }
+
+  if(label) label.textContent = `${stagedDocFiles.length} file${stagedDocFiles.length > 1 ? 's' : ''} chosen`;
+  uploadBtn.disabled = false;
+  uploadBtn.textContent = stagedDocFiles.length > 1 ? `Upload ${stagedDocFiles.length} Documents` : 'Upload Document';
+
+  stagedBox.style.display = 'block';
+  stagedBox.innerHTML = stagedDocFiles.map((sf, i) => `
+    <div style="display:flex;align-items:center;gap:.5rem;padding:.35rem 0;border-bottom:.5px solid var(--bdr);">
+      <span style="font-size:.7rem;color:var(--mut);flex-shrink:0;width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${sf.file.name}">${sf.file.name}</span>
+      <input type="text" class="form-input doc-staged-name" data-idx="${i}" value="${sf.name.replace(/"/g,'&quot;')}" style="flex:1;font-size:.82rem;padding:.3rem .5rem;">
+      <button type="button" onclick="removeStagedDoc(${i})" title="Remove" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.85rem;padding:2px 6px;flex-shrink:0;">✕</button>
+    </div>
+  `).join('');
+
+  stagedBox.querySelectorAll('.doc-staged-name').forEach(inp => {
+    inp.addEventListener('input', () => { stagedDocFiles[parseInt(inp.dataset.idx)].name = inp.value; });
+  });
+}
+
+function removeStagedDoc(idx){
+  stagedDocFiles.splice(idx, 1);
+  renderStagedDocs();
 }
 
 async function uploadDoc(pk){
-  const fileEl = document.getElementById('doc-file');
-  if(!fileEl || !fileEl.files.length){ alert('Please choose a file first.'); return; }
-  const nameEl = document.getElementById('doc-name');
+  if(!stagedDocFiles.length){ alert('Please choose at least one file first.'); return; }
   const typeEl = document.getElementById('doc-type');
-  const notesEl = document.getElementById('doc-notes');
-  const formData = new FormData();
-  formData.append('file', fileEl.files[0]);
-  formData.append('name', nameEl ? nameEl.value || fileEl.files[0].name : fileEl.files[0].name);
-  formData.append('doc_type', typeEl ? typeEl.value : 'other');
-  formData.append('notes', notesEl ? notesEl.value : '');
-  formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-  const btn = document.querySelector('[onclick="uploadDoc({{ project.pk }})"]');
-  if(btn){ btn.textContent = 'Uploading…'; btn.disabled = true; }
-  try {
-    const r = await fetch(`/project/${pk}/documents/`, { method: 'POST', body: formData });
-    const text = await r.text();
-    let d;
-    try { d = JSON.parse(text); } catch(e) { throw new Error('Server error: ' + text.slice(0,200)); }
-    if(d.error){ alert('Upload failed: ' + d.error); }
-    else {
-      // Add to docs list in DOM
-      const list = document.getElementById('doc-list');
+  const btn = document.getElementById('doc-upload-btn');
+  const errEl = document.getElementById('doc-error');
+  if(errEl) errEl.style.display = 'none';
+  btn.disabled = true;
+
+  const list = document.getElementById('doc-list');
+  for(let i = 0; i < stagedDocFiles.length; i++){
+    const sf = stagedDocFiles[i];
+    btn.textContent = `Uploading ${i+1} of ${stagedDocFiles.length}…`;
+    const formData = new FormData();
+    formData.append('file', sf.file);
+    formData.append('name', sf.name || sf.file.name);
+    formData.append('doc_type', typeEl ? typeEl.value : 'other');
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    try {
+      const r = await fetch(`/project/${pk}/documents/`, { method: 'POST', body: formData });
+      const text = await r.text();
+      let d;
+      try { d = JSON.parse(text); } catch(e) { throw new Error('Server error: ' + text.slice(0,200)); }
+      if(d.error){ throw new Error(d.error); }
       if(list){
         const row = document.createElement('div');
         row.style.cssText='display:flex;align-items:center;gap:.6rem;padding:.4rem 0;border-bottom:.5px solid var(--bdr);font-size:.85rem;';
@@ -673,18 +710,15 @@ async function uploadDoc(pk){
           <button onclick="deleteDoc(${d.id}, this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;padding:2px 6px;flex-shrink:0;">✕</button>`;
         list.appendChild(row);
       }
-      // Reset form
-      fileEl.value = '';
-      document.getElementById('doc-file-name').textContent = 'No file chosen';
-      if(nameEl) nameEl.value = '';
-      if(notesEl) notesEl.value = '';
+    } catch(e) {
+      if(errEl){ errEl.textContent = `"${sf.name}" failed to upload: ${e.message}`; errEl.style.display='block'; }
     }
-  } catch(e) {
-    const errEl = document.getElementById('doc-error');
-    if(errEl){ errEl.textContent = 'Upload error: ' + e.message; errEl.style.display='block'; }
-    else { alert('Upload error: ' + e.message); }
   }
-  finally { if(btn){ btn.textContent = 'Upload Document'; btn.disabled = false; } }
+
+  stagedDocFiles = [];
+  document.getElementById('doc-file').value = '';
+  renderStagedDocs();
+  btn.disabled = false;
 }
 
 // Load existing docs on page open

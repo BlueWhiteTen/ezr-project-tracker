@@ -557,6 +557,7 @@ class ProjectDocument(models.Model):
         ('quote',        'Quote'),
         ('contract',     'Contract'),
         ('rams',         'RAMS'),
+        ('survey',       'Survey'),
         ('photo',        'Photo'),
         ('other',        'Other'),
     ]
