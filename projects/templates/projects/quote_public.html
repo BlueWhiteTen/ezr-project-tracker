@@ -35,12 +35,14 @@
 <body>
 <div class="wrap">
 
-  {% if is_expired %}
+  {% if is_retired %}
+  <div class="banner banner-expired">⚠ This link is no longer active — a newer link has since been issued for this quote. Please contact us for the current one.</div>
+  {% elif is_expired %}
   <div class="banner banner-expired">⚠ This link has expired — please contact us for an up-to-date quote.</div>
   {% elif is_stale %}
   <div class="banner banner-stale">⚠ This quote has changed since this link was sent — the details below may be out of date. Please contact us for the current quote.</div>
   {% elif is_accepted %}
-  <div class="banner banner-accepted">✓ This quote has been accepted. Thank you!</div>
+  <div class="banner banner-accepted">✓ This quote has been accepted{% if accepted_by_name %} by <strong>{{ accepted_by_name }}</strong>{% endif %}{% if accepted_online_at %} on {{ accepted_online_at|date:"d M Y, H:i" }}{% endif %}. Thank you!</div>
   {% endif %}
 
   <div class="page">
@@ -104,14 +106,18 @@
     </div>
   </div>
 
-  {% if not is_expired and not is_stale and not is_accepted %}
+  {% if not is_retired and not is_expired and not is_stale and not is_accepted %}
   <div class="accept-box">
     <div style="max-width:340px;margin:0 auto 1rem;text-align:left;">
       <label style="font-size:.85rem;color:#444;display:block;margin-bottom:.35rem;">Your name and role <span style="color:#999;">(required to accept)</span></label>
-      <input type="text" id="accept-name-role" placeholder="e.g. Sam Feeney, Store Manager" oninput="checkAcceptReady()" style="width:100%;box-sizing:border-box;padding:.6rem .75rem;border:1px solid #ccc;border-radius:6px;font-size:.95rem;">
+      <input type="text" id="accept-name-role" placeholder="Name, role" oninput="checkAcceptReady()" style="width:100%;box-sizing:border-box;padding:.6rem .75rem;border:1px solid #ccc;border-radius:6px;font-size:.95rem;">
     </div>
     <button class="accept-btn" id="accept-btn" onclick="acceptQuote()" disabled>Accept this Quote</button>
     <div id="accept-msg" style="margin-top:.7rem;font-size:.85rem;color:#666;"></div>
+  </div>
+  {% elif is_accepted %}
+  <div class="accept-box">
+    <div style="color:#166534;font-weight:600;">✓ Quote accepted{% if accepted_by_name %} by {{ accepted_by_name }}{% endif %}{% if accepted_online_at %} at {{ accepted_online_at|date:"d M Y, H:i" }}{% endif %}</div>
   </div>
   {% endif %}
 
@@ -138,6 +144,11 @@ async function acceptQuote(){
     const d = await r.json();
     if(d.ok){
       location.reload();
+    } else if(r.status === 409){
+      // Someone else accepted first — reload to show the accurate current state
+      msg.textContent = d.error;
+      msg.style.color = '#b91c1c';
+      setTimeout(() => location.reload(), 2500);
     } else {
       msg.textContent = d.error || 'Something went wrong — please try again or contact us.';
       msg.style.color = '#b91c1c';

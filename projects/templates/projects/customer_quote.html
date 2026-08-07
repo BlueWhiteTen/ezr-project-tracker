@@ -74,13 +74,13 @@
   <button class="btn btn-ghost" onclick="generateShareLink()" id="share-link-btn">🔗 Get Shareable Link</button>
   <span style="font-size:.78rem;color:#888;">Auto-filled from customer, drawing & costing — edit any field, then Save.</span>
 </div>
-<div id="share-link-box" style="display:none;padding:.7rem 1rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;margin:0 1rem 1rem;font-size:.85rem;">
+<div id="share-link-box" style="display:{% if current_share_link %}block{% else %}none{% endif %};padding:.7rem 1rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;margin:0 1rem 1rem;font-size:.85rem;">
   <div style="margin-bottom:.4rem;">Share this link with the customer — works for 30 days, or until this quote is next edited:</div>
   <div style="display:flex;gap:.5rem;align-items:center;">
-    <input type="text" id="share-link-url" readonly style="flex:1;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.82rem;">
+    <input type="text" id="share-link-url" readonly value="{% if current_share_link %}{{ request.scheme }}://{{ request.get_host }}{% url 'quote_public_view' current_share_link.token %}{% endif %}" style="flex:1;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.82rem;">
     <button class="btn btn-ghost btn-sm" onclick="copyShareLink()">Copy</button>
   </div>
-  <div id="share-link-expiry" style="margin-top:.4rem;color:#888;"></div>
+  <div id="share-link-expiry" style="margin-top:.4rem;color:#888;">{% if current_share_link %}Expires {{ current_share_link.expires_at|date:"d M Y" }}{% endif %}</div>
 </div>
 {% endif %}
 
@@ -280,16 +280,27 @@
 <script>
 let editing = false;
 
-async function generateShareLink(){
+async function generateShareLink(confirmed){
   const btn = document.getElementById('share-link-btn');
   btn.disabled = true; btn.textContent = 'Generating…';
   try{
-    const r = await fetch('{% url "quote_generate_link_cost" project.pk cost.pk %}', {method:'POST', headers:{'X-CSRFToken':'{{ csrf_token }}'}});
+    const r = await fetch('{% url "quote_generate_link_cost" project.pk cost.pk %}', {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
+      body: JSON.stringify({confirm: !!confirmed})
+    });
     const d = await r.json();
     if(d.ok){
       document.getElementById('share-link-url').value = d.url;
       document.getElementById('share-link-expiry').textContent = `Expires ${d.expires_at}`;
       document.getElementById('share-link-box').style.display = 'block';
+    } else if(d.needs_confirm){
+      btn.disabled = false; btn.textContent = '🔗 Get Shareable Link';
+      const proceed = confirm(
+        `This quote has already been accepted by ${d.accepted_by || 'someone'}${d.accepted_at ? ' on ' + d.accepted_at : ''}.\n\n` +
+        `Generate a new link anyway? Only do this if the quote/costing has genuinely changed and needs fresh approval — the old link will stop working.`
+      );
+      if(proceed){ await generateShareLink(true); }
+      return;
     } else {
       alert('Could not generate a link: ' + (d.error || 'unknown error'));
     }

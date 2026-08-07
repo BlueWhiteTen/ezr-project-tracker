@@ -179,16 +179,22 @@ def customer_quote(request, pk, cost_pk=None):
         'library_photos': library_photos,
         'print_mode': request.GET.get('print') == '1',
         'project_pk': project.pk if not request.GET.get('print') else None,
+        'current_share_link': QuoteShareLink.objects.filter(quote=quote, is_retired=False).order_by('-created_at').first(),
     })
 
 
 @login_required
 @require_POST
 def quote_generate_link(request, pk, cost_pk=None):
-    """Generate a fresh customer-facing share link for this quote. Always
-    creates a new token rather than reusing an old one, so an expired or
-    stale link never quietly starts working again — 'fresh link' means a
-    fresh 30-day window and a fresh staleness snapshot."""
+    """Generate a fresh customer-facing share link for this quote.
+    Retires any previous still-live link for the same quote, so there's
+    only ever one genuinely working link at a time — a customer can't
+    accept via a stray old link after a new one's been issued.
+
+    If the quote's already been accepted, this doesn't just barrel ahead
+    — it reports who accepted it and asks the caller to confirm before
+    generating another (matches: 'if changes in the quote/costing' being
+    the only real reason to reopen an already-accepted quote)."""
     import secrets
     project = get_object_or_404(Project, pk=pk)
     if cost_pk:
@@ -197,6 +203,21 @@ def quote_generate_link(request, pk, cost_pk=None):
         cost = project.costs.filter(is_accepted=True).first() or project.costs.first()
     quote = get_object_or_404(ProjectQuote, cost=cost)
 
+    confirmed = False
+    if request.body:
+        try:
+            confirmed = json.loads(request.body).get('confirm') is True
+        except (json.JSONDecodeError, AttributeError):
+            confirmed = False
+
+    if cost.is_accepted and not confirmed:
+        return JsonResponse({
+            'ok': False, 'needs_confirm': True,
+            'accepted_by': cost.accepted_by_name,
+            'accepted_at': timezone.localtime(cost.accepted_online_at).strftime('%d %b %Y, %H:%M') if cost.accepted_online_at else '',
+        })
+
+    QuoteShareLink.objects.filter(quote=quote, is_retired=False).update(is_retired=True)
     token = secrets.token_urlsafe(24)
     link = QuoteShareLink.objects.create(
         quote=quote, token=token, quote_updated_snapshot=quote.updated_at, created_by=request.user,
@@ -286,10 +307,12 @@ def quote_public_view(request, token):
 
     return render(request, 'projects/quote_public.html', {
         'link': link, 'quote': quote, 'project': project, 'cost': cost, 'display': display,
-        'is_expired': link.is_expired, 'is_stale': link.is_stale,
+        'is_expired': link.is_expired, 'is_stale': link.is_stale, 'is_retired': link.is_retired,
         'capacity_html': _quote_safe_html(quote.capacity),
         'bay_breakdown_html': _quote_safe_html(quote.bay_breakdown),
         'is_accepted': cost.is_accepted if cost else False,
+        'accepted_by_name': cost.accepted_by_name if cost else '',
+        'accepted_online_at': timezone.localtime(cost.accepted_online_at) if cost and cost.accepted_online_at else None,
         'photos': quote.attached_photos.all(),
     })
 
@@ -298,7 +321,7 @@ def quote_public_view(request, token):
 def quote_public_accept(request, token):
     """No-login accept action from the public quote page."""
     link = get_object_or_404(QuoteShareLink, token=token)
-    if link.is_expired or link.is_stale:
+    if link.is_expired or link.is_stale or link.is_retired:
         return JsonResponse({'error': 'This link is no longer valid.'}, status=400)
     data = json.loads(request.body)
     name_role = (data.get('name_role') or '').strip()
@@ -308,6 +331,11 @@ def quote_public_accept(request, token):
     cost = quote.cost
     if not cost:
         return JsonResponse({'error': 'No costing found for this quote.'}, status=400)
+    if cost.is_accepted:
+        # Someone beat them to it — never silently overwrite who gets
+        # credited for accepting, since that's the whole point of capturing it.
+        when = timezone.localtime(cost.accepted_online_at).strftime('%d %b %Y, %H:%M') if cost.accepted_online_at else ''
+        return JsonResponse({'error': f'This quote was already accepted by {cost.accepted_by_name}{f" on {when}" if when else ""}.'}, status=409)
     project = cost.project
     ip = _client_ip(request)
     project.costs.exclude(pk=cost.pk).update(is_accepted=False)

@@ -1175,6 +1175,7 @@ class QuoteShareLink(models.Model):
     quote               = models.ForeignKey(ProjectQuote, on_delete=models.CASCADE, related_name='share_links')
     token               = models.CharField(max_length=64, unique=True, db_index=True)
     quote_updated_snapshot = models.DateTimeField(help_text='quote.updated_at at the moment this link was generated')
+    is_retired          = models.BooleanField(default=False, help_text='Superseded by a newer link generated for the same quote')
     created_at          = models.DateTimeField(auto_now_add=True)
     created_by          = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
 
