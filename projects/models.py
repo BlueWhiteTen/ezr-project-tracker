@@ -216,6 +216,7 @@ class Notification(models.Model):
         ('tag',      'Tagged in comment'),
         ('message',  'New message'),
         ('reminder', 'Reminder'),
+        ('quote_accepted', 'Quote accepted online'),
     ]
     user      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     type      = models.CharField(max_length=20, choices=TYPES)
@@ -862,6 +863,10 @@ class ProjectCost(models.Model):
     project     = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='costs')
     label       = models.CharField(max_length=100, default='Option A')
     is_accepted = models.BooleanField(default=False)
+    accepted_online     = models.BooleanField(default=False, help_text='Accepted via the customer-facing share link, rather than by staff internally')
+    accepted_by_name    = models.CharField(max_length=200, blank=True, help_text='Name and role entered when accepting online')
+    accepted_ip         = models.GenericIPAddressField(null=True, blank=True)
+    accepted_online_at  = models.DateTimeField(null=True, blank=True)
     order       = models.PositiveSmallIntegerField(default=0)
     wall_fixings         = models.PositiveIntegerField(default=0)
     back_to_back_fixings = models.PositiveIntegerField(default=0)

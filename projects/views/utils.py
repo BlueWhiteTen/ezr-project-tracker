@@ -112,6 +112,17 @@ def _can_view_reports(user):
     return bool(profile and profile.can_view_reports)
 
 
+def _client_ip(request):
+    """The real visitor IP, not the proxy's — Railway (and most hosts)
+    sit behind a reverse proxy, so request.META['REMOTE_ADDR'] would
+    otherwise return the proxy's own address. X-Forwarded-For lists the
+    original client first, followed by each hop after it."""
+    forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
+    if forwarded:
+        return forwarded.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR')
+
+
 def require_feature(flag_name):
     """Blocks a view when the named FEATURE_FLAGS entry is off — used for
     the operational features (POs, stock valuation, etc.) that are hidden

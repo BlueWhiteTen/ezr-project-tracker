@@ -15,7 +15,7 @@ import json
 
 from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, QuoteShareLink
 from ..forms import RegisterForm, ProjectForm
-from .utils import (_calc_sell_price, require_feature)
+from .utils import (_calc_sell_price, require_feature, _client_ip)
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -300,16 +300,31 @@ def quote_public_accept(request, token):
     link = get_object_or_404(QuoteShareLink, token=token)
     if link.is_expired or link.is_stale:
         return JsonResponse({'error': 'This link is no longer valid.'}, status=400)
+    data = json.loads(request.body)
+    name_role = (data.get('name_role') or '').strip()
+    if not name_role:
+        return JsonResponse({'error': 'Please enter your name and role.'}, status=400)
     quote = link.quote
     cost = quote.cost
     if not cost:
         return JsonResponse({'error': 'No costing found for this quote.'}, status=400)
     project = cost.project
+    ip = _client_ip(request)
     project.costs.exclude(pk=cost.pk).update(is_accepted=False)
     cost.is_accepted = True
-    cost.save(update_fields=['is_accepted'])
+    cost.accepted_online = True
+    cost.accepted_by_name = name_role
+    cost.accepted_ip = ip
+    cost.accepted_online_at = timezone.now()
+    cost.save(update_fields=['is_accepted', 'accepted_online', 'accepted_by_name', 'accepted_ip', 'accepted_online_at'])
     ProjectLog.objects.create(project=project, user=None, field='Quote accepted',
-        old_value='', new_value=f'Accepted online via share link ({cost.label})')
+        old_value='', new_value=f'Accepted online via share link ({cost.label}) by {name_role} from {ip or "unknown IP"}')
+    if project.assigned_to_id:
+        Notification.objects.create(
+            user=project.assigned_to, type='quote_accepted',
+            text=f'{name_role} accepted the quote for {project.project_name}',
+            link=reverse('project_edit', kwargs={'pk': project.pk}),
+        )
     return JsonResponse({'ok': True})
 
 

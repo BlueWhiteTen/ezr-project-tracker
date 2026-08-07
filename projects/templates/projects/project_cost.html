@@ -133,6 +133,11 @@
       {% if cost.is_accepted %}✓ Approved option{% else %}Mark as approved option{% endif %}
     </span>
   </label>
+  {% if cost.accepted_online %}
+  <div style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;color:#166534;background:#f0fdf4;border:1px solid rgba(22,101,52,.2);border-radius:6px;padding:.3rem .7rem;">
+    ✓ Accepted online by <strong>{{ cost.accepted_by_name }}</strong> on {{ cost.accepted_online_at|date:"d M Y, H:i" }}{% if cost.accepted_ip %} from {{ cost.accepted_ip }}{% endif %}
+  </div>
+  {% endif %}
   {% if all_costs|length > 1 %}
   <form method="post" action="{% url 'cost_option_delete' project.pk cost.pk %}" onsubmit="return confirm('Delete {{ cost.label }}? This cannot be undone.');" style="display:inline;">
     {% csrf_token %}

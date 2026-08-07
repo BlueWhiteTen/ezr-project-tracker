@@ -235,18 +235,6 @@
 
           <div id="doc-staged-list" style="display:none;margin-bottom:.6rem;"></div>
 
-          <div class="form-group" style="margin-bottom:.6rem;">
-            <label class="form-label">Type <span style="font-weight:400;color:var(--mut2);">(applies to all selected files)</span></label>
-            <select id="doc-type" class="form-input">
-              <option value="drawing">Drawing</option>
-              <option value="quote">Quote</option>
-              <option value="contract">Contract</option>
-              <option value="rams">RAMS</option>
-              <option value="survey">Survey</option>
-              <option value="photo">Photo</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
           <button type="button" class="btn btn-primary" id="doc-upload-btn" onclick="uploadDoc({{ project.pk }})" style="width:100%;justify-content:center;background:#2563eb;" disabled>Upload Document</button>
           <div id="doc-error" style="color:var(--red);font-size:.78rem;margin-top:.4rem;display:none;"></div>
         </div>
@@ -637,7 +625,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAddress();});
 let stagedDocFiles = [];  // held here since a real FileList can't be edited in place
 
 function docFilesChanged(input){
-  stagedDocFiles = Array.from(input.files).map(f => ({file: f, name: f.name}));
+  stagedDocFiles = Array.from(input.files).map(f => ({file: f, name: f.name, type: 'other'}));
   renderStagedDocs();
 }
 
@@ -660,16 +648,23 @@ function renderStagedDocs(){
   uploadBtn.textContent = stagedDocFiles.length > 1 ? `Upload ${stagedDocFiles.length} Documents` : 'Upload Document';
 
   stagedBox.style.display = 'block';
+  const docTypeOptions = [['drawing','Drawing'],['quote','Quote'],['contract','Contract'],['rams','RAMS'],['survey','Survey'],['photo','Photo'],['other','Other']];
   stagedBox.innerHTML = stagedDocFiles.map((sf, i) => `
     <div style="display:flex;align-items:center;gap:.5rem;padding:.35rem 0;border-bottom:.5px solid var(--bdr);">
       <span style="font-size:.7rem;color:var(--mut);flex-shrink:0;width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${sf.file.name}">${sf.file.name}</span>
       <input type="text" class="form-input doc-staged-name" data-idx="${i}" value="${sf.name.replace(/"/g,'&quot;')}" style="flex:1;font-size:.82rem;padding:.3rem .5rem;">
+      <select class="form-input doc-staged-type" data-idx="${i}" style="width:100px;flex-shrink:0;font-size:.82rem;padding:.3rem .4rem;">
+        ${docTypeOptions.map(([val, lbl]) => `<option value="${val}" ${sf.type === val ? 'selected' : ''}>${lbl}</option>`).join('')}
+      </select>
       <button type="button" onclick="removeStagedDoc(${i})" title="Remove" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.85rem;padding:2px 6px;flex-shrink:0;">✕</button>
     </div>
   `).join('');
 
   stagedBox.querySelectorAll('.doc-staged-name').forEach(inp => {
     inp.addEventListener('input', () => { stagedDocFiles[parseInt(inp.dataset.idx)].name = inp.value; });
+  });
+  stagedBox.querySelectorAll('.doc-staged-type').forEach(sel => {
+    sel.addEventListener('change', () => { stagedDocFiles[parseInt(sel.dataset.idx)].type = sel.value; });
   });
 }
 
@@ -680,7 +675,6 @@ function removeStagedDoc(idx){
 
 async function uploadDoc(pk){
   if(!stagedDocFiles.length){ alert('Please choose at least one file first.'); return; }
-  const typeEl = document.getElementById('doc-type');
   const btn = document.getElementById('doc-upload-btn');
   const errEl = document.getElementById('doc-error');
   if(errEl) errEl.style.display = 'none';
@@ -693,7 +687,7 @@ async function uploadDoc(pk){
     const formData = new FormData();
     formData.append('file', sf.file);
     formData.append('name', sf.name || sf.file.name);
-    formData.append('doc_type', typeEl ? typeEl.value : 'other');
+    formData.append('doc_type', sf.type || 'other');
     formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
     try {
       const r = await fetch(`/project/${pk}/documents/`, { method: 'POST', body: formData });
@@ -705,6 +699,7 @@ async function uploadDoc(pk){
         const row = document.createElement('div');
         row.style.cssText='display:flex;align-items:center;gap:.6rem;padding:.4rem 0;border-bottom:.5px solid var(--bdr);font-size:.85rem;';
         row.innerHTML = `<span style="font-family:var(--fm);font-size:.7rem;background:var(--acc-bg);color:var(--acc);padding:1px 6px;border-radius:3px;flex-shrink:0;">${d.ext}</span>
+          <span style="font-size:.72rem;color:var(--mut);flex-shrink:0;min-width:50px;">${d.doc_type}</span>
           <a href="${d.url}" target="_blank" style="flex:1;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}</a>
           <span style="font-size:.75rem;color:var(--mut);flex-shrink:0;">${d.uploaded_by}</span>
           <button onclick="deleteDoc(${d.id}, this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;padding:2px 6px;flex-shrink:0;">✕</button>`;
@@ -734,6 +729,7 @@ async function loadDocs(pk){
       row.style.cssText='display:flex;align-items:center;gap:.6rem;padding:.4rem 0;border-bottom:.5px solid var(--bdr);font-size:.85rem;';
       row.dataset.docId = d.id;
       row.innerHTML = `<span style="font-family:var(--fm);font-size:.7rem;background:var(--acc-bg);color:var(--acc);padding:1px 6px;border-radius:3px;flex-shrink:0;">${d.ext}</span>
+        <span style="font-size:.72rem;color:var(--mut);flex-shrink:0;min-width:50px;">${d.doc_type}</span>
         <a href="${d.url}" target="_blank" style="flex:1;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}</a>
         <span style="font-size:.72rem;color:var(--mut);flex-shrink:0;">${d.uploaded_by}</span>
         <button onclick="deleteDoc(${d.id}, this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;padding:2px 6px;flex-shrink:0;">✕</button>`;

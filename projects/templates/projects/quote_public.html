@@ -106,7 +106,11 @@
 
   {% if not is_expired and not is_stale and not is_accepted %}
   <div class="accept-box">
-    <button class="accept-btn" id="accept-btn" onclick="acceptQuote()">Accept this Quote</button>
+    <div style="max-width:340px;margin:0 auto 1rem;text-align:left;">
+      <label style="font-size:.85rem;color:#444;display:block;margin-bottom:.35rem;">Your name and role <span style="color:#999;">(required to accept)</span></label>
+      <input type="text" id="accept-name-role" placeholder="e.g. Sam Feeney, Store Manager" oninput="checkAcceptReady()" style="width:100%;box-sizing:border-box;padding:.6rem .75rem;border:1px solid #ccc;border-radius:6px;font-size:.95rem;">
+    </div>
+    <button class="accept-btn" id="accept-btn" onclick="acceptQuote()" disabled>Accept this Quote</button>
     <div id="accept-msg" style="margin-top:.7rem;font-size:.85rem;color:#666;"></div>
   </div>
   {% endif %}
@@ -114,13 +118,23 @@
 </div>
 
 <script>
+function checkAcceptReady(){
+  const nameRole = document.getElementById('accept-name-role').value.trim();
+  document.getElementById('accept-btn').disabled = !nameRole;
+}
+
 async function acceptQuote(){
   const btn = document.getElementById('accept-btn');
   const msg = document.getElementById('accept-msg');
+  const nameRole = document.getElementById('accept-name-role').value.trim();
+  if(!nameRole){ msg.textContent = 'Please enter your name and role first.'; msg.style.color = '#b91c1c'; return; }
   btn.disabled = true;
   btn.textContent = 'Accepting…';
   try{
-    const r = await fetch('{% url "quote_public_accept" link.token %}', {method:'POST', headers:{'X-CSRFToken': getCookie('csrftoken')}});
+    const r = await fetch('{% url "quote_public_accept" link.token %}', {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken': getCookie('csrftoken')},
+      body: JSON.stringify({name_role: nameRole})
+    });
     const d = await r.json();
     if(d.ok){
       location.reload();
