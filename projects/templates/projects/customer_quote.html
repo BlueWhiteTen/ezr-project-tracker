@@ -5,6 +5,7 @@
 <head>
 <meta charset="utf-8">
 <title>Quotation — {{ project.project_name }}</title>
+<link rel="preload" as="image" href="{% static 'quote_letterhead.png' %}">
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:Arial,Helvetica,sans-serif;color:#222;background:#f5f5f3;font-size:14px;line-height:1.5;}
@@ -39,9 +40,24 @@
   @media print{
     .toolbar{display:none;}
     body{background:#fff;}
-    .page{box-shadow:none;margin:0;max-width:100%;padding:1cm 2cm 1cm 2cm;position:relative;}
+    .page{box-shadow:none;margin:0;max-width:100%;padding:0;}
+    /* The real letterhead PDF, converted to an image, as the page
+       background — logo, tagline and footer all come from this image
+       now, baked in at a fixed position, so there's no dynamic footer
+       positioning to get wrong. Applied to both the letter page and
+       the photos page, per what was asked.
+       An explicit height is required here — testing confirmed that on
+       an element with auto height whose content overflows onto another
+       page, this browser's print-to-PDF engine silently drops the
+       background entirely. 28.7cm is the full usable A4 content height
+       (29.7cm page minus the 0.5cm @page margin on each side). */
+    .print-page-bg{height:28.7cm;box-sizing:border-box;padding:1cm 2cm 2.4cm 2cm;position:relative;background:#fff url('{% static "quote_letterhead.png" %}') no-repeat;background-size:100% 100%;overflow:visible;}
     .photos-page{break-before:page;page-break-before:always;}
     .photos-page img{break-inside:avoid;page-break-inside:avoid;}
+    /* The old HTML logo/tagline/footer are only for the on-screen editor
+       now — the background image provides them for print. */
+    .logo{display:none;}
+    .footer{display:none;}
     /* Reclaim vertical space so short quotes comfortably fit on one page —
        the on-screen editing spacing above is more generous than print
        needs, and margins between this many blocks add up quickly. */
@@ -50,17 +66,16 @@
     p, .view-only.field, .rtf-editable{margin-top:.5rem !important;margin-bottom:.5rem !important;}
     .terms{margin:.5rem 0;line-height:1.35;}
     .sig{margin-top:.7rem;}
-    /* A genuine repeating footer on every printed page: .page-table spans
-       the whole page-worth of content, and its tfoot is native, reliable
-       browser behaviour for print pagination — unlike position:fixed,
-       which testing confirmed can let long content overlap the footer
-       (the print engine doesn't reliably reserve the fixed element's
-       space when body content is long enough to want mid-paragraph
-       breaks). No manual space-reservation needed either; the table
-       lays it out correctly on its own. */
-    .page-table{width:100%;border-collapse:collapse;min-height:26cm;}
-    tfoot{display:table-footer-group;}
+    .photos-inner{margin-top:106px !important;}
     @page { margin:0.5cm; size:A4; }
+    {% if attached_photos %}
+    /* Page numbers only make sense once there's genuinely more than one
+       page — rendered by the print engine itself in the page margin
+       area, so this can never overlap real content. attached_photos is
+       used as the signal for "this will be multi-page", since that's
+       what forces the second page today. */
+    @page { @bottom-right { content: "Page " counter(page) "/" counter(pages); font-size: 8px; color: #666; font-family: Arial, sans-serif; } }
+    {% endif %}
   }
 </style>
 </head>
@@ -89,16 +104,14 @@
 <form method="post" id="quote-form">
 {% csrf_token %}
 <div class="page" id="quote-page">
-
-  <table class="page-table" style="width:100%;border-collapse:collapse;">
-  <tbody><tr><td>
+  <div class="print-page-bg">
 
   <div class="logo" style="position:absolute;top:0.4cm;right:0.4cm;text-align:center;">
     <img src="{% static 'logo.png' %}" alt="EZR Shelving">
     <div style="font-size:.72rem;font-weight:700;color:#1a1a1a;margin-top:.2rem;line-height:1.3;">Manufacturers &amp; Suppliers<br>of Shelving Systems</div>
   </div>
 
-  <table class="qhead" style="width:100%;border-collapse:collapse;margin-bottom:1.5rem;margin-top:85px;">
+  <table class="qhead" style="width:100%;border-collapse:collapse;margin-bottom:1.5rem;margin-top:106px;">
     <tr>
       <td style="vertical-align:top;width:60%;">
         <div class="addr">
@@ -192,15 +205,13 @@
   </div>
   </div>
 
-  </td></tr></tbody>
-  <tfoot><tr><td>
-    <div class="footer">
-      Unit 8c Witan Park, Avenue Two Station Lane, Witney, OX28 4FH &nbsp; T: 01993 779494 &nbsp; F: 01993 704111<br>
-      E: sales@ezrshelving.com | www.ezrshelving.com<br>
-      E-Z-Rect Ltd trading as EZR Shelving. Registered in England &amp; Wales. Company no. 2874065
-    </div>
-  </td></tr></tfoot>
-  </table>
+  </div>
+
+  <div class="footer">
+    Unit 8c Witan Park, Avenue Two Station Lane, Witney, OX28 4FH &nbsp; T: 01993 779494 &nbsp; F: 01993 704111<br>
+    E: sales@ezrshelving.com | www.ezrshelving.com<br>
+    E-Z-Rect Ltd trading as EZR Shelving. Registered in England &amp; Wales. Company no. 2874065
+  </div>
 
   <!-- Add Photos box (edit mode only) -->
   <div class="edit-only" style="margin-top:1.5rem;border-top:2px dashed #d4700a;padding-top:1rem;">
@@ -262,9 +273,8 @@
 
   <!-- Photos rendered on the quote (screen + print) -->
   {% if attached_photos %}
-  <div class="view-only photos-page">
-  <table class="page-table" style="width:100%;border-collapse:collapse;">
-  <tbody><tr><td style="margin-top:1.5rem;">
+  <div class="view-only photos-page print-page-bg">
+  <div class="photos-inner" style="margin-top:1.5rem;">
     <div style="display:grid;grid-template-columns:repeat({{ quote.photo_columns }}, 1fr);gap:1rem;align-items:start;">
       {% for ph in attached_photos %}
       <div style="text-align:center;{% if ph.size == 'small' %}max-width:55%;margin:0 auto;{% elif ph.size == 'large' %}grid-column:1 / -1;{% endif %}">
@@ -272,15 +282,7 @@
       </div>
       {% endfor %}
     </div>
-  </td></tr></tbody>
-  <tfoot><tr><td>
-    <div class="footer">
-      Unit 8c Witan Park, Avenue Two Station Lane, Witney, OX28 4FH &nbsp; T: 01993 779494 &nbsp; F: 01993 704111<br>
-      E: sales@ezrshelving.com | www.ezrshelving.com<br>
-      E-Z-Rect Ltd trading as EZR Shelving. Registered in England &amp; Wales. Company no. 2874065
-    </div>
-  </td></tr></tfoot>
-  </table>
+  </div>
   </div>
   {% endif %}
 
