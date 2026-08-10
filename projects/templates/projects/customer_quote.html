@@ -53,9 +53,11 @@
     /* A genuine repeating footer on every printed page: .page-table spans
        the whole page-worth of content, and its tfoot is native, reliable
        browser behaviour for print pagination — unlike position:fixed,
-       which several rounds of testing showed behaves inconsistently
-       between different browsers' print paths. No manual space-reservation
-       needed either; the table lays it out correctly on its own. */
+       which testing confirmed can let long content overlap the footer
+       (the print engine doesn't reliably reserve the fixed element's
+       space when body content is long enough to want mid-paragraph
+       breaks). No manual space-reservation needed either; the table
+       lays it out correctly on its own. */
     .page-table{width:100%;border-collapse:collapse;min-height:26cm;}
     tfoot{display:table-footer-group;}
     @page { margin:0.5cm; size:A4; }
@@ -91,7 +93,7 @@
   <table class="page-table" style="width:100%;border-collapse:collapse;">
   <tbody><tr><td>
 
-  <div class="logo" style="position:absolute;top:0;right:0;">
+  <div class="logo" style="position:absolute;top:0.4cm;right:0.4cm;">
     <img src="{% static 'logo.png' %}" alt="EZR Shelving">
   </div>
 
