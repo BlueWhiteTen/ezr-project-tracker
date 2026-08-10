@@ -115,6 +115,23 @@ def customer_quote(request, pk, cost_pk=None):
         quote.intro = ''
         quote.save()
 
+    # Keep the site-survey paragraph in sync with the current costing —
+    # terms_text is otherwise a one-time snapshot from creation, so if
+    # installation is added or removed later, this line would otherwise
+    # silently stay stuck at whatever it was when the quote was first made.
+    site_survey_line = "Our price is subject to site survey and is based on a clear and level site with light and power, good access and normal working hours."
+    line_present = site_survey_line in quote.terms_text
+    if not has_install and line_present:
+        quote.terms_text = quote.terms_text.replace(f"\n\n{site_survey_line}", "").replace(site_survey_line, "").strip()
+        quote.save(update_fields=['terms_text'])
+    elif has_install and not line_present and quote.terms_text:
+        # Only self-heal an existing quote's terms — an untouched blank
+        # terms_text on a brand new quote is handled by the block above.
+        paragraphs = quote.terms_text.split("\n\n")
+        paragraphs.insert(1 if len(paragraphs) > 1 else 0, site_survey_line)
+        quote.terms_text = "\n\n".join(paragraphs)
+        quote.save(update_fields=['terms_text'])
+
     # Auto opening lines (always live from project data)
     thank_you_line = f"Thank you for your enquiry for shelving at {proj_label}, for which we now have the pleasure of quoting as follows:"
 
@@ -227,8 +244,20 @@ def quote_generate_link(request, pk, cost_pk=None):
         quote_changed = True
     has_install_now = float(cost.labour) > 0
     site_survey_line = "Our price is subject to site survey and is based on a clear and level site with light and power, good access and normal working hours."
-    if not has_install_now and site_survey_line in quote.terms_text:
+    line_present = site_survey_line in quote.terms_text
+    if not has_install_now and line_present:
         quote.terms_text = quote.terms_text.replace(f"\n\n{site_survey_line}", "").replace(site_survey_line, "").strip()
+        quote_changed = True
+    elif has_install_now and not line_present:
+        # Installation was added after the quote was first created (or
+        # after the line was previously removed) — insert it back in the
+        # same position it would have been created with: right after the
+        # opening VAT/acceptance-window paragraph, before the title and
+        # MCD/retention paragraphs.
+        paragraphs = quote.terms_text.split("\n\n") if quote.terms_text else []
+        insert_at = 1 if paragraphs else 0
+        paragraphs.insert(insert_at, site_survey_line)
+        quote.terms_text = "\n\n".join(paragraphs)
         quote_changed = True
     if quote_changed:
         quote.save()
