@@ -11,9 +11,9 @@
   .toolbar{background:#fff;border-bottom:1px solid #ddd;padding:.8rem 1.5rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:10;}
   .btn{background:#d4700a;color:#fff;border:none;border-radius:6px;padding:.55rem 1.2rem;font-size:.85rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;}
   .btn-ghost{background:#fff;color:#333;border:1px solid #ccc;}
-  .page{max-width:800px;margin:1.5rem auto;background:#fff;padding:3rem 3.2rem;box-shadow:0 2px 12px rgba(0,0,0,.08);}
+  .page{max-width:800px;margin:1.5rem auto;background:#fff;padding:3rem 4.5rem;box-shadow:0 2px 12px rgba(0,0,0,.08);position:relative;}
   .qhead{margin-bottom:1.5rem;}
-  .qhead .logo img{height:70px;}
+  .logo img{height:70px;}
   .qhead .title{text-align:center;font-weight:700;font-size:1.1rem;padding-top:1.5rem;}
   .qhead .proj{text-align:right;font-weight:700;font-size:.95rem;padding-top:.3rem;}
   .addr{margin-bottom:1.2rem;line-height:1.45;}
@@ -39,7 +39,7 @@
   @media print{
     .toolbar{display:none;}
     body{background:#fff;}
-    .page{box-shadow:none;margin:0;max-width:100%;padding:1cm 1.2cm 1cm 1.2cm;}
+    .page{box-shadow:none;margin:0;max-width:100%;padding:1cm 2cm 1cm 2cm;position:relative;}
     .photos-page{break-before:page;page-break-before:always;}
     .photos-page img{break-inside:avoid;page-break-inside:avoid;}
     /* Reclaim vertical space so short quotes comfortably fit on one page —
@@ -56,7 +56,7 @@
        which several rounds of testing showed behaves inconsistently
        between different browsers' print paths. No manual space-reservation
        needed either; the table lays it out correctly on its own. */
-    .page-table{width:100%;border-collapse:collapse;min-height:27.5cm;}
+    .page-table{width:100%;border-collapse:collapse;min-height:26cm;}
     tfoot{display:table-footer-group;}
     @page { margin:0.5cm; size:A4; }
   }
@@ -91,7 +91,11 @@
   <table class="page-table" style="width:100%;border-collapse:collapse;">
   <tbody><tr><td>
 
-  <table class="qhead" style="width:100%;border-collapse:collapse;margin-bottom:1.5rem;">
+  <div class="logo" style="position:absolute;top:0;right:0;">
+    <img src="{% static 'logo.png' %}" alt="EZR Shelving">
+  </div>
+
+  <table class="qhead" style="width:100%;border-collapse:collapse;margin-bottom:1.5rem;margin-top:85px;">
     <tr>
       <td style="vertical-align:top;width:60%;">
         <div class="addr">
@@ -103,11 +107,8 @@
         </div>
       </td>
       <td style="vertical-align:top;text-align:right;width:40%;">
-        <div class="logo" style="text-align:right;">
-          <img src="{% static 'logo.png' %}" alt="EZR Shelving">
-          <div class="proj view-only" style="white-space:pre-line;">{{ header_ref|linebreaksbr }}</div>
-          <textarea class="efield edit-only" name="header_ref" rows="2" style="max-width:240px;text-align:right;">{{ header_ref }}</textarea>
-        </div>
+        <div class="proj view-only" style="white-space:pre-line;">{{ header_ref|linebreaksbr }}</div>
+        <textarea class="efield edit-only" name="header_ref" rows="2" style="max-width:240px;text-align:right;">{{ header_ref }}</textarea>
       </td>
     </tr>
   </table>
