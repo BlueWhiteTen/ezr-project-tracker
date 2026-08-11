@@ -13,6 +13,7 @@
   .btn{background:#d4700a;color:#fff;border:none;border-radius:6px;padding:.55rem 1.2rem;font-size:.85rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;}
   .btn-ghost{background:#fff;color:#333;border:1px solid #ccc;}
   .page{max-width:800px;margin:1.5rem auto;background:#fff;padding:3rem 4.5rem;box-shadow:0 2px 12px rgba(0,0,0,.08);position:relative;}
+  .bg-img{display:none;}
   .qhead{margin-bottom:1.5rem;}
   .logo img{height:70px;}
   .qhead .title{text-align:center;font-weight:700;font-size:1.1rem;padding-top:1.5rem;}
@@ -46,12 +47,17 @@
        now, baked in at a fixed position, so there's no dynamic footer
        positioning to get wrong. Applied to both the letter page and
        the photos page, per what was asked.
-       An explicit height is required here — testing confirmed that on
-       an element with auto height whose content overflows onto another
-       page, this browser's print-to-PDF engine silently drops the
-       background entirely. 28.7cm is the full usable A4 content height
-       (29.7cm page minus the 0.5cm @page margin on each side). */
-    .print-page-bg{height:28.7cm;box-sizing:border-box;padding:1cm 2cm 2.4cm 2cm;position:relative;background:#fff url('{% static "quote_letterhead.png" %}') no-repeat;background-size:100% 100%;overflow:visible;}
+       This uses a real <img> tag, not a CSS background-image — testing
+       confirmed CSS backgrounds (on the element or via @page) never
+       render at all in this browser's print-to-PDF output, while a
+       plain <img> renders correctly. An explicit height on the wrapper
+       is also required — on auto-height content, the background image
+       only stretches to the content's natural height, not the full
+       page. 28.7cm is the full usable A4 content height (29.7cm page
+       minus the 0.5cm @page margin on each side). */
+    .print-page-bg{height:28.7cm;box-sizing:border-box;padding:1cm 2cm 2.4cm 2cm;position:relative;overflow:visible;}
+    .bg-img{display:block;position:absolute;top:0;left:0;width:100%;height:100%;}
+    .print-content{position:relative;z-index:1;}
     .photos-page{break-before:page;page-break-before:always;}
     .photos-page img{break-inside:avoid;page-break-inside:avoid;}
     /* The old HTML logo/tagline/footer are only for the on-screen editor
@@ -105,6 +111,8 @@
 {% csrf_token %}
 <div class="page" id="quote-page">
   <div class="print-page-bg">
+  <img class="bg-img" src="{% static 'quote_letterhead.png' %}" alt="">
+  <div class="print-content">
 
   <div class="logo" style="position:absolute;top:0.4cm;right:0.4cm;text-align:center;">
     <img src="{% static 'logo.png' %}" alt="EZR Shelving">
@@ -204,6 +212,7 @@
     <input class="efield edit-only" name="signature_name" value="{{ signature }}" style="max-width:240px;">
   </div>
   </div>
+  </div>
 
   </div>
 
@@ -274,7 +283,8 @@
   <!-- Photos rendered on the quote (screen + print) -->
   {% if attached_photos %}
   <div class="view-only photos-page print-page-bg">
-  <div class="photos-inner" style="margin-top:1.5rem;">
+  <img class="bg-img" src="{% static 'quote_letterhead.png' %}" alt="">
+  <div class="photos-inner print-content" style="margin-top:1.5rem;">
     <div style="display:grid;grid-template-columns:repeat({{ quote.photo_columns }}, 1fr);gap:1rem;align-items:start;">
       {% for ph in attached_photos %}
       <div style="text-align:center;{% if ph.size == 'small' %}max-width:55%;margin:0 auto;{% elif ph.size == 'large' %}grid-column:1 / -1;{% endif %}">
