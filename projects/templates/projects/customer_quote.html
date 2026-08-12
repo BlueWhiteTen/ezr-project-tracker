@@ -94,10 +94,10 @@
   <button class="btn" onclick="saveQuote(false)" id="save-btn" style="display:none;">💾 Save</button>
   <button class="btn btn-ghost" id="refresh-btn" onclick="refreshPrice()" title="Pull the latest sell price from Costing and update the price field">🔄 Refresh Price from Costing</button>
   <a href="?print=1" class="btn btn-ghost" target="_blank">🖨 Print</a>
-  <button class="btn btn-ghost" onclick="generateShareLink()" id="share-link-btn">🔗 Get Shareable Link</button>
+  <button class="btn btn-ghost" onclick="generateShareLink()" id="share-link-btn" style="display:none;">🔗 Get Shareable Link</button>
   <span style="font-size:.78rem;color:#888;">Auto-filled from customer, drawing & costing — edit any field, then Save.</span>
 </div>
-<div id="share-link-box" style="display:{% if current_share_link %}block{% else %}none{% endif %};padding:.7rem 1rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;margin:0 1rem 1rem;font-size:.85rem;">
+<div id="share-link-box" style="display:none;padding:.7rem 1rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;margin:0 1rem 1rem;font-size:.85rem;">
   <div style="margin-bottom:.4rem;">Share this link with the customer — works for 30 days, or until this quote is next edited:</div>
   <div style="display:flex;gap:.5rem;align-items:center;">
     <input type="text" id="share-link-url" readonly value="{% if current_share_link %}{{ request.scheme }}://{{ request.get_host }}{% url 'quote_public_view' current_share_link.token %}{% endif %}" style="flex:1;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.82rem;">
@@ -301,7 +301,25 @@
 </form>
 
 {% if print_mode %}
-<script>window.onload = ()=>window.print();</script>
+<script>
+(function(){
+  function triggerPrint(){
+    // A short settle delay after images report loaded - gives the
+    // browser time to finish layout/paint of the (now larger, repeated)
+    // background image before the print dialog tries to render its
+    // preview, which real-world testing showed can otherwise hang.
+    setTimeout(() => window.print(), 250);
+  }
+  const bgImages = Array.from(document.querySelectorAll('.bg-img'));
+  if(!bgImages.length){ window.onload = triggerPrint; return; }
+  let loaded = 0;
+  const checkDone = () => { loaded++; if(loaded >= bgImages.length) triggerPrint(); };
+  bgImages.forEach(img => {
+    if(img.complete) checkDone();
+    else { img.addEventListener('load', checkDone); img.addEventListener('error', checkDone); }
+  });
+})();
+</script>
 {% endif %}
 
 <script>
