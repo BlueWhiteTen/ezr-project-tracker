@@ -29,7 +29,10 @@
 </style>
 </head>
 <body>
-  <div class="header"><h1>✅ To-Do List</h1></div>
+  <div class="header" style="display:flex;align-items:center;justify-content:space-between;">
+    <h1>✅ To-Do List</h1>
+    <button id="install-btn" onclick="installApp()" style="display:none;background:var(--acc);color:#fff;border:none;border-radius:var(--rad);padding:.4rem .8rem;font-size:.8rem;font-weight:600;cursor:pointer;font-family:var(--f);">📌 Install App</button>
+  </div>
   <div class="list-wrap">
     <ul id="todo-list">
       {% for t in todo_items %}
@@ -105,6 +108,28 @@ async function deleteTodo(pk){
 
 document.querySelectorAll('.todo-check').forEach(cb => {
   cb.addEventListener('change', () => toggleTodo(cb.dataset.pk, cb));
+});
+
+// Only shows the Install button when the browser actually offers to
+// install this page as an app — Chrome/Edge support this; browsers
+// that don't (Safari, Firefox) simply never fire this event, so the
+// button correctly stays hidden rather than showing something that
+// wouldn't work if clicked.
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  document.getElementById('install-btn').style.display = 'inline-block';
+});
+async function installApp(){
+  if(!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  document.getElementById('install-btn').style.display = 'none';
+}
+window.addEventListener('appinstalled', () => {
+  document.getElementById('install-btn').style.display = 'none';
 });
 </script>
 </body>
