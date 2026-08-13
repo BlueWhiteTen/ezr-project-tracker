@@ -12,6 +12,7 @@ def robots_txt(request):
 urlpatterns = [
     path('robots.txt',                    robots_txt,                  name='robots_txt'),
     path('',                              views.home,                  name='home'),
+    path('todo-widget/',                  views.todo_widget,            name='todo_widget'),
     path('todo/add/',                     views.todo_add,               name='todo_add'),
     path('todo/<int:pk>/toggle/',         views.todo_toggle,            name='todo_toggle'),
     path('todo/<int:pk>/delete/',         views.todo_delete,            name='todo_delete'),

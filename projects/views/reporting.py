@@ -83,6 +83,16 @@ def home(request):
 
 
 @login_required
+def todo_widget(request):
+    """A bare, standalone view of just the personal to-do list — no
+    sidebar, no nav — meant to be installed as its own app/window via
+    the browser's 'Install' feature, rather than opened as a normal
+    page inside the full site."""
+    todo_items = TodoItem.objects.filter(user=request.user)
+    return render(request, 'projects/todo_widget.html', {'todo_items': todo_items})
+
+
+@login_required
 @require_POST
 def todo_add(request):
     data = json.loads(request.body)

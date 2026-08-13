@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>To-Do List</title>
+<link rel="manifest" href="{% static 'todo-manifest.json' %}">
+<link rel="icon" href="{% static 'icon-192.png' %}">
+<meta name="theme-color" content="#d4700a">
+<style>
+  :root{--bg:#faf9f7;--surf:#fff;--surf2:#faf9f7;--bdr:#eee9e2;--acc:#d4700a;--acc-bg:#fff4eb;--acc-bdr:#f5c89a;--red:#dc2626;--txt:#1a1a1a;--mut:#9a948c;--mut2:#b5afa6;--f:'Manrope',system-ui,sans-serif;--rad:10px;--rad-lg:16px;--shadow:0 1px 3px rgba(0,0,0,.06);}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:var(--f);background:var(--bg);color:var(--txt);height:100vh;display:flex;flex-direction:column;}
+  .header{padding:1rem 1.2rem .8rem;flex-shrink:0;}
+  .header h1{font-size:1.1rem;font-weight:700;margin:0;display:flex;align-items:center;gap:.5rem;}
+  .list-wrap{flex:1;overflow-y:auto;padding:0 1.2rem;}
+  ul{list-style:none;margin:0;padding:0;}
+  li{display:flex;align-items:flex-start;gap:.6rem;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:.6rem .7rem;margin-bottom:.5rem;box-shadow:var(--shadow);}
+  li input[type=checkbox]{margin-top:.2rem;width:16px;height:16px;accent-color:var(--acc);cursor:pointer;flex-shrink:0;}
+  li span{flex:1;font-size:.92rem;line-height:1.4;word-break:break-word;}
+  li button{flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:1rem;padding:2px 4px;line-height:1;}
+  li button:hover{color:var(--red);}
+  .empty{color:var(--mut);font-size:.88rem;padding:1rem 0;text-align:center;}
+  .add-row{display:flex;gap:.5rem;padding:.8rem 1.2rem 1.1rem;flex-shrink:0;background:var(--bg);border-top:1px solid var(--bdr);}
+  .add-row input{flex:1;border:1px solid var(--bdr);border-radius:var(--rad);padding:.55rem .7rem;font-size:.92rem;font-family:var(--f);outline:none;}
+  .add-row input:focus{border-color:var(--acc);}
+  .add-row button{background:var(--acc);color:#fff;border:none;border-radius:var(--rad);padding:.55rem 1rem;font-size:.88rem;font-weight:600;cursor:pointer;font-family:var(--f);}
+</style>
+</head>
+<body>
+  <div class="header"><h1>✅ To-Do List</h1></div>
+  <div class="list-wrap">
+    <ul id="todo-list">
+      {% for t in todo_items %}
+      <li id="todo-row-{{ t.pk }}">
+        <input type="checkbox" class="todo-check" data-pk="{{ t.pk }}" {% if t.is_done %}checked{% endif %}>
+        <span style="{% if t.is_done %}text-decoration:line-through;color:var(--mut2);{% endif %}">{{ t.text }}</span>
+        <button onclick="deleteTodo({{ t.pk }})" title="Delete">✕</button>
+      </li>
+      {% empty %}
+      <div class="empty" id="todo-empty">Nothing on your list yet.</div>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="add-row">
+    <input type="text" id="todo-input" placeholder="Add a to-do…" onkeydown="if(event.key==='Enter'){addTodo();}">
+    <button onclick="addTodo()">+ Add</button>
+  </div>
+
+<script>
+const CSRF = '{{ csrf_token }}';
+
+async function addTodo(){
+  const input = document.getElementById('todo-input');
+  const text = input.value.trim();
+  if(!text) return;
+  const r = await fetch('/todo/add/', {
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify({text})
+  });
+  const d = await r.json();
+  if(d.ok){
+    const empty = document.getElementById('todo-empty');
+    if(empty) empty.remove();
+    const list = document.getElementById('todo-list');
+    const li = document.createElement('li');
+    li.id = `todo-row-${d.id}`;
+    li.innerHTML = `
+      <input type="checkbox" class="todo-check" data-pk="${d.id}">
+      <span></span>
+      <button onclick="deleteTodo(${d.id})" title="Delete">✕</button>`;
+    li.querySelector('span').textContent = text;
+    li.querySelector('.todo-check').addEventListener('change', (e) => toggleTodo(d.id, e.target));
+    list.appendChild(li);
+    input.value = '';
+    input.focus();
+  }
+}
+
+async function toggleTodo(pk, checkbox){
+  const r = await fetch(`/todo/${pk}/toggle/`, {method:'POST', headers:{'X-CSRFToken':CSRF}});
+  const d = await r.json();
+  if(d.ok){
+    const span = checkbox.nextElementSibling;
+    span.style.textDecoration = d.is_done ? 'line-through' : 'none';
+    span.style.color = d.is_done ? 'var(--mut2)' : '';
+  }
+}
+
+async function deleteTodo(pk){
+  const r = await fetch(`/todo/${pk}/delete/`, {method:'POST', headers:{'X-CSRFToken':CSRF}});
+  const d = await r.json();
+  if(d.ok){
+    document.getElementById(`todo-row-${pk}`)?.remove();
+    const list = document.getElementById('todo-list');
+    if(list && !list.querySelector('.todo-check')){
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.id = 'todo-empty';
+      empty.textContent = 'Nothing on your list yet.';
+      list.appendChild(empty);
+    }
+  }
+}
+
+document.querySelectorAll('.todo-check').forEach(cb => {
+  cb.addEventListener('change', () => toggleTodo(cb.dataset.pk, cb));
+});
+</script>
+</body>
+</html>

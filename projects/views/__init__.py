@@ -15,7 +15,7 @@ from .auth import (
 )
 from .reporting import (
     home, daily_accounts_report, activity_log, week_view, crew_capacity,
-    todo_add, todo_toggle, todo_delete,
+    todo_widget, todo_add, todo_toggle, todo_delete,
     stock_valuation, stock_valuation_rate_update, goods_in_transit_add, goods_in_transit_delete, stock_valuation_items, stock_valuation_item_update, stock_valuation_export,
     monthly_summary, calendar_view, board_view, so_search,
     sales_summary, sales_summary_export,
