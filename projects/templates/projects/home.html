@@ -50,9 +50,10 @@
     </div>
     <ul class="home-list" id="todo-list" style="overflow-y:auto;flex:1;">
       {% for t in todo_items %}
-      <li id="todo-row-{{ t.pk }}" style="display:flex;align-items:flex-start;gap:.5rem;">
+      <li id="todo-row-{{ t.pk }}" data-text="{{ t.text }}" style="display:flex;align-items:flex-start;gap:.5rem;">
         <input type="checkbox" class="todo-check" data-pk="{{ t.pk }}" {% if t.is_done %}checked{% endif %} style="margin-top:.4rem;cursor:pointer;flex-shrink:0;">
-        <span class="home-row" style="flex:1;cursor:default;{% if t.is_done %}text-decoration:line-through;color:var(--mut2);{% endif %}">{{ t.text }}</span>
+        <span class="home-row todo-text" style="flex:1;cursor:default;{% if t.is_done %}text-decoration:line-through;color:var(--mut2);{% endif %}">{{ t.text }}</span>
+        <button onclick="editTodo({{ t.pk }})" title="Edit" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:.85rem;padding:.35rem .3rem;line-height:1;" onmouseover="this.style.color='var(--acc)'" onmouseout="this.style.color='var(--mut)'">✎</button>
         <button onclick="deleteTodo({{ t.pk }})" title="Delete" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:.9rem;padding:.35rem .3rem;line-height:1;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--mut)'">✕</button>
       </li>
       {% empty %}
@@ -311,16 +312,61 @@ async function addTodo(){
     const list = document.getElementById('todo-list');
     const li = document.createElement('li');
     li.id = `todo-row-${d.id}`;
+    li.dataset.text = text;
     li.style.cssText = 'display:flex;align-items:flex-start;gap:.5rem;';
     li.innerHTML = `
       <input type="checkbox" class="todo-check" data-pk="${d.id}" style="margin-top:.4rem;cursor:pointer;flex-shrink:0;">
-      <span class="home-row" style="flex:1;cursor:default;"></span>
+      <span class="home-row todo-text" style="flex:1;cursor:default;"></span>
+      <button onclick="editTodo(${d.id})" title="Edit" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:.85rem;padding:.35rem .3rem;line-height:1;" onmouseover="this.style.color='var(--acc)'" onmouseout="this.style.color='var(--mut)'">✎</button>
       <button onclick="deleteTodo(${d.id})" title="Delete" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:.9rem;padding:.35rem .3rem;line-height:1;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--mut)'">✕</button>`;
     li.querySelector('span').textContent = text;
     list.appendChild(li);
     li.querySelector('.todo-check').addEventListener('change', (e) => toggleTodo(d.id, e.target));
     input.value = '';
   }
+}
+
+function editTodo(pk){
+  const row = document.getElementById(`todo-row-${pk}`);
+  if(!row || row.querySelector('.todo-edit-input')) return;
+  const span = row.querySelector('.todo-text');
+  const currentText = row.dataset.text || span.textContent;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'todo-edit-input';
+  input.value = currentText;
+  input.style.cssText = 'flex:1;font-size:.9rem;padding:.2rem .4rem;border:1px solid var(--acc);border-radius:4px;font-family:inherit;';
+  span.replaceWith(input);
+  input.focus();
+  input.select();
+
+  let saved = false;
+  const save = async () => {
+    if(saved) return;
+    saved = true;
+    input.removeEventListener('blur', onBlur);
+    const newText = input.value.trim();
+    if(!newText || newText === currentText){
+      input.replaceWith(span);
+      return;
+    }
+    const TODO_CSRF = '{{ csrf_token }}';
+    const r = await fetch(`/todo/${pk}/edit/`, {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':TODO_CSRF}, body: JSON.stringify({text: newText})
+    });
+    const d = await r.json();
+    if(d.ok){
+      span.textContent = d.text;
+      row.dataset.text = d.text;
+    }
+    input.replaceWith(span);
+  };
+  const onBlur = () => save();
+  input.addEventListener('keydown', e => {
+    if(e.key === 'Enter'){ e.preventDefault(); save(); }
+    if(e.key === 'Escape'){ saved = true; input.removeEventListener('blur', onBlur); input.replaceWith(span); }
+  });
+  input.addEventListener('blur', onBlur);
 }
 
 async function toggleTodo(pk, checkbox){

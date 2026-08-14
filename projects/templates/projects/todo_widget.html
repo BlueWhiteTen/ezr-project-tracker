@@ -21,6 +21,7 @@
   li span{flex:1;font-size:.92rem;line-height:1.4;word-break:break-word;}
   li button{flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:1rem;padding:2px 4px;line-height:1;}
   li button:hover{color:var(--red);}
+  li button[title="Edit"]:hover{color:var(--acc);}
   .empty{color:var(--mut);font-size:.88rem;padding:1rem 0;text-align:center;}
   .add-row{display:flex;gap:.5rem;padding:.8rem 1.2rem 1.1rem;flex-shrink:0;background:var(--bg);border-top:1px solid var(--bdr);}
   .add-row input{flex:1;border:1px solid var(--bdr);border-radius:var(--rad);padding:.55rem .7rem;font-size:.92rem;font-family:var(--f);outline:none;}
@@ -36,9 +37,10 @@
   <div class="list-wrap">
     <ul id="todo-list">
       {% for t in todo_items %}
-      <li id="todo-row-{{ t.pk }}">
+      <li id="todo-row-{{ t.pk }}" data-text="{{ t.text }}">
         <input type="checkbox" class="todo-check" data-pk="{{ t.pk }}" {% if t.is_done %}checked{% endif %}>
-        <span style="{% if t.is_done %}text-decoration:line-through;color:var(--mut2);{% endif %}">{{ t.text }}</span>
+        <span class="todo-text" style="{% if t.is_done %}text-decoration:line-through;color:var(--mut2);{% endif %}">{{ t.text }}</span>
+        <button onclick="editTodo({{ t.pk }})" title="Edit" style="color:var(--mut);">✎</button>
         <button onclick="deleteTodo({{ t.pk }})" title="Delete">✕</button>
       </li>
       {% empty %}
@@ -68,9 +70,11 @@ async function addTodo(){
     const list = document.getElementById('todo-list');
     const li = document.createElement('li');
     li.id = `todo-row-${d.id}`;
+    li.dataset.text = text;
     li.innerHTML = `
       <input type="checkbox" class="todo-check" data-pk="${d.id}">
-      <span></span>
+      <span class="todo-text"></span>
+      <button onclick="editTodo(${d.id})" title="Edit" style="color:var(--mut);">✎</button>
       <button onclick="deleteTodo(${d.id})" title="Delete">✕</button>`;
     li.querySelector('span').textContent = text;
     li.querySelector('.todo-check').addEventListener('change', (e) => toggleTodo(d.id, e.target));
@@ -78,6 +82,48 @@ async function addTodo(){
     input.value = '';
     input.focus();
   }
+}
+
+function editTodo(pk){
+  const row = document.getElementById(`todo-row-${pk}`);
+  if(!row || row.querySelector('.todo-edit-input')) return;
+  const span = row.querySelector('.todo-text');
+  const currentText = row.dataset.text || span.textContent;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'todo-edit-input';
+  input.value = currentText;
+  input.style.cssText = 'flex:1;font-size:.9rem;padding:.3rem .5rem;border:1px solid var(--acc);border-radius:6px;font-family:var(--f);';
+  span.replaceWith(input);
+  input.focus();
+  input.select();
+
+  let saved = false;
+  const save = async () => {
+    if(saved) return;
+    saved = true;
+    input.removeEventListener('blur', onBlur);
+    const newText = input.value.trim();
+    if(!newText || newText === currentText){
+      input.replaceWith(span);
+      return;
+    }
+    const r = await fetch(`/todo/${pk}/edit/`, {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify({text: newText})
+    });
+    const d = await r.json();
+    if(d.ok){
+      span.textContent = d.text;
+      row.dataset.text = d.text;
+    }
+    input.replaceWith(span);
+  };
+  const onBlur = () => save();
+  input.addEventListener('keydown', e => {
+    if(e.key === 'Enter'){ e.preventDefault(); save(); }
+    if(e.key === 'Escape'){ saved = true; input.removeEventListener('blur', onBlur); input.replaceWith(span); }
+  });
+  input.addEventListener('blur', onBlur);
 }
 
 async function toggleTodo(pk, checkbox){

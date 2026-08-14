@@ -115,6 +115,19 @@ def todo_toggle(request, pk):
 
 @login_required
 @require_POST
+def todo_edit(request, pk):
+    item = get_object_or_404(TodoItem, pk=pk, user=request.user)
+    data = json.loads(request.body)
+    text = (data.get('text') or '').strip()
+    if not text:
+        return JsonResponse({'error': 'Text is required.'}, status=400)
+    item.text = text
+    item.save(update_fields=['text'])
+    return JsonResponse({'ok': True, 'text': item.text})
+
+
+@login_required
+@require_POST
 def todo_delete(request, pk):
     TodoItem.objects.filter(pk=pk, user=request.user).delete()
     return JsonResponse({'ok': True})
