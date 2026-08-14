@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>EZR Chat</title>
 <link rel="manifest" href="{% static 'chat-manifest.json' %}">
-<link rel="icon" href="{% static 'icon-192.png' %}">
+<link rel="icon" href="{% static 'icon-chat-192.png' %}">
 <meta name="theme-color" content="#d4700a">
 <style>
   :root{--bg:#faf9f7;--surf:#fff;--surf2:#faf9f7;--bdr:#eee9e2;--acc:#d4700a;--acc-bg:#fff4eb;--acc-bdr:#f5c89a;--red:#dc2626;--txt:#1a1a1a;--txt2:#3d3d3d;--mut:#9a948c;--mut2:#b5afa6;--f:'Manrope',system-ui,sans-serif;--rad:10px;--rad-lg:16px;--shadow:0 1px 3px rgba(0,0,0,.06);}
@@ -275,7 +275,7 @@ function updateBadges(){
 function notifySilently(title, body){
   if(!('Notification' in window)) return;
   if(Notification.permission === 'granted'){
-    new Notification(title, {body, silent:true, icon:'{% static "icon-192.png" %}'});
+    new Notification(title, {body, silent:true, icon:'{% static "icon-chat-192.png" %}'});
   }
 }
 
