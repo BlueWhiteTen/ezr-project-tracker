@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EZR Chat</title>
+<link rel="manifest" href="{% static 'chat-manifest.json' %}">
+<link rel="icon" href="{% static 'icon-192.png' %}">
+<meta name="theme-color" content="#d4700a">
+<style>
+  :root{--bg:#faf9f7;--surf:#fff;--surf2:#faf9f7;--bdr:#eee9e2;--acc:#d4700a;--acc-bg:#fff4eb;--acc-bdr:#f5c89a;--red:#dc2626;--txt:#1a1a1a;--txt2:#3d3d3d;--mut:#9a948c;--mut2:#b5afa6;--f:'Manrope',system-ui,sans-serif;--rad:10px;--rad-lg:16px;--shadow:0 1px 3px rgba(0,0,0,.06);}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:var(--f);background:var(--bg);color:var(--txt);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+  .tabs{display:flex;gap:.4rem;padding:.7rem .8rem;background:var(--surf);border-bottom:1px solid var(--bdr);flex-shrink:0;}
+  .tab-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.55rem;border:1px solid var(--bdr);background:var(--surf2);border-radius:var(--rad);font-size:.85rem;font-weight:600;font-family:var(--f);cursor:pointer;color:var(--txt2);}
+  .tab-btn.active{background:var(--acc);color:#fff;border-color:var(--acc);}
+  .tab-badge{background:var(--red);color:#fff;font-size:.62rem;font-weight:700;min-width:16px;height:16px;border-radius:99px;display:flex;align-items:center;justify-content:center;padding:0 4px;}
+  .panel{flex:1;display:none;overflow:hidden;min-height:0;}
+  .panel.active{display:flex;}
+
+  /* Private panel */
+  #panel-private{}
+  .convo-sidebar{width:180px;flex-shrink:0;border-right:1px solid var(--bdr);display:flex;flex-direction:column;background:var(--surf);}
+  .convo-head{padding:.6rem .7rem;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;}
+  .convo-head span{font-size:.8rem;font-weight:700;}
+  .convo-head button{background:var(--acc);color:#fff;border:none;border-radius:6px;font-size:.68rem;padding:2px 7px;cursor:pointer;}
+  .convo-list{flex:1;overflow-y:auto;}
+  .convo-item{display:flex;align-items:center;gap:.4rem;padding:.55rem .6rem;cursor:pointer;border-bottom:.5px solid var(--bdr);font-size:.78rem;}
+  .convo-item:hover,.convo-item.active{background:var(--acc-bg);}
+  .convo-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .convo-unread{background:var(--red);color:#fff;font-size:.6rem;font-weight:700;min-width:15px;height:15px;border-radius:99px;display:flex;align-items:center;justify-content:center;padding:0 3px;}
+  .thread-area{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .thread-messages{flex:1;overflow-y:auto;padding:.8rem;display:flex;flex-direction:column;gap:.5rem;}
+  .msg-bubble{max-width:80%;padding:.5rem .75rem;border-radius:10px;font-size:.85rem;line-height:1.4;}
+  .msg-them{align-self:flex-start;background:var(--surf2);border:1px solid var(--bdr);}
+  .msg-me{align-self:flex-end;background:var(--acc);color:#fff;}
+  .msg-meta{font-size:.65rem;opacity:.65;margin-top:2px;}
+  .empty-thread{flex:1;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:.85rem;}
+
+  /* EZR chat panel */
+  #panel-team{flex-direction:column;}
+  .team-messages{flex:1;overflow-y:auto;padding:.8rem;display:flex;flex-direction:column;gap:.6rem;}
+  .team-msg{display:flex;gap:.5rem;align-items:flex-start;}
+  .team-av{width:24px;height:24px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;flex-shrink:0;}
+  .team-msg-body{font-size:.82rem;}
+  .team-msg-name{font-weight:600;font-size:.75rem;}
+  .team-msg-time{font-size:.65rem;color:var(--mut);margin-left:.3rem;font-weight:400;}
+
+  .input-row{display:flex;gap:.5rem;padding:.6rem .7rem;border-top:1px solid var(--bdr);background:var(--bg);flex-shrink:0;}
+  .input-row input{flex:1;border:1px solid var(--bdr);border-radius:var(--rad);padding:.5rem .65rem;font-size:.85rem;font-family:var(--f);outline:none;}
+  .input-row input:focus{border-color:var(--acc);}
+  .input-row button{background:var(--acc);color:#fff;border:none;border-radius:var(--rad);padding:.5rem .85rem;font-size:.82rem;font-weight:600;cursor:pointer;font-family:var(--f);}
+
+  /* New conversation modal */
+  .modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:50;display:none;align-items:center;justify-content:center;}
+  .modal-ov.open{display:flex;}
+  .modal-box{background:var(--surf);border-radius:var(--rad-lg);padding:1rem;width:260px;}
+  .modal-box select{width:100%;padding:.5rem;border:1px solid var(--bdr);border-radius:var(--rad);font-family:var(--f);margin-bottom:.7rem;}
+  .modal-box .row{display:flex;gap:.5rem;justify-content:flex-end;}
+  .modal-box button{padding:.4rem .8rem;border-radius:var(--rad);border:none;font-size:.82rem;cursor:pointer;font-family:var(--f);}
+</style>
+</head>
+<body>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-private-btn" onclick="switchTab('private')">
+      💬 Private <span class="tab-badge" id="badge-private" style="display:none;"></span>
+    </button>
+    <button class="tab-btn" id="tab-team-btn" onclick="switchTab('team')">
+      👥 EZR Chat <span class="tab-badge" id="badge-team" style="display:none;"></span>
+    </button>
+  </div>
+
+  <div class="panel active" id="panel-private" style="display:flex;">
+    <div class="convo-sidebar">
+      <div class="convo-head"><span>Conversations</span><button onclick="openNewConvo()">+ New</button></div>
+      <div class="convo-list" id="convo-list">
+        {% for c in conversations %}
+        <div class="convo-item" data-user-id="{{ c.user.id }}" onclick="openConversation({{ c.user.id }}, '{{ c.user.get_full_name|default:c.user.username|escapejs }}')">
+          <span class="convo-name">{{ c.user.get_full_name|default:c.user.username }}</span>
+          {% if c.unread %}<span class="convo-unread">{{ c.unread }}</span>{% endif %}
+        </div>
+        {% empty %}
+        <div style="padding:.7rem;color:var(--mut);font-size:.75rem;">No conversations yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="thread-area">
+      <div class="thread-messages" id="thread-messages">
+        <div class="empty-thread">Pick a conversation, or start a new one.</div>
+      </div>
+      <div class="input-row" id="private-input-row" style="display:none;">
+        <input type="text" id="private-input" placeholder="Message… (Enter to send)" onkeydown="if(event.key==='Enter'){sendPrivate();}">
+        <button onclick="sendPrivate()">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-team">
+    <div class="team-messages" id="team-messages">
+      {% for m in team_messages %}
+      <div class="team-msg">
+        <div class="team-av">{{ m.user.get_full_name|default:m.user.username|slice:":2"|upper }}</div>
+        <div class="team-msg-body">
+          <div><span class="team-msg-name">{{ m.user.get_full_name|default:m.user.username }}</span><span class="team-msg-time">{{ m.timestamp|date:"d M, H:i" }}</span></div>
+          <div>{{ m.text|safe }}</div>
+        </div>
+      </div>
+      {% empty %}
+      <div style="color:var(--mut);font-size:.85rem;text-align:center;padding:1rem;">No messages yet.</div>
+      {% endfor %}
+    </div>
+    <div class="input-row">
+      <input type="text" id="team-input" placeholder="Message EZR Chat… (Enter to send)" onkeydown="if(event.key==='Enter'){sendTeam();}">
+      <button onclick="sendTeam()">Send</button>
+    </div>
+  </div>
+
+  <div class="modal-ov" id="new-convo-modal">
+    <div class="modal-box">
+      <div style="font-weight:700;font-size:.85rem;margin-bottom:.6rem;">Start a conversation</div>
+      <select id="new-convo-user">
+        <option value="">— Select person —</option>
+        {% for u in all_users %}
+        <option value="{{ u.id }}">{{ u.get_full_name|default:u.username }}</option>
+        {% endfor %}
+      </select>
+      <div class="row">
+        <button onclick="closeNewConvo()" style="background:var(--surf2);border:1px solid var(--bdr);">Cancel</button>
+        <button onclick="startNewConvo()" style="background:var(--acc);color:#fff;">Start</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const CSRF = '{{ csrf_token }}';
+let activeConvoUserId = null;
+let activeConvoName = null;
+let lastPrivateSeenPk = 0;
+let lastTeamSeenPk = {{ latest_team_pk }};
+let notifiedPrivateBaseline = false;
+let notifiedTeamBaseline = false;
+let unreadPrivate = {{ total_unread_private }};
+let unreadTeamSinceOpen = 0;
+
+function switchTab(tab){
+  document.getElementById('panel-private').classList.toggle('active', tab === 'private');
+  document.getElementById('panel-private').style.display = tab === 'private' ? 'flex' : 'none';
+  document.getElementById('panel-team').classList.toggle('active', tab === 'team');
+  document.getElementById('panel-team').style.display = tab === 'team' ? 'flex' : 'none';
+  document.getElementById('tab-private-btn').classList.toggle('active', tab === 'private');
+  document.getElementById('tab-team-btn').classList.toggle('active', tab === 'team');
+  if(tab === 'team'){
+    unreadTeamSinceOpen = 0;
+    updateBadges();
+    const box = document.getElementById('team-messages');
+    box.scrollTop = box.scrollHeight;
+  }
+}
+
+function openNewConvo(){ document.getElementById('new-convo-modal').classList.add('open'); }
+function closeNewConvo(){ document.getElementById('new-convo-modal').classList.remove('open'); }
+function startNewConvo(){
+  const sel = document.getElementById('new-convo-user');
+  if(!sel.value) return;
+  closeNewConvo();
+  openConversation(parseInt(sel.value), sel.options[sel.selectedIndex].text);
+}
+
+async function openConversation(userId, name){
+  activeConvoUserId = userId;
+  activeConvoName = name;
+  document.querySelectorAll('.convo-item').forEach(el => el.classList.toggle('active', el.dataset.userId == userId));
+  document.getElementById('private-input-row').style.display = 'flex';
+  const box = document.getElementById('thread-messages');
+  box.innerHTML = '<div class="empty-thread">Loading…</div>';
+  const r = await fetch(`/messages/${userId}/poll/?after=0`);
+  const d = await r.json();
+  renderThread(d.messages);
+  if(d.messages.length) lastPrivateSeenPk = Math.max(...d.messages.map(m => m.id));
+  refreshConvoUnreadBadge(userId);
+}
+
+function renderThread(msgs){
+  const box = document.getElementById('thread-messages');
+  if(!msgs.length){ box.innerHTML = '<div class="empty-thread">No messages yet — say hello.</div>'; return; }
+  box.innerHTML = msgs.map(m => `
+    <div class="msg-bubble ${m.is_me ? 'msg-me' : 'msg-them'}">
+      <div>${escapeHtml(m.text)}</div>
+      <div class="msg-meta">${m.is_me ? '' : m.sender + ' · '}${m.timestamp}</div>
+    </div>`).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+function appendThreadMessage(m){
+  const box = document.getElementById('thread-messages');
+  if(box.querySelector('.empty-thread')) box.innerHTML = '';
+  const div = document.createElement('div');
+  div.className = `msg-bubble ${m.is_me ? 'msg-me' : 'msg-them'}`;
+  div.innerHTML = `<div>${escapeHtml(m.text)}</div><div class="msg-meta">${m.is_me ? '' : m.sender + ' · '}${m.timestamp}</div>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+async function sendPrivate(){
+  const input = document.getElementById('private-input');
+  const text = input.value.trim();
+  if(!text || !activeConvoUserId) return;
+  input.value = '';
+  const r = await fetch(`/messages/${activeConvoUserId}/`, {
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify({text})
+  });
+  const d = await r.json();
+  if(d.id){ appendThreadMessage(d); lastPrivateSeenPk = Math.max(lastPrivateSeenPk, d.id); }
+}
+
+function refreshConvoUnreadBadge(userId){
+  const item = document.querySelector(`.convo-item[data-user-id="${userId}"] .convo-unread`);
+  if(item){
+    const n = parseInt(item.textContent) || 0;
+    unreadPrivate = Math.max(0, unreadPrivate - n);
+    item.remove();
+    updateBadges();
+  }
+}
+
+async function sendTeam(){
+  const input = document.getElementById('team-input');
+  const text = input.value.trim();
+  if(!text) return;
+  input.value = '';
+  const r = await fetch('/chat/', {
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify({text})
+  });
+  const d = await r.json();
+  if(d.id){ appendTeamMessage(d); lastTeamSeenPk = Math.max(lastTeamSeenPk, d.id); }
+}
+
+function appendTeamMessage(m){
+  const box = document.getElementById('team-messages');
+  const div = document.createElement('div');
+  div.className = 'team-msg';
+  div.innerHTML = `
+    <div class="team-av">${(m.initials || (m.user||'').slice(0,2)).toUpperCase()}</div>
+    <div class="team-msg-body">
+      <div><span class="team-msg-name">${escapeHtml(m.user)}</span><span class="team-msg-time">${m.timestamp}</span></div>
+      <div>${m.text}</div>
+    </div>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function updateBadges(){
+  const pBadge = document.getElementById('badge-private');
+  const tBadge = document.getElementById('badge-team');
+  if(unreadPrivate > 0){ pBadge.textContent = unreadPrivate; pBadge.style.display = 'flex'; }
+  else { pBadge.style.display = 'none'; }
+  if(unreadTeamSinceOpen > 0){ tBadge.textContent = unreadTeamSinceOpen; tBadge.style.display = 'flex'; }
+  else { tBadge.style.display = 'none'; }
+
+  const total = unreadPrivate + unreadTeamSinceOpen;
+  if('setAppBadge' in navigator){
+    if(total > 0) navigator.setAppBadge(total).catch(()=>{});
+    else navigator.clearAppBadge().catch(()=>{});
+  }
+}
+
+function notifySilently(title, body){
+  if(!('Notification' in window)) return;
+  if(Notification.permission === 'granted'){
+    new Notification(title, {body, silent:true, icon:'{% static "icon-192.png" %}'});
+  }
+}
+
+async function pollAll(){
+  // Private — reuses the same endpoint driving toasts on the main site
+  try{
+    const r = await fetch('/notifications/count/');
+    const d = await r.json();
+    unreadPrivate = d.messages || 0;
+    if(d.latest_msg){
+      if(!notifiedPrivateBaseline){ notifiedPrivateBaseline = true; }
+      else { notifySilently(d.latest_msg.sender, d.latest_msg.text); }
+    }
+    // If the open conversation is the one that just got a new message, refresh it live
+    if(activeConvoUserId && d.latest_msg){
+      const r2 = await fetch(`/messages/${activeConvoUserId}/poll/?after=${lastPrivateSeenPk}`);
+      const d2 = await r2.json();
+      if(d2.messages.length){
+        d2.messages.forEach(appendThreadMessage);
+        lastPrivateSeenPk = Math.max(...d2.messages.map(m => m.id));
+      }
+    }
+  } catch(e){}
+
+  // Team chat
+  try{
+    const r = await fetch(`/chat/poll/?after=${lastTeamSeenPk}`);
+    const d = await r.json();
+    if(d.messages.length){
+      const isTeamTabActive = document.getElementById('panel-team').classList.contains('active');
+      d.messages.forEach(m => {
+        if(!m.is_me){
+          if(notifiedTeamBaseline) notifySilently(m.user, m.text.replace(/<[^>]+>/g,''));
+          if(!isTeamTabActive) unreadTeamSinceOpen++;
+        }
+        if(isTeamTabActive) appendTeamMessage(m);
+      });
+      lastTeamSeenPk = Math.max(...d.messages.map(m => m.id));
+    }
+    notifiedTeamBaseline = true;
+  } catch(e){}
+
+  updateBadges();
+}
+
+if('Notification' in window && Notification.permission === 'default'){
+  Notification.requestPermission();
+}
+
+updateBadges();
+setInterval(pollAll, 8000);
+</script>
+</body>
+</html>

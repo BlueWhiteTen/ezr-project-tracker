@@ -52,7 +52,7 @@ from .purchasing import (
     project_search,
 )
 from .messaging import (
-    notification_count, notifications_view, notification_dismiss, inbox, conversation_poll,
+    notification_count, notifications_view, notification_dismiss, inbox, chat_widget, conversation_poll,
     conversation, team_chat, team_chat_poll,
 )
 from .staff import (

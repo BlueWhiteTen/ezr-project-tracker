@@ -1,0 +1,21 @@
+{
+  "name": "EZR Chat",
+  "short_name": "EZR Chat",
+  "description": "Private messages and team chat",
+  "start_url": "/chat-widget/",
+  "display": "standalone",
+  "background_color": "#f4f4f2",
+  "theme_color": "#d4700a",
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

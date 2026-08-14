@@ -51,6 +51,7 @@ urlpatterns = [
     path('notifications/count/',          views.notification_count,    name='notification_count'),
     path('notifications/<int:pk>/dismiss/', views.notification_dismiss, name='notification_dismiss'),
     path('messages/',                     views.inbox,                 name='inbox'),
+    path('chat-widget/',                  views.chat_widget,           name='chat_widget'),
     path('messages/<int:user_id>/',       views.conversation,          name='conversation'),
     path('messages/<int:user_id>/poll/',  views.conversation_poll,     name='conversation_poll'),
     path('chat/',                         views.team_chat,             name='team_chat'),

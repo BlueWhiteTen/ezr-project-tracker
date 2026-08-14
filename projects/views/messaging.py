@@ -100,6 +100,43 @@ def inbox(request):
 
 
 @login_required
+def chat_widget(request):
+    """A bare, standalone page combining private Messages and EZR Chat
+    behind two toggle buttons — no sidebar, no nav — meant to be
+    installed as its own app/window."""
+    from django.db.models import Q as _Q
+    users_messaged = User.objects.filter(
+        _Q(sent_messages__recipient=request.user) |
+        _Q(received_messages__sender=request.user)
+    ).distinct().exclude(id=request.user.id)
+
+    conversations = []
+    for u in users_messaged:
+        last_msg = Message.objects.filter(
+            _Q(sender=request.user, recipient=u) |
+            _Q(sender=u, recipient=request.user)
+        ).order_by('-timestamp').first()
+        unread = Message.objects.filter(sender=u, recipient=request.user, read=False).count()
+        conversations.append({'user': u, 'last_msg': last_msg, 'unread': unread})
+    conversations.sort(key=lambda x: x['last_msg'].timestamp if x['last_msg'] else date.today(), reverse=True)
+
+    all_users = User.objects.filter(is_active=True).exclude(id=request.user.id).order_by('first_name', 'last_name')
+    total_unread_private = Message.objects.filter(recipient=request.user, read=False).count()
+
+    team_messages = TeamMessage.objects.select_related('user').order_by('-timestamp')[:100]
+    team_messages = list(reversed(list(team_messages)))
+    latest_team_pk = TeamMessage.objects.order_by('-pk').values_list('pk', flat=True).first() or 0
+
+    return render(request, 'projects/chat_widget.html', {
+        'conversations': conversations,
+        'all_users': all_users,
+        'total_unread_private': total_unread_private,
+        'team_messages': team_messages,
+        'latest_team_pk': latest_team_pk,
+    })
+
+
+@login_required
 def conversation_poll(request, user_id):
     """Return messages newer than `after` for live-updating a 1:1 conversation."""
     other = get_object_or_404(User, pk=user_id)
