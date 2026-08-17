@@ -28,7 +28,10 @@ def customer_autocomplete(request):
     q = request.GET.get('q','').strip()
     if len(q) < 1:
         return JsonResponse([], safe=False)
-    results = CustomerProfile.objects.filter(name__icontains=q, is_active=True).values('id', 'name')[:8]
+    from django.db.models import Case, When, Value, IntegerField
+    results = CustomerProfile.objects.filter(name__icontains=q, is_active=True).annotate(
+        _rank=Case(When(name__istartswith=q, then=Value(0)), default=Value(1), output_field=IntegerField())
+    ).order_by('_rank', 'name').values('id', 'name')[:40]
     return JsonResponse(list(results), safe=False)
 
 
@@ -537,7 +540,12 @@ def customer_create(request):
             contact_name=data.get('contact_name','').strip(),
             email=data.get('email','').strip(),
             phone=data.get('phone','').strip(),
-            address=data.get('address','').strip(),
+            address_line1=data.get('address_line1','').strip(),
+            address_line2=data.get('address_line2','').strip(),
+            town=data.get('town','').strip(),
+            county=data.get('county','').strip(),
+            postcode=data.get('postcode','').strip(),
+            country=data.get('country','').strip() or 'United Kingdom',
             notes=data.get('notes','').strip(),
         )
         return JsonResponse({'id': c.pk, 'name': c.name, 'created': True})

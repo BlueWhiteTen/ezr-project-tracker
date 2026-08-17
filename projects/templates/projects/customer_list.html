@@ -139,9 +139,29 @@
       <label class="form-label">Email</label>
       <input class="form-input" id="nc-email" type="email" placeholder="contact@company.com">
     </div>
+    <div class="form-group" style="grid-column:1/-1;margin-bottom:0;">
+      <label class="form-label">Address Line 1</label>
+      <input class="form-input" id="nc-address1" type="text" placeholder="Street address">
+    </div>
+    <div class="form-group" style="grid-column:1/-1;margin-bottom:0;">
+      <label class="form-label">Address Line 2</label>
+      <input class="form-input" id="nc-address2" type="text" placeholder="Unit, floor, etc.">
+    </div>
     <div class="form-group" style="margin-bottom:0;">
-      <label class="form-label">Address</label>
-      <input class="form-input" id="nc-address" type="text" placeholder="City, Postcode">
+      <label class="form-label">Town</label>
+      <input class="form-input" id="nc-town" type="text">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">County</label>
+      <input class="form-input" id="nc-county" type="text">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Post Code</label>
+      <input class="form-input" id="nc-postcode" type="text">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Country</label>
+      <input class="form-input" id="nc-country" type="text" value="United Kingdom">
     </div>
     <div class="form-group" style="grid-column:1/-1;margin-bottom:0;">
       <label class="form-label">Notes</label>
@@ -230,7 +250,12 @@ async function submitNewCustomer(){
     contact_name: document.getElementById('nc-contact').value.trim(),
     phone: document.getElementById('nc-phone').value.trim(),
     email: document.getElementById('nc-email').value.trim(),
-    address: document.getElementById('nc-address').value.trim(),
+    address_line1: document.getElementById('nc-address1').value.trim(),
+    address_line2: document.getElementById('nc-address2').value.trim(),
+    town: document.getElementById('nc-town').value.trim(),
+    county: document.getElementById('nc-county').value.trim(),
+    postcode: document.getElementById('nc-postcode').value.trim(),
+    country: document.getElementById('nc-country').value.trim(),
     notes: document.getElementById('nc-notes').value.trim(),
   };
   const r = await fetch('/customers/new/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify(payload)});
