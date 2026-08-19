@@ -11,7 +11,7 @@
 <style>
   :root{--bg:#faf9f7;--surf:#fff;--surf2:#faf9f7;--bdr:#eee9e2;--acc:#d4700a;--acc-bg:#fff4eb;--acc-bdr:#f5c89a;--red:#dc2626;--txt:#1a1a1a;--txt2:#3d3d3d;--mut:#9a948c;--mut2:#b5afa6;--f:'Manrope',system-ui,sans-serif;--rad:10px;--rad-lg:16px;--shadow:0 1px 3px rgba(0,0,0,.06);}
   *{box-sizing:border-box;}
-  body{margin:0;font-family:var(--f);background:var(--bg);color:var(--txt);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+  body{margin:0;font-family:var(--f);background:var(--bg);color:var(--txt);height:100vh;height:100dvh;height:var(--real-vh, 100dvh);display:flex;flex-direction:column;overflow:hidden;}
   .tabs{display:flex;gap:.4rem;padding:.7rem .8rem;background:var(--surf);border-bottom:1px solid var(--bdr);flex-shrink:0;}
   .tab-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.55rem;border:1px solid var(--bdr);background:var(--surf2);border-radius:var(--rad);font-size:.85rem;font-weight:600;font-family:var(--f);cursor:pointer;color:var(--txt2);}
   .tab-btn.active{background:var(--acc);color:#fff;border-color:var(--acc);}
@@ -154,6 +154,19 @@
   </div>
 
 <script>
+// Extra safety net alongside the dvh CSS fix above: some mobile browsers
+// still don't size dvh correctly against their own address bar/nav
+// chrome. This reads the actual, currently-visible height directly and
+// keeps it live-updated, so the layout can never end up taller than
+// what's genuinely on screen — which is what was pushing the message
+// input off the bottom of the real device.
+function setRealVh(){
+  document.documentElement.style.setProperty('--real-vh', window.innerHeight + 'px');
+}
+setRealVh();
+window.addEventListener('resize', setRealVh);
+window.addEventListener('orientationchange', setRealVh);
+
 const CSRF = '{{ csrf_token }}';
 let activeConvoUserId = null;
 let activeConvoName = null;

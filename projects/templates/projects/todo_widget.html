@@ -11,7 +11,7 @@
 <style>
   :root{--bg:#faf9f7;--surf:#fff;--surf2:#faf9f7;--bdr:#eee9e2;--acc:#d4700a;--acc-bg:#fff4eb;--acc-bdr:#f5c89a;--red:#dc2626;--txt:#1a1a1a;--mut:#9a948c;--mut2:#b5afa6;--f:'Manrope',system-ui,sans-serif;--rad:10px;--rad-lg:16px;--shadow:0 1px 3px rgba(0,0,0,.06);}
   *{box-sizing:border-box;}
-  body{margin:0;font-family:var(--f);background:var(--bg);color:var(--txt);height:100vh;display:flex;flex-direction:column;}
+  body{margin:0;font-family:var(--f);background:var(--bg);color:var(--txt);height:100vh;height:100dvh;height:var(--real-vh, 100dvh);display:flex;flex-direction:column;}
   .header{padding:1rem 1.2rem .8rem;flex-shrink:0;}
   .header h1{font-size:1.1rem;font-weight:700;margin:0;display:flex;align-items:center;gap:.5rem;}
   .list-wrap{flex:1;overflow-y:auto;padding:0 1.2rem;}
@@ -54,6 +54,13 @@
   </div>
 
 <script>
+function setRealVh(){
+  document.documentElement.style.setProperty('--real-vh', window.innerHeight + 'px');
+}
+setRealVh();
+window.addEventListener('resize', setRealVh);
+window.addEventListener('orientationchange', setRealVh);
+
 const CSRF = '{{ csrf_token }}';
 
 async function addTodo(){
