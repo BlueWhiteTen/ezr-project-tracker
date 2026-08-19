@@ -22,6 +22,7 @@
   /* Private panel */
   #panel-private{}
   .convo-sidebar{width:180px;flex-shrink:0;border-right:1px solid var(--bdr);display:flex;flex-direction:column;background:var(--surf);}
+  .convo-toggle{display:none;}
   .convo-head{padding:.6rem .7rem;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;}
   .convo-head span{font-size:.8rem;font-weight:700;}
   .convo-head button{background:var(--acc);color:#fff;border:none;border-radius:6px;font-size:.68rem;padding:2px 7px;cursor:pointer;}
@@ -59,6 +60,21 @@
   .modal-box select{width:100%;padding:.5rem;border:1px solid var(--bdr);border-radius:var(--rad);font-family:var(--f);margin-bottom:.7rem;}
   .modal-box .row{display:flex;gap:.5rem;justify-content:flex-end;}
   .modal-box button{padding:.4rem .8rem;border-radius:var(--rad);border:none;font-size:.82rem;cursor:pointer;font-family:var(--f);}
+
+  /* Mobile: collapsible conversation list, since a fixed sidebar takes
+     up too much of a phone-width screen otherwise. Placed last in the
+     stylesheet so these overrides reliably win the cascade regardless
+     of where the rules they override happen to sit above. */
+  @media (max-width: 700px){
+    #panel-private{flex-direction:column;}
+    .convo-toggle{display:flex;align-items:center;justify-content:space-between;padding:.6rem .8rem;background:var(--surf);border-bottom:1px solid var(--bdr);cursor:pointer;font-size:.82rem;font-weight:700;flex-shrink:0;}
+    .convo-toggle .arrow{transition:transform .15s;color:var(--mut);display:inline-block;}
+    .convo-toggle.expanded .arrow{transform:rotate(90deg);}
+    .convo-sidebar{width:100%;border-right:none;border-bottom:1px solid var(--bdr);max-height:0;overflow:hidden;transition:max-height .18s ease;flex-shrink:0;}
+    .convo-sidebar.expanded{max-height:50vh;overflow-y:auto;}
+    .convo-head{display:none;}
+    .thread-area{min-height:0;}
+  }
 </style>
 </head>
 <body>
@@ -73,7 +89,11 @@
   </div>
 
   <div class="panel active" id="panel-private" style="display:flex;">
-    <div class="convo-sidebar">
+    <div class="convo-toggle" id="convo-toggle" onclick="toggleConvoSidebar()">
+      <span>Conversations <span class="arrow">▸</span></span>
+      <button onclick="event.stopPropagation();openNewConvo()" style="background:var(--acc);color:#fff;border:none;border-radius:6px;font-size:.7rem;padding:3px 8px;cursor:pointer;">+ New</button>
+    </div>
+    <div class="convo-sidebar" id="convo-sidebar">
       <div class="convo-head"><span>Conversations</span><button onclick="openNewConvo()">+ New</button></div>
       <div class="convo-list" id="convo-list">
         {% for c in conversations %}
@@ -168,11 +188,21 @@ function startNewConvo(){
   openConversation(parseInt(sel.value), sel.options[sel.selectedIndex].text);
 }
 
+function toggleConvoSidebar(){
+  const sidebar = document.getElementById('convo-sidebar');
+  const toggle = document.getElementById('convo-toggle');
+  const expanding = !sidebar.classList.contains('expanded');
+  sidebar.classList.toggle('expanded', expanding);
+  toggle.classList.toggle('expanded', expanding);
+}
+
 async function openConversation(userId, name){
   activeConvoUserId = userId;
   activeConvoName = name;
   document.querySelectorAll('.convo-item').forEach(el => el.classList.toggle('active', el.dataset.userId == userId));
   document.getElementById('private-input-row').style.display = 'flex';
+  document.getElementById('convo-sidebar').classList.remove('expanded');
+  document.getElementById('convo-toggle').classList.remove('expanded');
   const box = document.getElementById('thread-messages');
   box.innerHTML = '<div class="empty-thread">Loading…</div>';
   const r = await fetch(`/messages/${userId}/poll/?after=0`);
