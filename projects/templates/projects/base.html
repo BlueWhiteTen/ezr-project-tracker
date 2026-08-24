@@ -443,9 +443,19 @@ function showToast(kind, text, link, dismissId){
   setTimeout(() => { if(el.parentNode) el.remove(); }, 10000);
 }
 
+function notifyDesktop(title, body, link){
+  if(!title || !body) return;
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  const n = new Notification(title, {body, silent:true, icon:'/static/icon-192.png'});
+  if(link){
+    n.onclick = () => { window.focus(); window.location.href = link; };
+  }
+}
+
 async function pollCounts(){
   try{
     var r = await fetch('/notifications/count/');
+    if(!r.ok) return;
     var d = await r.json();
     var nb = document.getElementById('notif-badge');
     if(nb){ nb.textContent=d.count; nb.style.display=d.count>0?'flex':'none'; }
@@ -462,14 +472,19 @@ async function pollCounts(){
     } else {
       if(d.latest_notif && d.latest_notif.id !== _lastNotifId){
         showToast('Notification', d.latest_notif.text, d.latest_notif.link);
+        notifyDesktop('EZR Project Tracker', d.latest_notif.text, d.latest_notif.link);
         _lastNotifId = d.latest_notif.id;
       }
       if(d.latest_msg && d.latest_msg.id !== _lastMsgId){
         showToast(`Message from ${d.latest_msg.sender}`, d.latest_msg.text, d.latest_msg.link);
+        notifyDesktop(`Message from ${d.latest_msg.sender}`, d.latest_msg.text, d.latest_msg.link);
         _lastMsgId = d.latest_msg.id;
       }
     }
   }catch(e){}
+}
+if('Notification' in window && Notification.permission === 'default'){
+  Notification.requestPermission();
 }
 pollCounts();
 setInterval(pollCounts, 30000);

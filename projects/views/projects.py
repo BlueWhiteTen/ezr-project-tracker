@@ -677,7 +677,7 @@ def add_comment_with_tags(request, pk):
             if tagged_user != request.user:
                 Notification.objects.create(
                     user=tagged_user, type='tag',
-                    text=f"{sender_name} tagged you in {p.project_name}: {text[:80]}",
+                    text=f"{sender_name} tagged you in {p.project_name}: {clean_text[:80]}",
                     link=f"/project/{p.pk}/edit/",
                 )
         except User.DoesNotExist:
