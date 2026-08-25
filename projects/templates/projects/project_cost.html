@@ -1020,7 +1020,7 @@ function previewFramePrice(){
 
 // ── Single-line adds (stock, ns, hanging etc.) ────────────────────────────────
 async function postLine(data){
-  await fetch(`/project/${PROJ_PK}/cost/add-line/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify(data)});
+  await fetch(`/project/${PROJ_PK}/cost/add-line/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({...data, cost_pk: COST_PK})});
   location.reload();
 }
 
