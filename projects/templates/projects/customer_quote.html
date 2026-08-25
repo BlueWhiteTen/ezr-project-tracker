@@ -164,7 +164,7 @@
   </div>
 
   <!-- Prices -->
-  {% if sell_price|floatformat:2 != quote.main_price|floatformat:2 %}
+  {% if sell_price|floatformat:2 != quote.main_price|floatformat:2 and not print_mode %}
   <div class="view-only" style="background:#fff4eb;border:1px solid #f5c89a;border-radius:8px;padding:.65rem .9rem;margin-bottom:.6rem;font-size:.85rem;color:#9a3412;">
     ⚠ This quote's price (£{{ quote.main_price|floatformat:2|intcomma }}) doesn't match this option's current costing (£{{ sell_price|floatformat:2|intcomma }}). Click "🔄 Refresh Price from Costing" above to update it.
   </div>
