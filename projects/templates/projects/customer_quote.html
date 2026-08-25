@@ -38,10 +38,11 @@
   .editing .edit-only{display:block;}
   .editing .view-only{display:none;}
   h3.re{font-weight:700;margin:1rem 0 .6rem;}
-  @media print{
+  {% if print_mode %}
+  <style>
     .toolbar{display:none;}
     body{background:#fff;}
-    .page{box-shadow:none;margin:0;max-width:100%;padding:0;}
+    .page{box-shadow:none;margin:0 auto;width:20cm;max-width:100%;padding:0;}
     /* The real letterhead PDF, converted to an image, as the page
        background — logo, tagline and footer all come from this image
        now, baked in at a fixed position, so there's no dynamic footer
@@ -54,11 +55,19 @@
        is also required — on auto-height content, the background image
        only stretches to the content's natural height, not the full
        page. 28.7cm is the full usable A4 content height (29.7cm page
-       minus the 0.5cm @page margin on each side). */
+       minus the 0.5cm @page margin on each side).
+       These rules used to live inside @media print, but that only
+       activates once the browser is actually mid-print — the JS below
+       needs to measure real content height *before* printing starts,
+       to decide whether a second page is needed, so these need to be
+       in effect immediately on load instead. This page is only ever
+       loaded to prepare for printing, never browsed normally, so
+       applying them unconditionally here is safe. */
     .print-page-bg{height:28.7cm;box-sizing:border-box;padding:1cm 2cm 2.4cm 2cm;position:relative;overflow:visible;}
     .bg-img{display:block;position:absolute;top:0;left:0;width:100%;height:100%;}
     .print-content{position:relative;z-index:1;}
     .photos-page{break-before:page;page-break-before:always;}
+    .forced-page-break{break-before:page;page-break-before:always;}
     .photos-page img{break-inside:avoid;page-break-inside:avoid;}
     /* The old HTML logo/tagline/footer are only for the on-screen editor
        now — the background image provides them for print. */
@@ -74,15 +83,8 @@
     .sig{margin-top:.7rem;}
     .photos-inner{margin-top:106px !important;}
     @page { margin:0.5cm; size:A4; }
-    {% if attached_photos %}
-    /* Page numbers only make sense once there's genuinely more than one
-       page — rendered by the print engine itself in the page margin
-       area, so this can never overlap real content. attached_photos is
-       used as the signal for "this will be multi-page", since that's
-       what forces the second page today. */
-    @page { @bottom-right { content: "Page " counter(page) "/" counter(pages); font-size: 8px; color: #666; font-family: Arial, sans-serif; } }
-    {% endif %}
-  }
+  </style>
+  {% endif %}
 </style>
 </head>
 <body class="{% if not print_mode %}{% endif %}">
@@ -308,6 +310,76 @@
 {% if print_mode %}
 <script>
 (function(){
+  // If the letter's own text content is tall enough to run past one
+  // page's worth of space, nothing previously stopped it from flowing
+  // straight into the footer area of the background image, since that
+  // image is only placed once per page-wrapper, at a fixed height, and
+  // doesn't stretch or repeat with overflowing text. This measures the
+  // actual rendered content and, if it's too tall, moves the
+  // overflowing part into a genuine second page-wrapper of its own —
+  // complete with its own copy of the letterhead — rather than letting
+  // it silently overlap the first page's footer.
+  function splitOverflowingContent(){
+    const firstBg = document.querySelector('.print-page-bg');
+    if(!firstBg) return false;
+    const firstContent = firstBg.querySelector(':scope > .print-content');
+    if(!firstContent) return false;
+
+    const bgStyle = getComputedStyle(firstBg);
+    // A safety margin, not just the raw available space: testing found
+    // a real, if small, gap between what's measured here (just before
+    // printing starts) and what the actual print/PDF rendering produces
+    // — likely subtle font-metric differences between a live browser
+    // tab and the print-rendering pass. Splitting a little earlier than
+    // strictly necessary costs a bit of blank space on page one; not
+    // splitting when needed reproduces the exact overlap bug this
+    // exists to prevent, which is far worse.
+    const budgetPx = (firstBg.clientHeight
+      - parseFloat(bgStyle.paddingTop)
+      - parseFloat(bgStyle.paddingBottom)) * 0.85;
+
+    const children = Array.from(firstContent.children);
+    let splitIndex = -1;
+    for(let i = 0; i < children.length; i++){
+      const bottom = children[i].offsetTop + children[i].offsetHeight;
+      if(bottom > budgetPx){ splitIndex = i; break; }
+    }
+    if(splitIndex <= 0) return false; // fits on one page — nothing to do
+
+    const toMove = children.slice(splitIndex);
+
+    const newBg = document.createElement('div');
+    newBg.className = 'print-page-bg forced-page-break';
+    const newImg = document.createElement('img');
+    newImg.className = 'bg-img';
+    newImg.src = firstBg.querySelector('.bg-img').src;
+    newImg.alt = '';
+    const newContent = document.createElement('div');
+    newContent.className = 'print-content';
+    newContent.style.marginTop = '106px';
+
+    toMove.forEach(el => newContent.appendChild(el));
+    newBg.appendChild(newImg);
+    newBg.appendChild(newContent);
+    firstBg.insertAdjacentElement('afterend', newBg);
+    return true;
+  }
+
+  function addPageNumberStyle(){
+    if(document.getElementById('dynamic-page-numbers')) return;
+    const style = document.createElement('style');
+    style.id = 'dynamic-page-numbers';
+    // Rendered by the print engine itself in the page margin area, so
+    // this can never overlap real content, regardless of what pushed
+    // the quote onto more than one page.
+    style.textContent = '@page { @bottom-right { content: "Page " counter(page) "/" counter(pages); font-size: 8px; color: #666; font-family: Arial, sans-serif; } }';
+    document.head.appendChild(style);
+  }
+
+  const didSplit = splitOverflowingContent();
+  const hasPhotosPage = document.querySelector('.photos-page') !== null;
+  if(didSplit || hasPhotosPage) addPageNumberStyle();
+
   function triggerPrint(){
     // A short settle delay after images report loaded - gives the
     // browser time to finish layout/paint of the (now larger, repeated)
