@@ -114,6 +114,17 @@ def customer_quote(request, pk, cost_pk=None):
         quote.terms_text = "\n\n".join(terms_parts)
         quote.intro = ''
         quote.save()
+    elif not cost.is_accepted:
+        # Keep the price live in sync with costing changes for as long as
+        # this option hasn't been accepted yet — this is the normal,
+        # everyday case (still adjusting costing, quote not sent/agreed).
+        # Once accepted, the price freezes rather than auto-syncing, so a
+        # figure a customer has already agreed to can never silently
+        # change underneath them.
+        if float(quote.main_price) != float(sell_price):
+            quote.main_price = sell_price
+            quote.main_price_label = f'Our price to {supply_verb.lower().replace("to ", "")}:'
+            quote.save(update_fields=['main_price', 'main_price_label'])
 
     # Keep the site-survey paragraph in sync with the current costing —
     # terms_text is otherwise a one-time snapshot from creation, so if
