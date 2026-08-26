@@ -171,7 +171,8 @@ let activeConvoUserId = null;
 let activeConvoName = null;
 let lastPrivateSeenPk = 0;
 let lastTeamSeenPk = {{ latest_team_pk }};
-let notifiedPrivateBaseline = false;
+let privateBaselineSet = false;
+let lastNotifiedMsgId = null;
 let notifiedTeamBaseline = false;
 let unreadPrivate = {{ total_unread_private }};
 let unreadTeamSinceOpen = 0;
@@ -327,9 +328,18 @@ async function pollAll(){
     const r = await fetch('/notifications/count/');
     const d = await r.json();
     unreadPrivate = d.messages || 0;
-    if(d.latest_msg){
-      if(!notifiedPrivateBaseline){ notifiedPrivateBaseline = true; }
-      else { notifySilently(d.latest_msg.sender, d.latest_msg.text); }
+    if(!privateBaselineSet){
+      // First poll after load — just record what's already there (if
+      // anything) as the baseline, without notifying for messages that
+      // were sitting unread before this app was even opened. This has
+      // to be set unconditionally here, not only when a message exists,
+      // otherwise the very next genuinely new message would be wrongly
+      // treated as "the baseline" too and silently missed.
+      lastNotifiedMsgId = d.latest_msg ? d.latest_msg.id : null;
+      privateBaselineSet = true;
+    } else if(d.latest_msg && d.latest_msg.id !== lastNotifiedMsgId){
+      notifySilently(d.latest_msg.sender, d.latest_msg.text);
+      lastNotifiedMsgId = d.latest_msg.id;
     }
     // If the open conversation is the one that just got a new message, refresh it live
     if(activeConvoUserId && d.latest_msg){
