@@ -74,7 +74,7 @@ def customer_quote(request, pk, cost_pk=None):
         if request.POST.get('action') == 'print':
             return redirect(f"{request.path}?print=1")
         messages.success(request, 'Quote saved.')
-        return redirect('customer_quote', pk=pk)
+        return redirect('customer_quote_option', pk=pk, cost_pk=cost.pk)
 
     # Contact first name for "Dear X"
     contact_name = cp.contact_name if cp and cp.contact_name else ''
