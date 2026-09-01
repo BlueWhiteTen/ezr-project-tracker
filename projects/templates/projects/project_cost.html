@@ -375,7 +375,10 @@
             <div class="prod-dd" id="st-dd"></div>
           </div>
           <div><label class="form-label">Qty</label>
-            <input class="form-input" type="number" id="st-qty" value="1" min="1" step="1" style="width:70px;">
+            <input class="form-input" type="number" id="st-qty" value="1" min="1" step="1" style="width:70px;" oninput="updateStockLineTotal()">
+          </div>
+          <div><label class="form-label">Unit Cost</label>
+            <input class="form-input" type="number" id="st-cost" value="0" step="0.01" style="width:90px;" oninput="updateStockLineTotal()">
           </div>
           <div style="padding-bottom:1px;">
             <label class="form-label">&nbsp;</label>
@@ -1027,8 +1030,9 @@ async function postLine(data){
 async function addStock(){
   if(!selProd){ document.getElementById('st-search').focus(); return; }
   const qty=parseFloat(document.getElementById('st-qty').value)||1;
-  await postLine({line_type:'stock',product_id:selProd.id,quantity:qty});
-  selProd=null; document.getElementById('st-search').value=''; document.getElementById('st-info').textContent='';
+  const unitCost=parseFloat(document.getElementById('st-cost').value)||0;
+  await postLine({line_type:'stock',product_id:selProd.id,quantity:qty,unit_cost:unitCost});
+  selProd=null; document.getElementById('st-search').value=''; document.getElementById('st-cost').value='0'; document.getElementById('st-info').textContent='';
 }
 async function addNS(){
   const desc=document.getElementById('ns-desc').value.trim();
@@ -1355,8 +1359,19 @@ function selectCostProd(p){
   selProd=p;
   document.getElementById('st-search').value=p.code;
   document.getElementById('st-dd').style.display='none';
-  document.getElementById('st-info').textContent=`${p.description} — £${parseFloat(p.sales_price||0).toFixed(2)} each`;
+  document.getElementById('st-cost').value=parseFloat(p.sales_price||0).toFixed(2);
+  updateStockLineTotal();
   document.getElementById('st-qty').focus();
+}
+function updateStockLineTotal(){
+  const qty = parseFloat(document.getElementById('st-qty').value) || 0;
+  const cost = parseFloat(document.getElementById('st-cost').value) || 0;
+  const info = document.getElementById('st-info');
+  if(selProd){
+    info.textContent = `${selProd.description} — £${cost.toFixed(2)} × ${qty} = £${(cost*qty).toFixed(2)}`;
+  } else {
+    info.textContent = '';
+  }
 }
 document.addEventListener('mousedown',e=>{if(!e.target.closest('.prod-search-wrap'))document.getElementById('st-dd').style.display='none';});
 document.getElementById('st-search')?.addEventListener('keydown',function(e){

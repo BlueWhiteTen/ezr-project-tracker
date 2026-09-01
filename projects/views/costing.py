@@ -407,7 +407,11 @@ def cost_line_add(request, pk):
     elif ltype == 'stock':
         product_id = data.get('product_id')
         product = get_object_or_404(Product, pk=product_id, is_active=True)
-        unit_cost = float(product.sales_price) if product.sales_price else 0
+        override_cost = data.get('unit_cost')
+        if override_cost not in (None, ''):
+            unit_cost = float(override_cost)
+        else:
+            unit_cost = float(product.sales_price) if product.sales_price else 0
         ProjectCostLine.objects.create(cost=cost, line_type='stock',
             description=f'{product.code} — {product.description}',
             product=product, quantity=qty, unit_cost=unit_cost, sort_order=sort)
