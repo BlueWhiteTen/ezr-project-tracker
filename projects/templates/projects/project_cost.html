@@ -36,8 +36,14 @@
 [data-theme=dark] .lt-toptie{background:rgba(71,85,105,.2);color:#94a3b8;}
 [data-theme=dark] .lt-frame{background:rgba(109,40,217,.2);color:#c4b5fd;}
 [data-theme=dark] .lt-shelf{background:rgba(6,95,70,.2);color:#6ee7b7;}
-.inline-num{width:75px;text-align:right;background:transparent;border:1px solid transparent;border-radius:4px;padding:2px 5px;font-size:.875rem;color:var(--txt);}
+.inline-num{width:60px;text-align:right;background:transparent;border:1px solid transparent;border-radius:4px 0 0 4px;padding:2px 5px;font-size:.875rem;color:var(--txt);}
 .inline-num:focus{border-color:var(--acc);background:var(--surf);outline:none;}
+.num-stepper{display:inline-flex;align-items:stretch;}
+.stepper-btns{display:flex;flex-direction:column;}
+.stepper-btn{width:15px;height:10px;line-height:1;font-size:8px;border:1px solid var(--bdr);background:var(--surf2);color:var(--mut);cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;}
+.stepper-btn:first-child{border-radius:0 4px 0 0;border-bottom:none;}
+.stepper-btn:last-child{border-radius:0 0 4px 0;}
+.stepper-btn:hover{background:var(--acc-bg);color:var(--acc);border-color:var(--acc-bdr);}
 /* Summary card */
 .sum-row{display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:.5px solid var(--bdr);font-size:.9rem;}
 .sum-row:last-child{border-bottom:none;}
@@ -183,15 +189,27 @@
           {% else %}—{% endif %}
         </td>
         <td style="text-align:right;">
-          <input type="number" class="inline-num" value="{{ line.quantity|floatformat:0 }}" min="1" step="1"
-            onblur="updateLine({{ line.pk }}, 'quantity', this.value)"
-            onkeydown="if(event.key==='Enter')this.blur()">
+          <div class="num-stepper">
+            <input type="number" class="inline-num" id="qty-{{ line.pk }}" value="{{ line.quantity|floatformat:0 }}" min="1" step="1"
+              onblur="updateLine({{ line.pk }}, 'quantity', this.value)"
+              onkeydown="if(event.key==='Enter')this.blur()">
+            <div class="stepper-btns">
+              <button type="button" class="stepper-btn" onclick="stepValue({{ line.pk }}, 'quantity')">+</button>
+              <button type="button" class="stepper-btn" onclick="stepValue({{ line.pk }}, 'quantity', -1)">−</button>
+            </div>
+          </div>
         </td>
         <td style="text-align:right;">
           {% if line.line_type == 'ns' %}
-          <input type="number" class="inline-num" value="{{ line.unit_cost|floatformat:2 }}" step="0.01"
-            onblur="updateLine({{ line.pk }}, 'unit_cost', this.value)"
-            onkeydown="if(event.key==='Enter')this.blur()">
+          <div class="num-stepper">
+            <input type="number" class="inline-num" id="uc-input-{{ line.pk }}" value="{{ line.unit_cost|floatformat:2 }}" step="0.01"
+              onblur="updateLine({{ line.pk }}, 'unit_cost', this.value)"
+              onkeydown="if(event.key==='Enter')this.blur()">
+            <div class="stepper-btns">
+              <button type="button" class="stepper-btn" onclick="stepValue({{ line.pk }}, 'unit_cost')">+</button>
+              <button type="button" class="stepper-btn" onclick="stepValue({{ line.pk }}, 'unit_cost', -1)">−</button>
+            </div>
+          </div>
           {% else %}
           <span id="uc-{{ line.pk }}" style="font-family:var(--fm);font-size:.82rem;color:var(--mut2);">£{{ line.unit_cost|floatformat:2 }}</span>
           {% endif %}
@@ -1209,6 +1227,18 @@ async function updateLine(pk, field, val){
   const r=await fetch(`/cost-line/${pk}/update/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({[field]:val})});
   const d=await r.json();
   if(d.ok){ document.getElementById(`total-${pk}`).textContent='£'+parseFloat(d.line_total).toFixed(2); recalcFromDOM(); }
+}
+function stepValue(pk, field, direction=1){
+  const inputId = field === 'quantity' ? `qty-${pk}` : `uc-input-${pk}`;
+  const input = document.getElementById(inputId);
+  if(!input) return;
+  const step = parseFloat(input.step) || 1;
+  const min = input.min !== '' ? parseFloat(input.min) : -Infinity;
+  const decimals = (input.step.split('.')[1] || '').length;
+  let newVal = (parseFloat(input.value) || 0) + (direction * step);
+  if(newVal < min) newVal = min;
+  input.value = newVal.toFixed(decimals);
+  updateLine(pk, field, input.value);
 }
 async function refreshStockReference(){
   const tbody = document.getElementById('stock-ref-tbody');
