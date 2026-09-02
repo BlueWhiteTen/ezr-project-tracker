@@ -949,28 +949,7 @@ def cost_extras_save(request, pk):
         cost.back_to_back_fixings = max(0, int(data['back_to_back'] or 0))
     if 'mobile_bases' in data:
         cost.mobile_base_sets = max(0, int(data['mobile_bases'] or 0))
-    if 'mobile_base_price' in data:
-        cost.mobile_base_unit_price = max(0, float(data['mobile_base_price'] or 0))
     cost.save()
-
-    # Keep a dedicated cost line in sync with the mobile base qty/price,
-    # so it flows into the buying total through the same mechanism every
-    # other line already uses, rather than requiring each of the several
-    # separate buying-total calculations across the app to individually
-    # know about mobile base fixings.
-    MOBILE_BASE_LINE_DESC = 'Mobile base upright fixing sets'
-    existing_line = cost.lines.filter(line_type='extras', description=MOBILE_BASE_LINE_DESC).first()
-    if cost.mobile_base_sets > 0 and cost.mobile_base_unit_price > 0:
-        if existing_line:
-            existing_line.quantity = cost.mobile_base_sets
-            existing_line.unit_cost = cost.mobile_base_unit_price
-            existing_line.save()
-        else:
-            ProjectCostLine.objects.create(cost=cost, line_type='extras', description=MOBILE_BASE_LINE_DESC,
-                quantity=cost.mobile_base_sets, unit_cost=cost.mobile_base_unit_price, sort_order=9999)
-    elif existing_line:
-        existing_line.delete()
-
     return JsonResponse({'ok': True})
 
 

@@ -284,16 +284,7 @@
           <input type="number" id="mob-base-input" value="{{ cost.mobile_base_sets }}" min="0" step="1"
             class="form-input" style="width:80px;padding:3px 7px;font-size:.82rem;"
             onblur="saveExtras()">
-          <div class="num-stepper">
-            <input type="number" id="mob-base-price-input" value="{{ cost.mobile_base_unit_price|floatformat:2 }}" min="0" step="0.01"
-              class="inline-num" style="width:65px;"
-              onblur="saveExtras()" onkeydown="if(event.key==='Enter')this.blur()">
-            <div class="stepper-btns">
-              <button type="button" class="stepper-btn" onclick="stepMobileBasePrice(1)">+</button>
-              <button type="button" class="stepper-btn" onclick="stepMobileBasePrice(-1)">−</button>
-            </div>
-          </div>
-          <span style="font-size:.78rem;color:var(--mut);">£ per set — adds mobile base fixing kit per upright. Subtracts equivalent SM foot fixings.</span>
+          <span style="font-size:.78rem;color:var(--mut);">Adds mobile base fixing kit per upright. Subtracts equivalent SM foot fixings.</span>
         </div>
       </div>
       <div style="font-size:.74rem;color:var(--mut);padding-top:.4rem;margin-top:.1rem;">Costs are calculated per upright and included in the buying total.</div>
@@ -1173,17 +1164,10 @@ async function saveExtras(){
     body: JSON.stringify({
       back_to_back: parseInt(document.getElementById('btb-input').value)||0,
       mobile_bases: parseInt(document.getElementById('mob-base-input').value)||0,
-      mobile_base_price: parseFloat(document.getElementById('mob-base-price-input').value)||0,
       cost_pk: COST_PK,
     })
   });
   location.reload();
-}
-function stepMobileBasePrice(direction){
-  const input = document.getElementById('mob-base-price-input');
-  const newVal = Math.max(0, (parseFloat(input.value)||0) + direction*0.01);
-  input.value = newVal.toFixed(2);
-  saveExtras();
 }
 
 // ── Accessories ──────────────────────────────────────────────────────────────
