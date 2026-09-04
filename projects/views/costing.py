@@ -15,6 +15,7 @@ import json
 
 from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence
 from ..forms import RegisterForm, ProjectForm
+from .utils import _calc_cost_breakdown, _calc_cost_flags
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -264,9 +265,28 @@ def project_cost(request, pk, cost_pk=None):
             total_weight += ITEM_WEIGHTS[cu] * float(qty)
     total_weight = round(total_weight, 1)
 
+    # Comparison table across all options on this project, and pricing
+    # flags for the option currently being viewed — both reuse the same
+    # breakdown/flag logic as the Sales Summary report, so this can never
+    # drift from how price and margin are calculated anywhere else.
+    cost_comparison = []
+    for c in all_costs:
+        bd = _calc_cost_breakdown(c)
+        cost_comparison.append({
+            'pk': c.pk,
+            'label': c.label,
+            'sell_price': bd['sell_price'],
+            'margin_pct': bd['margin_pct'],
+            'is_accepted': c.is_accepted,
+            'flags': _calc_cost_flags(c, bd),
+        })
+    current_flags = next((row['flags'] for row in cost_comparison if row['pk'] == cost.pk), [])
+
     return render(request, 'projects/project_cost.html', {
         'project': project, 'cost': cost, 'lines': lines,
         'all_costs': all_costs,
+        'cost_comparison': cost_comparison,
+        'current_flags': current_flags,
         'has_quote': hasattr(cost, 'quote') and cost.quote is not None,
         'picking_templates': PickingTemplate.objects.all().order_by('name'),
         'picking_ref': picking_ref_enriched,

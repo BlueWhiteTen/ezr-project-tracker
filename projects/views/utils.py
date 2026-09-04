@@ -158,6 +158,32 @@ def _calc_sell_price(cost):
     return sell_price
 
 
+def _calc_cost_flags(cost, breakdown=None):
+    """Concrete, specific pricing checks worth a staff member's attention -
+    not a vague 'this looks off', but plain rules that can each be pointed
+    to directly. Returns a list of short warning strings; empty list means
+    nothing flagged. Thresholds (15%/100% markup) match what EZR consider
+    a normal range."""
+    if breakdown is None:
+        breakdown = _calc_cost_breakdown(cost)
+    flags = []
+    markup_pct = float(cost.markup)
+    if markup_pct <= 0:
+        flags.append('Selling at cost or a loss — markup is 0% or negative.')
+    elif markup_pct < 15:
+        flags.append(f'Markup is unusually low ({markup_pct:g}%, normal range is 15–100%).')
+    elif markup_pct > 100:
+        flags.append(f'Markup is unusually high ({markup_pct:g}%, normal range is 15–100%).')
+    zero_cost_stock = [l.description for l in cost.lines.all() if l.line_type == 'stock' and not l.unit_cost]
+    if zero_cost_stock:
+        flags.append(f'{len(zero_cost_stock)} stock item(s) have £0 unit cost: {", ".join(zero_cost_stock[:3])}{"…" if len(zero_cost_stock) > 3 else ""}')
+    zero_cost_extras = [l.description for l in cost.lines.all() if l.line_type == 'extras' and not l.unit_cost]
+    if zero_cost_extras:
+        flags.append(f'{len(zero_cost_extras)} extra line(s) have £0 unit cost: {", ".join(zero_cost_extras[:3])}{"…" if len(zero_cost_extras) > 3 else ""}')
+    return flags
+
+
+
 def _calc_cost_breakdown(cost):
     """Full read-only cost/sell/margin breakdown for one costing option, for
     reporting (Sales Summary). Margin = markup only — labour and delivery

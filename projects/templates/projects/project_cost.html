@@ -127,6 +127,7 @@
     style="padding:.55rem 1.1rem;font-size:.875rem;font-weight:{% if c.pk == cost.pk %}600{% else %}400{% endif %};color:{% if c.pk == cost.pk %}var(--acc){% else %}var(--mut){% endif %};text-decoration:none;border-bottom:{% if c.pk == cost.pk %}2px solid var(--acc){% else %}2px solid transparent{% endif %};margin-bottom:-2px;display:flex;align-items:center;gap:.4rem;white-space:nowrap;">
     {% if c.is_accepted %}<span style="color:#16a34a;font-size:.8rem;">✓</span>{% endif %}
     <span class="tab-label-{{ c.pk }}">{{ c.label }}</span>
+    {% for row in cost_comparison %}{% if row.pk == c.pk and row.flags %}<span title="{{ row.flags|join:' | ' }}" style="color:#d97706;font-size:.8rem;">⚠</span>{% endif %}{% endfor %}
   </a>
   {% endfor %}
   <form method="post" action="{% url 'cost_option_add' project.pk %}" style="display:inline;">
@@ -135,7 +136,36 @@
   </form>
 </div>
 
-<!-- Accepted checkbox -->
+{% if cost_comparison|length > 1 %}
+<!-- Options comparison table -->
+<table style="width:100%;border-collapse:collapse;margin-bottom:1.2rem;font-size:.85rem;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);overflow:hidden;">
+  <thead>
+    <tr style="background:var(--bg);">
+      <th style="text-align:left;padding:.5rem .8rem;font-weight:600;color:var(--mut);">Option</th>
+      <th style="text-align:right;padding:.5rem .8rem;font-weight:600;color:var(--mut);">Sell Price</th>
+      <th style="text-align:right;padding:.5rem .8rem;font-weight:600;color:var(--mut);">Margin</th>
+      <th style="text-align:left;padding:.5rem .8rem;font-weight:600;color:var(--mut);"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in cost_comparison %}
+    <tr style="border-top:1px solid var(--bdr);{% if row.pk == cost.pk %}background:var(--bg);{% endif %}">
+      <td style="padding:.5rem .8rem;">
+        <a href="{% url 'project_cost_option' project.pk row.pk %}" style="color:var(--txt);text-decoration:none;font-weight:{% if row.pk == cost.pk %}600{% else %}400{% endif %};">{{ row.label }}</a>
+        {% if row.is_accepted %}<span style="color:#16a34a;font-size:.78rem;margin-left:.3rem;">✓ Accepted</span>{% endif %}
+      </td>
+      <td style="text-align:right;padding:.5rem .8rem;font-weight:600;">£{{ row.sell_price|floatformat:2 }}</td>
+      <td style="text-align:right;padding:.5rem .8rem;color:var(--mut);">{{ row.margin_pct|floatformat:1 }}%</td>
+      <td style="padding:.5rem .8rem;">
+        {% if row.flags %}<span style="color:#d97706;font-size:.8rem;" title="{{ row.flags|join:' | ' }}">⚠ {{ row.flags|length }} flag{{ row.flags|length|pluralize }}</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+
 <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:1rem;">
   <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.875rem;font-weight:500;">
     <input type="checkbox" id="accepted-checkbox" {% if cost.is_accepted %}checked{% endif %} onchange="toggleAccepted()" style="width:16px;height:16px;accent-color:#16a34a;">
