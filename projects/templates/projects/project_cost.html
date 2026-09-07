@@ -232,7 +232,7 @@
           </div>
         </td>
         <td style="text-align:right;">
-          {% if line.line_type == 'ns' %}
+          {% if line.line_type == 'ns' or line.line_type == 'stock' %}
           <div class="num-stepper">
             <input type="number" class="inline-num" id="uc-input-{{ line.pk }}" value="{{ line.unit_cost|floatformat:2 }}" step="0.01"
               onblur="updateLine({{ line.pk }}, 'unit_cost', this.value)"
@@ -1405,9 +1405,21 @@ function positionDD(){
   const inp=document.getElementById('st-search');
   const dd=document.getElementById('st-dd');
   const rect=inp.getBoundingClientRect();
+  const maxDropdownHeight=220; // matches .prod-dd's max-height, ~5 rows before it scrolls
+  const spaceBelow=window.innerHeight-rect.bottom;
   dd.style.left=rect.left+'px';
-  dd.style.top=(rect.bottom+2)+'px';
   dd.style.width=rect.width+'px';
+  if(spaceBelow < maxDropdownHeight && rect.top > spaceBelow){
+    // Not enough room below to show a useful number of results, and
+    // there's more room above than below — open upward instead, anchored
+    // to the input's top edge so it grows away from it, same as opening
+    // downward grows away from the bottom edge.
+    dd.style.top='';
+    dd.style.bottom=(window.innerHeight-rect.top+2)+'px';
+  } else {
+    dd.style.bottom='';
+    dd.style.top=(rect.bottom+2)+'px';
+  }
 }
 function renderDD(){
   const dd=document.getElementById('st-dd');
