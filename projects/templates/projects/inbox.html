@@ -37,6 +37,15 @@
 .chat-send{background:var(--acc);color:#fff;border:none;border-radius:var(--rad);padding:8px 16px;font-size:.85rem;font-weight:600;cursor:pointer;font-family:var(--f);}
 .empty-chat{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;color:var(--mut);gap:.5rem;}
 .empty-chat h3{font-size:1rem;font-weight:600;color:var(--txt2);}
+.msg-react-row{margin-top:3px;}
+.react-btn{background:none;border:1px solid var(--bdr);border-radius:12px;font-size:.7rem;padding:1px 8px;cursor:pointer;color:var(--mut);font-family:var(--f);line-height:1.6;}
+.react-btn:hover{background:var(--surf2);}
+.react-btn.reacted{background:var(--acc);border-color:var(--acc);color:#fff;}
+.msg-photo-btn{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:8px 12px;cursor:pointer;font-size:.95rem;flex:0 0 auto;}
+.msg-photo-preview{display:none;align-items:center;gap:.5rem;padding:.4rem 1.1rem;background:var(--surf2);border-top:1px solid var(--bdr);}
+.msg-photo-preview img{height:40px;border-radius:4px;object-fit:cover;}
+.msg-photo-preview span{font-size:.78rem;color:var(--mut);flex:1;}
+.msg-photo-preview button{background:none;border:none;cursor:pointer;color:var(--mut);font-size:1rem;}
 /* New message modal */
 .nm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s;}
 .nm-overlay.open{opacity:1;pointer-events:all;}
@@ -137,15 +146,28 @@
       <div style="display:flex;flex-direction:{% if msg.sender == request.user %}row-reverse{% else %}row{% endif %};align-items:flex-end;gap:.5rem;">
         <div class="chat-av" style="width:28px;height:28px;font-size:.58rem;flex-shrink:0;margin-bottom:4px;background:{{ msg.sender.pk|avatar_colour }};">{% with n=msg.sender.get_full_name|default:msg.sender.username %}{% with p=n.split %}{{ p.0|slice:":1"|upper }}{% if p|length > 1 %}{{ p|last|slice:":1"|upper }}{% endif %}{% endwith %}{% endwith %}</div>
         <div style="min-width:0;max-width:65%;">
-          <div class="msg-bubble {% if msg.sender == request.user %}msg-me{% else %}msg-them{% endif %}">{{ msg.text }}</div>
+          {% if msg.photo_data %}<a href="{% url 'message_photo' msg.pk %}" target="_blank"><img src="{% url 'message_photo' msg.pk %}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;{% if msg.text %}margin-bottom:.3rem;{% endif %}"></a>{% endif %}
+          {% if msg.text %}<div class="msg-bubble {% if msg.sender == request.user %}msg-me{% else %}msg-them{% endif %}">{{ msg.text }}</div>{% endif %}
           <div class="msg-meta {% if msg.sender == request.user %}msg-meta-me{% endif %}">{{ msg.timestamp|date:"d M Y, H:i" }}</div>
+          {% if msg.sender != request.user %}
+          <div class="msg-react-row">
+            <button type="button" class="react-btn{% if request.user in msg.thumbs_up_by.all %} reacted{% endif %}" onclick="toggleReaction({{ msg.pk }}, this)" title="{% if request.user in msg.thumbs_up_by.all %}Remove thumbs up{% else %}Thumbs up{% endif %}">👍{% if msg.thumbs_up_by.count %} {{ msg.thumbs_up_by.count }}{% endif %}</button>
+          </div>
+          {% endif %}
         </div>
       </div>
       {% empty %}
       <div style="text-align:center;color:var(--mut);font-size:.85rem;margin-top:2rem;">Start the conversation</div>
       {% endfor %}
     </div>
+    <div class="msg-photo-preview" id="msg-photo-preview">
+      <img id="msg-photo-preview-img">
+      <span>Photo attached</span>
+      <button type="button" onclick="clearPhotoSelect()">✕</button>
+    </div>
     <div class="chat-input-row">
+      <input type="file" accept="image/*" id="msg-photo-input" style="display:none;" onchange="handlePhotoSelect()">
+      <button type="button" class="msg-photo-btn" onclick="document.getElementById('msg-photo-input').click()" title="Attach a photo">📷</button>
       <div class="chat-input-wrap">
         <input class="chat-input" id="chat-input" placeholder="Type a message… (# to tag a project)" autocomplete="off" style="width:100%;box-sizing:border-box;">
         <div class="mention-dd" id="mention-dd"></div>
@@ -197,15 +219,62 @@ function showMobileSidebar(){ window.location='/messages/'; }
 const ACTIVE_USER_ID = {{ active_user.pk }};
 const CSRF = '{{ csrf_token }}';
 
+let selectedMsgPhoto = null;
+
+function handlePhotoSelect(){
+  const file = document.getElementById('msg-photo-input').files[0];
+  if(!file) return;
+  selectedMsgPhoto = file;
+  document.getElementById('msg-photo-preview-img').src = URL.createObjectURL(file);
+  document.getElementById('msg-photo-preview').style.display = 'flex';
+}
+
+function clearPhotoSelect(){
+  selectedMsgPhoto = null;
+  document.getElementById('msg-photo-input').value = '';
+  document.getElementById('msg-photo-preview').style.display = 'none';
+}
+
+function photoHtml(m){
+  if(!m.has_photo) return '';
+  return `<a href="${m.photo_url}" target="_blank"><img src="${m.photo_url}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;${m.text ? 'margin-bottom:.3rem;' : ''}"></a>`;
+}
+
+function reactionRowHtml(m){
+  if(m.is_me) return '';
+  const count = m.thumbs_up_count || 0;
+  const active = !!m.i_reacted;
+  return `<div class="msg-react-row"><button type="button" class="react-btn${active ? ' reacted' : ''}" onclick="toggleReaction(${m.id}, this)" title="${active ? 'Remove thumbs up' : 'Thumbs up'}">👍${count > 0 ? ' ' + count : ''}</button></div>`;
+}
+
+async function toggleReaction(pk, btn){
+  const r = await fetch(`/messages/${pk}/react/`, { method:'POST', headers:{'X-CSRFToken':CSRF} });
+  if(!r.ok) return;
+  const d = await r.json();
+  btn.classList.toggle('reacted', d.reacted);
+  btn.textContent = `👍${d.count > 0 ? ' ' + d.count : ''}`;
+  btn.title = d.reacted ? 'Remove thumbs up' : 'Thumbs up';
+}
+
 async function sendMsg(){
   const inp = document.getElementById('chat-input');
   const text = inp.value.trim();
-  if(!text) return;
-  const r = await fetch(`/messages/${ACTIVE_USER_ID}/`, {
-    method:'POST',
-    headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-    body:JSON.stringify({text})
-  });
+  const photo = selectedMsgPhoto;
+  if(!text && !photo) return;
+  let r;
+  if(photo){
+    const fd = new FormData();
+    fd.append('text', text);
+    fd.append('photo', photo);
+    r = await fetch(`/messages/${ACTIVE_USER_ID}/`, { method:'POST', headers:{'X-CSRFToken':CSRF}, body: fd });
+    clearPhotoSelect();
+  } else {
+    r = await fetch(`/messages/${ACTIVE_USER_ID}/`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+      body:JSON.stringify({text})
+    });
+  }
   const d = await r.json();
   if(d.error) return;
   inp.value='';
@@ -215,7 +284,7 @@ async function sendMsg(){
   {% with n=request.user.get_full_name|default:request.user.username %}{% with p=n.split %}const myInitials = '{{ p.0|slice:":1"|upper }}{% if p|length > 1 %}{{ p|last|slice:":1"|upper }}{% endif %}'{% endwith %}{% endwith %};
   const AV_COLOURS = ['#d4700a','#2563eb','#16a34a','#9333ea','#dc2626','#0891b2','#ca8a04','#be185d'];
   const myColour = window.userColour ? window.userColour({{ request.user.pk }}) : AV_COLOURS[{{ request.user.pk }} % 8];
-  div.innerHTML = `<div class="chat-av" style="width:28px;height:28px;font-size:.58rem;flex-shrink:0;margin-bottom:4px;background:${myColour};">${myInitials}</div><div><div class="msg-bubble msg-me">${d.text}</div><div class="msg-meta msg-meta-me">${d.timestamp}</div></div>`;
+  div.innerHTML = `<div class="chat-av" style="width:28px;height:28px;font-size:.58rem;flex-shrink:0;margin-bottom:4px;background:${myColour};">${myInitials}</div><div>${photoHtml(d)}${d.text ? `<div class="msg-bubble msg-me">${d.text}</div>` : ''}<div class="msg-meta msg-meta-me">${d.timestamp}</div></div>`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
 }
@@ -295,7 +364,7 @@ async function pollConversation(){
       const colour = window.userColour ? window.userColour({{ active_user.pk }}) : AV_COLOURS_POLL[{{ active_user.pk }} % 8];
       const div = document.createElement('div');
       div.style.cssText = 'display:flex;align-items:flex-end;gap:.5rem;';
-      div.innerHTML = `<div class="chat-av" style="width:28px;height:28px;font-size:.58rem;flex-shrink:0;margin-bottom:4px;background:${colour};">${initials}</div><div><div class="msg-bubble msg-them">${m.text}</div><div class="msg-meta">${m.timestamp}</div></div>`;
+      div.innerHTML = `<div class="chat-av" style="width:28px;height:28px;font-size:.58rem;flex-shrink:0;margin-bottom:4px;background:${colour};">${initials}</div><div>${photoHtml(m)}${m.text ? `<div class="msg-bubble msg-them">${m.text}</div>` : ''}<div class="msg-meta">${m.timestamp}</div>${reactionRowHtml(m)}</div>`;
       box.appendChild(div);
     }
     box.scrollTop = box.scrollHeight;
