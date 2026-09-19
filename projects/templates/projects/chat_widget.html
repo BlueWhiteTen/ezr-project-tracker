@@ -136,9 +136,11 @@
           <div><span class="team-msg-name">{{ m.user.get_full_name|default:m.user.username }}</span><span class="team-msg-time">{{ m.timestamp|date:"d M, H:i" }}</span></div>
           {% if m.photo_data %}<a href="{% url 'team_message_photo' m.pk %}" target="_blank"><img src="{% url 'team_message_photo' m.pk %}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;{% if m.text %}margin-bottom:.4rem;{% endif %}"></a>{% endif %}
           {% if m.text %}<div>{{ m.text|safe }}</div>{% endif %}
+          {% if m.user != request.user %}
           <div>
             <button type="button" class="react-btn{% if request.user in m.thumbs_up_by.all %} reacted{% endif %}" onclick="toggleReaction('team', {{ m.pk }}, this)" title="{% if request.user in m.thumbs_up_by.all %}Remove thumbs up{% else %}Thumbs up{% endif %}">👍{% if m.thumbs_up_by.count %} {{ m.thumbs_up_by.count }}{% endif %}</button>
           </div>
+          {% endif %}
         </div>
       </div>
       {% empty %}
@@ -256,6 +258,7 @@ function photoHtml(m){
 }
 
 function reactionHtml(m, kind){
+  if(m.is_me) return '';
   const count = m.thumbs_up_count || 0;
   const active = !!m.i_reacted;
   return `<button type="button" class="react-btn${active ? ' reacted' : ''}" onclick="toggleReaction('${kind}', ${m.id}, this)" title="${active ? 'Remove thumbs up' : 'Thumbs up'}">👍${count > 0 ? ' ' + count : ''}</button>`;

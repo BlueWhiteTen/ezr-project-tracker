@@ -32,6 +32,15 @@
 .chat-send{background:#d4700a;color:#fff;border:none;border-radius:var(--rad);padding:9px 18px;font-size:.875rem;font-weight:600;cursor:pointer;font-family:var(--f);}
 .chat-hint{font-size:.72rem;color:var(--mut);margin-bottom:.4rem;}
 .chat-hint span{background:var(--surf2);border:1px solid var(--bdr);border-radius:4px;padding:1px 5px;font-family:var(--fm);font-size:.7rem;}
+.chat-react-row{margin-top:.3rem;}
+.react-btn{background:none;border:1px solid var(--bdr);border-radius:12px;font-size:.7rem;padding:1px 8px;cursor:pointer;color:var(--mut);font-family:var(--f);line-height:1.6;}
+.react-btn:hover{background:var(--surf2);}
+.react-btn.reacted{background:var(--acc);border-color:var(--acc);color:#fff;}
+.chat-photo-btn{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:9px 12px;cursor:pointer;font-size:.95rem;flex:0 0 auto;}
+.chat-photo-preview{display:none;align-items:center;gap:.5rem;padding:.4rem 0;}
+.chat-photo-preview img{height:40px;border-radius:4px;object-fit:cover;}
+.chat-photo-preview span{font-size:.78rem;color:var(--mut);flex:1;}
+.chat-photo-preview button{background:none;border:none;cursor:pointer;color:var(--mut);font-size:1rem;}
 {% endblock %}
 
 {% block content %}
@@ -55,7 +64,13 @@
           <span class="chat-msg-name {% if msg.user == request.user %}chat-msg-name-me{% endif %}">{{ msg.user.get_full_name|default:msg.user.username }}</span>
           <span class="chat-msg-time">{{ msg.timestamp|date:"d M Y, H:i" }}</span>
         </div>
-        <div class="chat-msg-text {% if msg.user == request.user %}chat-msg-text-me{% endif %}">{{ msg.text }}</div>
+        {% if msg.photo_data %}<a href="{% url 'team_message_photo' msg.pk %}" target="_blank"><img src="{% url 'team_message_photo' msg.pk %}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;{% if msg.text %}margin-bottom:.4rem;{% endif %}"></a>{% endif %}
+        {% if msg.text %}<div class="chat-msg-text {% if msg.user == request.user %}chat-msg-text-me{% endif %}">{{ msg.text }}</div>{% endif %}
+        {% if msg.user != request.user %}
+        <div class="chat-react-row">
+          <button type="button" class="react-btn{% if request.user in msg.thumbs_up_by.all %} reacted{% endif %}" onclick="toggleReaction({{ msg.pk }}, this)" title="{% if request.user in msg.thumbs_up_by.all %}Remove thumbs up{% else %}Thumbs up{% endif %}">👍{% if msg.thumbs_up_by.count %} {{ msg.thumbs_up_by.count }}{% endif %}</button>
+        </div>
+        {% endif %}
       </div>
     </div>
     {% empty %}
@@ -68,9 +83,16 @@
 
   <div class="chat-input-area">
     <div class="chat-hint">Type <span>@</span> to mention someone &nbsp;·&nbsp; Type <span>#</span> to link a project</div>
+    <div class="chat-photo-preview" id="chat-photo-preview">
+      <img id="chat-photo-preview-img">
+      <span>Photo attached</span>
+      <button type="button" onclick="clearPhotoSelect()">✕</button>
+    </div>
     <div class="chat-input-wrap">
       <div class="mention-dd" id="mention-dd"></div>
       <div class="chat-input-row">
+        <input type="file" accept="image/*" id="chat-photo-input" style="display:none;" onchange="handlePhotoSelect()">
+        <button type="button" class="chat-photo-btn" onclick="document.getElementById('chat-photo-input').click()" title="Attach a photo">📷</button>
         <input class="chat-input" id="chat-input" placeholder="Message the team…" autocomplete="off">
         <button class="chat-send" onclick="sendTeamMsg()">Send</button>
       </div>
@@ -98,19 +120,66 @@ window.addEventListener('load', scrollToBottom);
 setTimeout(scrollToBottom, 100);
 setTimeout(scrollToBottom, 400);
 
+let selectedTeamPhoto = null;
+
+function handlePhotoSelect(){
+  const file = document.getElementById('chat-photo-input').files[0];
+  if(!file) return;
+  selectedTeamPhoto = file;
+  document.getElementById('chat-photo-preview-img').src = URL.createObjectURL(file);
+  document.getElementById('chat-photo-preview').style.display = 'flex';
+}
+
+function clearPhotoSelect(){
+  selectedTeamPhoto = null;
+  document.getElementById('chat-photo-input').value = '';
+  document.getElementById('chat-photo-preview').style.display = 'none';
+}
+
+function photoHtml(m){
+  if(!m.has_photo) return '';
+  return `<a href="${m.photo_url}" target="_blank"><img src="${m.photo_url}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;${m.text ? 'margin-bottom:.4rem;' : ''}"></a>`;
+}
+
+function reactionRowHtml(m){
+  if(m.is_me) return '';
+  const count = m.thumbs_up_count || 0;
+  const active = !!m.i_reacted;
+  return `<div class="chat-react-row"><button type="button" class="react-btn${active ? ' reacted' : ''}" onclick="toggleReaction(${m.id}, this)" title="${active ? 'Remove thumbs up' : 'Thumbs up'}">👍${count > 0 ? ' ' + count : ''}</button></div>`;
+}
+
+async function toggleReaction(pk, btn){
+  const r = await fetch(`/chat/${pk}/react/`, { method:'POST', headers:{'X-CSRFToken':CSRF} });
+  if(!r.ok) return;
+  const d = await r.json();
+  btn.classList.toggle('reacted', d.reacted);
+  btn.textContent = `👍${d.count > 0 ? ' ' + d.count : ''}`;
+  btn.title = d.reacted ? 'Remove thumbs up' : 'Thumbs up';
+}
+
 async function sendTeamMsg(){
   const inp = document.getElementById('chat-input');
   const text = inp.value.trim();
-  if(!text) return;
+  const photo = selectedTeamPhoto;
+  if(!text && !photo) return;
   inp.value = '';
   mentionStart = -1;
   document.getElementById('mention-dd').style.display = 'none';
 
-  const r = await fetch('/chat/', {
-    method:'POST',
-    headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-    body:JSON.stringify({text})
-  });
+  let r;
+  if(photo){
+    const fd = new FormData();
+    fd.append('text', text);
+    fd.append('photo', photo);
+    r = await fetch('/chat/', { method:'POST', headers:{'X-CSRFToken':CSRF}, body: fd });
+    clearPhotoSelect();
+  } else {
+    r = await fetch('/chat/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+      body:JSON.stringify({text})
+    });
+  }
   if(!r.ok){ inp.value = text; return; }
   const d = await r.json();
   if(!d.id){ inp.value = text; return; }
@@ -128,7 +197,7 @@ async function sendTeamMsg(){
         <span class="chat-msg-name chat-msg-name-me">${d.user}</span>
         <span class="chat-msg-time">${d.timestamp}</span>
       </div>
-      <div class="chat-msg-text chat-msg-text-me">${d.text}</div>
+      ${photoHtml(d)}${d.text ? `<div class="chat-msg-text chat-msg-text-me">${d.text}</div>` : ''}
     </div>`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
@@ -160,7 +229,8 @@ async function pollTeamChat(){
             <span class="chat-msg-name">${m.user}</span>
             <span class="chat-msg-time">${m.timestamp}</span>
           </div>
-          <div class="chat-msg-text">${m.text}</div>
+          ${photoHtml(m)}${m.text ? `<div class="chat-msg-text">${m.text}</div>` : ''}
+          ${reactionRowHtml(m)}
         </div>`;
       box.appendChild(div);
     }
