@@ -2,8 +2,12 @@
 {% load project_extras %}
 {% block title %}Messages — Project Tracker{% endblock %}
 {% block extra_style %}
-.container{padding:1rem 1rem 0 1rem!important;overflow:hidden;}
-.inbox-wrap{display:grid;grid-template-columns:280px 1fr;gap:0;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);height:calc(100vh - 96px);min-height:0;}
+.container{padding:0!important;overflow:hidden;}
+/* Pinned directly to the viewport (nav bottom / sidebar edge / screen edges)
+   instead of a height:calc(100vh - Npx) guess, so the page always fills
+   exactly to the bottom of the visible window with no page-level scrollbar,
+   regardless of nav height, banners, or anything else added above it. */
+.inbox-wrap{position:fixed;top:calc(78px + 1rem);left:calc(180px + 1rem);right:1rem;bottom:1rem;display:grid;grid-template-columns:280px 1fr;gap:0;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);min-height:0;}
 .inbox-sidebar{border-right:1px solid var(--bdr);display:flex;flex-direction:column;}
 .sidebar-head{padding:1rem 1.1rem;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;background:var(--surf2);}
 .sidebar-title{font-size:.95rem;font-weight:600;}
@@ -59,12 +63,11 @@
 @media (max-width: 768px) {
   .inbox-wrap {
     grid-template-columns: 1fr;
-    height: calc(100vh - 76px);
     border-radius: 0;
     border-left: none;
     border-right: none;
     position: fixed;
-    inset: 78px 0 0 0;
+    inset: 58px 0 0 0;
     z-index: 10;
   }
   /* No active conversation: show sidebar (conversations list) */

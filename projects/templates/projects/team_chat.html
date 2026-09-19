@@ -2,8 +2,15 @@
 {% load project_extras %}
 {% block title %}Team Chat — Project Tracker{% endblock %}
 {% block extra_style %}
-.container{padding:1rem 1rem 0 1rem!important;overflow:hidden;}
-.chat-page{display:flex;flex-direction:column;height:calc(100vh - 96px);background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);}
+.container{padding:0!important;overflow:hidden;}
+/* Pinned directly to the viewport (nav bottom / sidebar edge / screen edges)
+   instead of a height:calc(100vh - Npx) guess, so the page always fills
+   exactly to the bottom of the visible window with no page-level scrollbar,
+   regardless of nav height, banners, or anything else added above it. */
+.chat-page{position:fixed;top:calc(78px + 1rem);left:calc(180px + 1rem);right:1rem;bottom:1rem;display:flex;flex-direction:column;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);}
+@media (max-width: 768px){
+  .chat-page{top:58px;left:0;right:0;bottom:0;border-radius:0;border-left:none;border-right:none;}
+}
 .chat-head{padding:1rem 1.3rem;border-bottom:1px solid var(--bdr);background:var(--surf2);display:flex;align-items:center;gap:.75rem;flex-shrink:0;}
 .chat-head-icon{width:36px;height:36px;border-radius:50%;background:#d4700a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1rem;}
 .chat-head-title{font-size:.95rem;font-weight:600;}
