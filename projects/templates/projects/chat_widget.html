@@ -239,6 +239,7 @@ function toggleConvoSidebar(){
 async function openConversation(userId, name){
   activeConvoUserId = userId;
   activeConvoName = name;
+  try{ localStorage.setItem('ezr_active_convo_user', String(userId)); }catch(e){}
   document.querySelectorAll('.convo-item').forEach(el => el.classList.toggle('active', el.dataset.userId == userId));
   document.getElementById('private-input-row').style.display = 'flex';
   document.getElementById('convo-sidebar').classList.remove('expanded');
@@ -462,6 +463,18 @@ async function pollAll(){
 if('Notification' in window && Notification.permission === 'default'){
   Notification.requestPermission();
 }
+
+// Reopen whichever private conversation was active before a refresh,
+// instead of always dropping back to the "pick a conversation" screen.
+(function restoreActiveConvo(){
+  let saved = null;
+  try{ saved = localStorage.getItem('ezr_active_convo_user'); }catch(e){}
+  if(!saved) return;
+  const item = document.querySelector(`.convo-item[data-user-id="${saved}"]`);
+  if(!item) return;
+  const name = item.querySelector('.convo-name').textContent;
+  openConversation(parseInt(saved), name);
+})();
 
 updateBadges();
 setInterval(pollAll, 8000);
