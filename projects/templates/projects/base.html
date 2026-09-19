@@ -299,7 +299,7 @@ select.form-input{cursor:pointer;}
   </div>
   <div class="nav-right">
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <a href="{% url 'team_chat' %}" class="nav-icon {% if request.resolver_match.url_name == 'team_chat' %}active-nav{% endif %}" style="width:auto;padding:0 10px;font-size:.72rem;font-weight:600;height:20px;border-radius:3px 3px 0 0;letter-spacing:.02em;">EZR Chat</a>
+      <a href="{% url 'team_chat' %}" onclick="markTeamChatSeen()" class="nav-icon {% if request.resolver_match.url_name == 'team_chat' %}active-nav{% endif %}" style="width:auto;padding:0 10px;font-size:.72rem;font-weight:600;height:20px;border-radius:3px 3px 0 0;letter-spacing:.02em;">EZR Chat <span id="team-badge" style="display:none;position:static;margin-left:3px;width:8px;height:8px;border-radius:99px;background:#ef4444;"></span></a>
       <a href="{% url 'inbox' %}" class="nav-icon" style="width:auto;padding:0 10px;font-size:.72rem;font-weight:600;height:20px;border-radius:0 0 3px 3px;letter-spacing:.02em;">Private Chat <span class="nav-badge" id="msg-badge" style="display:none;position:static;margin-left:3px;"></span></a>
     </div>
     <a href="{% url 'notifications' %}" class="nav-icon" title="Notifications">&#128276;<span class="nav-badge" id="notif-badge" style="display:none"></span></a>
@@ -452,6 +452,8 @@ function notifyDesktop(title, body, link){
   }
 }
 
+let _lastKnownTeamPk = 0;
+
 async function pollCounts(){
   try{
     var r = await fetch('/notifications/count/');
@@ -461,6 +463,17 @@ async function pollCounts(){
     if(nb){ nb.textContent=d.count; nb.style.display=d.count>0?'flex':'none'; }
     var mb = document.getElementById('msg-badge');
     if(mb){ mb.textContent=d.messages; mb.style.display=d.messages>0?'flex':'none'; }
+
+    // Team chat has no per-user read/unread tracking server-side (it's a
+    // shared channel, not addressed to anyone specifically), so "seen" is
+    // tracked here in localStorage instead - good enough for a lightweight
+    // new-activity indicator, at the cost of not syncing across devices.
+    var tb = document.getElementById('team-badge');
+    if(d.latest_team_pk) _lastKnownTeamPk = d.latest_team_pk;
+    if(tb && d.latest_team_pk){
+      var lastSeenTeamPk = parseInt(localStorage.getItem('ezr_last_seen_team_pk') || '0');
+      tb.style.display = d.latest_team_pk > lastSeenTeamPk ? 'flex' : 'none';
+    }
 
     // Toast for genuinely new items only — the first poll after page load
     // just records what's already there as the baseline, without popping
@@ -481,6 +494,15 @@ async function pollCounts(){
         _lastMsgId = d.latest_msg.id;
       }
     }
+  }catch(e){}
+}
+
+function markTeamChatSeen(){
+  // Uses the value from the most recent poll rather than fetching fresh here
+  // - a fetch started here could be cancelled mid-flight by the navigation
+  // this click triggers, silently failing to save.
+  try{
+    if(_lastKnownTeamPk) localStorage.setItem('ezr_last_seen_team_pk', String(_lastKnownTeamPk));
   }catch(e){}
 }
 if('Notification' in window && Notification.permission === 'default'){

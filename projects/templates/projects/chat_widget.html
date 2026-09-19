@@ -37,6 +37,10 @@
   .msg-them{align-self:flex-start;background:var(--surf2);border:1px solid var(--bdr);}
   .msg-me{align-self:flex-end;background:var(--acc);color:#fff;}
   .msg-meta{font-size:.65rem;opacity:.65;margin-top:2px;}
+  .react-btn{background:none;border:1px solid var(--bdr);border-radius:12px;font-size:.68rem;padding:1px 7px;cursor:pointer;color:var(--mut);margin-left:.3rem;line-height:1.5;}
+  .react-btn:hover{background:var(--surf2);}
+  .react-btn.reacted{background:var(--acc);border-color:var(--acc);color:#fff;}
+  .msg-me .react-btn{margin-left:0;margin-right:.3rem;}
   .empty-thread{flex:1;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:.85rem;}
 
   /* EZR chat panel */
@@ -109,7 +113,14 @@
       <div class="thread-messages" id="thread-messages">
         <div class="empty-thread">Pick a conversation, or start a new one.</div>
       </div>
+      <div id="private-photo-preview" style="display:none;padding:.4rem .8rem;background:var(--surf);border-top:1px solid var(--bdr);align-items:center;gap:.5rem;">
+        <img id="private-photo-preview-img" style="height:40px;border-radius:4px;object-fit:cover;">
+        <span style="font-size:.78rem;color:var(--mut);flex:1;">Photo attached</span>
+        <button type="button" onclick="clearPhotoSelect('private')" style="background:none;border:none;cursor:pointer;color:var(--mut);font-size:1rem;">✕</button>
+      </div>
       <div class="input-row" id="private-input-row" style="display:none;">
+        <input type="file" accept="image/*" id="private-photo-input" style="display:none;" onchange="handlePhotoSelect('private')">
+        <button type="button" onclick="document.getElementById('private-photo-input').click()" title="Attach a photo" style="flex:0 0 auto;">📷</button>
         <input type="text" id="private-input" placeholder="Message… (Enter to send)" onkeydown="if(event.key==='Enter'){sendPrivate();}">
         <button onclick="sendPrivate()">Send</button>
       </div>
@@ -123,14 +134,25 @@
         <div class="team-av">{{ m.user.get_full_name|default:m.user.username|slice:":2"|upper }}</div>
         <div class="team-msg-body">
           <div><span class="team-msg-name">{{ m.user.get_full_name|default:m.user.username }}</span><span class="team-msg-time">{{ m.timestamp|date:"d M, H:i" }}</span></div>
-          <div>{{ m.text|safe }}</div>
+          {% if m.photo_data %}<a href="{% url 'team_message_photo' m.pk %}" target="_blank"><img src="{% url 'team_message_photo' m.pk %}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;{% if m.text %}margin-bottom:.4rem;{% endif %}"></a>{% endif %}
+          {% if m.text %}<div>{{ m.text|safe }}</div>{% endif %}
+          <div>
+            <button type="button" class="react-btn{% if request.user in m.thumbs_up_by.all %} reacted{% endif %}" onclick="toggleReaction('team', {{ m.pk }}, this)" title="{% if request.user in m.thumbs_up_by.all %}Remove thumbs up{% else %}Thumbs up{% endif %}">👍{% if m.thumbs_up_by.count %} {{ m.thumbs_up_by.count }}{% endif %}</button>
+          </div>
         </div>
       </div>
       {% empty %}
       <div style="color:var(--mut);font-size:.85rem;text-align:center;padding:1rem;">No messages yet.</div>
       {% endfor %}
     </div>
+    <div id="team-photo-preview" style="display:none;padding:.4rem .8rem;background:var(--surf);border-top:1px solid var(--bdr);align-items:center;gap:.5rem;">
+      <img id="team-photo-preview-img" style="height:40px;border-radius:4px;object-fit:cover;">
+      <span style="font-size:.78rem;color:var(--mut);flex:1;">Photo attached</span>
+      <button type="button" onclick="clearPhotoSelect('team')" style="background:none;border:none;cursor:pointer;color:var(--mut);font-size:1rem;">✕</button>
+    </div>
     <div class="input-row">
+      <input type="file" accept="image/*" id="team-photo-input" style="display:none;" onchange="handlePhotoSelect('team')">
+      <button type="button" onclick="document.getElementById('team-photo-input').click()" title="Attach a photo" style="flex:0 0 auto;">📷</button>
       <input type="text" id="team-input" placeholder="Message EZR Chat… (Enter to send)" onkeydown="if(event.key==='Enter'){sendTeam();}">
       <button onclick="sendTeam()">Send</button>
     </div>
@@ -189,6 +211,9 @@ function switchTab(tab){
     updateBadges();
     const box = document.getElementById('team-messages');
     box.scrollTop = box.scrollHeight;
+    // Shared with the main site's nav badge (base.html) - same localStorage
+    // key, same origin, so reading team chat here also clears it there.
+    try{ if(lastTeamSeenPk) localStorage.setItem('ezr_last_seen_team_pk', String(lastTeamSeenPk)); }catch(e){}
   }
 }
 
@@ -225,13 +250,34 @@ async function openConversation(userId, name){
   refreshConvoUnreadBadge(userId);
 }
 
+function photoHtml(m){
+  if(!m.has_photo) return '';
+  return `<a href="${m.photo_url}" target="_blank"><img src="${m.photo_url}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;margin-bottom:${m.text ? '.4rem' : '0'};"></a>`;
+}
+
+function reactionHtml(m, kind){
+  const count = m.thumbs_up_count || 0;
+  const active = !!m.i_reacted;
+  return `<button type="button" class="react-btn${active ? ' reacted' : ''}" onclick="toggleReaction('${kind}', ${m.id}, this)" title="${active ? 'Remove thumbs up' : 'Thumbs up'}">👍${count > 0 ? ' ' + count : ''}</button>`;
+}
+
+async function toggleReaction(kind, pk, btn){
+  const url = kind === 'private' ? `/messages/${pk}/react/` : `/chat/${pk}/react/`;
+  const r = await fetch(url, { method:'POST', headers:{'X-CSRFToken':CSRF} });
+  if(!r.ok) return;
+  const d = await r.json();
+  btn.classList.toggle('reacted', d.reacted);
+  btn.textContent = `👍${d.count > 0 ? ' ' + d.count : ''}`;
+  btn.title = d.reacted ? 'Remove thumbs up' : 'Thumbs up';
+}
+
 function renderThread(msgs){
   const box = document.getElementById('thread-messages');
   if(!msgs.length){ box.innerHTML = '<div class="empty-thread">No messages yet — say hello.</div>'; return; }
   box.innerHTML = msgs.map(m => `
     <div class="msg-bubble ${m.is_me ? 'msg-me' : 'msg-them'}">
-      <div>${escapeHtml(m.text)}</div>
-      <div class="msg-meta">${m.is_me ? '' : m.sender + ' · '}${m.timestamp}</div>
+      ${photoHtml(m)}${m.text ? `<div>${escapeHtml(m.text)}</div>` : ''}
+      <div class="msg-meta">${m.is_me ? '' : m.sender + ' · '}${m.timestamp} ${reactionHtml(m, 'private')}</div>
     </div>`).join('');
   box.scrollTop = box.scrollHeight;
 }
@@ -241,7 +287,7 @@ function appendThreadMessage(m){
   if(box.querySelector('.empty-thread')) box.innerHTML = '';
   const div = document.createElement('div');
   div.className = `msg-bubble ${m.is_me ? 'msg-me' : 'msg-them'}`;
-  div.innerHTML = `<div>${escapeHtml(m.text)}</div><div class="msg-meta">${m.is_me ? '' : m.sender + ' · '}${m.timestamp}</div>`;
+  div.innerHTML = `${photoHtml(m)}${m.text ? `<div>${escapeHtml(m.text)}</div>` : ''}<div class="msg-meta">${m.is_me ? '' : m.sender + ' · '}${m.timestamp} ${reactionHtml(m, 'private')}</div>`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
 }
@@ -252,14 +298,40 @@ function escapeHtml(s){
   return d.innerHTML;
 }
 
+let selectedPhoto = {private: null, team: null};
+
+function handlePhotoSelect(tab){
+  const file = document.getElementById(`${tab}-photo-input`).files[0];
+  if(!file) return;
+  selectedPhoto[tab] = file;
+  document.getElementById(`${tab}-photo-preview-img`).src = URL.createObjectURL(file);
+  document.getElementById(`${tab}-photo-preview`).style.display = 'flex';
+}
+
+function clearPhotoSelect(tab){
+  selectedPhoto[tab] = null;
+  document.getElementById(`${tab}-photo-input`).value = '';
+  document.getElementById(`${tab}-photo-preview`).style.display = 'none';
+}
+
 async function sendPrivate(){
   const input = document.getElementById('private-input');
   const text = input.value.trim();
-  if(!text || !activeConvoUserId) return;
+  const photo = selectedPhoto.private;
+  if((!text && !photo) || !activeConvoUserId) return;
   input.value = '';
-  const r = await fetch(`/messages/${activeConvoUserId}/`, {
-    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify({text})
-  });
+  let r;
+  if(photo){
+    const fd = new FormData();
+    fd.append('text', text);
+    fd.append('photo', photo);
+    r = await fetch(`/messages/${activeConvoUserId}/`, { method:'POST', headers:{'X-CSRFToken':CSRF}, body: fd });
+    clearPhotoSelect('private');
+  } else {
+    r = await fetch(`/messages/${activeConvoUserId}/`, {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify({text})
+    });
+  }
   const d = await r.json();
   if(d.id){ appendThreadMessage(d); lastPrivateSeenPk = Math.max(lastPrivateSeenPk, d.id); }
 }
@@ -277,11 +349,21 @@ function refreshConvoUnreadBadge(userId){
 async function sendTeam(){
   const input = document.getElementById('team-input');
   const text = input.value.trim();
-  if(!text) return;
+  const photo = selectedPhoto.team;
+  if(!text && !photo) return;
   input.value = '';
-  const r = await fetch('/chat/', {
-    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify({text})
-  });
+  let r;
+  if(photo){
+    const fd = new FormData();
+    fd.append('text', text);
+    fd.append('photo', photo);
+    r = await fetch('/chat/', { method:'POST', headers:{'X-CSRFToken':CSRF}, body: fd });
+    clearPhotoSelect('team');
+  } else {
+    r = await fetch('/chat/', {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify({text})
+    });
+  }
   const d = await r.json();
   if(d.id){ appendTeamMessage(d); lastTeamSeenPk = Math.max(lastTeamSeenPk, d.id); }
 }
@@ -294,7 +376,8 @@ function appendTeamMessage(m){
     <div class="team-av">${(m.initials || (m.user||'').slice(0,2)).toUpperCase()}</div>
     <div class="team-msg-body">
       <div><span class="team-msg-name">${escapeHtml(m.user)}</span><span class="team-msg-time">${m.timestamp}</span></div>
-      <div>${m.text}</div>
+      ${photoHtml(m)}${m.text ? `<div>${m.text}</div>` : ''}
+      <div>${reactionHtml(m, 'team')}</div>
     </div>`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;

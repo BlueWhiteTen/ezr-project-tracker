@@ -53,7 +53,7 @@ from .purchasing import (
 )
 from .messaging import (
     notification_count, notifications_view, notification_dismiss, inbox, chat_widget, conversation_poll,
-    conversation, team_chat, team_chat_poll,
+    conversation, team_chat, team_chat_poll, message_photo, team_message_photo, message_react, team_message_react,
 )
 from .staff import (
     staff_directory, staff_profile, get_bank_holidays,

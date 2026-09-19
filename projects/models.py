@@ -200,7 +200,10 @@ class Comment(models.Model):
 class Message(models.Model):
     sender    = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages')
-    text      = models.TextField()
+    text      = models.TextField(blank=True)
+    photo_data = models.BinaryField(null=True, blank=True)
+    photo_mime = models.CharField(max_length=100, blank=True)
+    thumbs_up_by = models.ManyToManyField(User, related_name='thumbs_up_messages', blank=True)
     read      = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
 
@@ -263,7 +266,10 @@ class TodoItem(models.Model):
 
 class TeamMessage(models.Model):
     user      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='team_messages')
-    text      = models.TextField()
+    text      = models.TextField(blank=True)
+    photo_data = models.BinaryField(null=True, blank=True)
+    photo_mime = models.CharField(max_length=100, blank=True)
+    thumbs_up_by = models.ManyToManyField(User, related_name='thumbs_up_team_messages', blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:

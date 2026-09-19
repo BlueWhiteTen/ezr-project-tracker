@@ -67,10 +67,10 @@
   </div>
 
   <!-- My reminders -->
-  <div class="home-tile">
+  <div class="home-tile" style="max-height:520px;">
     <div class="home-tile-title">⏰ Reminders{% if my_reminders %}<span class="home-badge">{{ my_reminders|length }}</span>{% endif %}</div>
     {% if my_reminders %}
-    <ul class="home-list" style="flex:1;overflow-y:auto;">
+    <ul class="home-list" style="flex:1;overflow-y:auto;min-height:0;">
       {% now "U" as now_ts %}
       {% for r in my_reminders %}
       <li id="reminder-row-{{ r.pk }}" style="display:flex;align-items:flex-start;gap:.5rem;">

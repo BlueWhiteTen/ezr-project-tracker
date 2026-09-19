@@ -26,14 +26,14 @@ from django.contrib.auth.views import (
 
 @login_required
 def notification_count(request):
-    notif_count = Notification.objects.filter(user=request.user, read=False).count()
+    # Excludes type='message' from the bell's count entirely - a new message
+    # is now indicated on the EZR Chat / Private Chat nav buttons themselves,
+    # not via the bell or the notifications list, so it isn't shown twice.
+    notif_count = Notification.objects.filter(user=request.user, read=False).exclude(type='message').count()
     msg_count   = Message.objects.filter(recipient=request.user, read=False).count()
-    # Excludes type='message' — sending a private message already creates both
-    # a Message and a matching Notification, and that Notification is only
-    # needed for the notifications list/badge count (still included above),
-    # not for a second toast on top of the one latest_msg already produces.
     latest_notif = Notification.objects.filter(user=request.user, read=False).exclude(type='message').order_by('-timestamp').first()
     latest_msg = Message.objects.filter(recipient=request.user, read=False).order_by('-timestamp').select_related('sender').first()
+    latest_team_pk = TeamMessage.objects.order_by('-pk').values_list('pk', flat=True).first() or 0
     return JsonResponse({
         'count': notif_count, 'messages': msg_count,
         'latest_notif': {'id': latest_notif.id, 'text': latest_notif.text, 'link': latest_notif.link or '/notifications/'} if latest_notif else None,
@@ -43,6 +43,7 @@ def notification_count(request):
             'sender': latest_msg.sender.get_full_name() or latest_msg.sender.username,
             'link': f'/messages/{latest_msg.sender_id}/',
         } if latest_msg else None,
+        'latest_team_pk': latest_team_pk,
     })
 
 
@@ -50,8 +51,8 @@ def notification_count(request):
 
 @login_required
 def notifications_view(request):
-    notes = Notification.objects.filter(user=request.user).order_by('-timestamp')[:50]
-    Notification.objects.filter(user=request.user, read=False).update(read=True)
+    notes = Notification.objects.filter(user=request.user).exclude(type='message').order_by('-timestamp')[:50]
+    Notification.objects.filter(user=request.user, read=False).exclude(type='message').update(read=True)
     return render(request, 'projects/notifications.html', {'notifications': notes})
 
 
@@ -156,6 +157,10 @@ def conversation_poll(request, user_id):
         'messages': [
             {
                 'id': m.pk, 'text': m.text,
+                'has_photo': bool(m.photo_data),
+                'photo_url': f'/messages/photo/{m.pk}/' if m.photo_data else None,
+                'thumbs_up_count': m.thumbs_up_by.count(),
+                'i_reacted': m.thumbs_up_by.filter(pk=request.user.pk).exists(),
                 'sender': m.sender.get_full_name() or m.sender.username,
                 'timestamp': timezone.localtime(m.timestamp).strftime('%d %b %Y, %H:%M'),
                 'is_me': m.sender_id == request.user.id,
@@ -165,6 +170,36 @@ def conversation_poll(request, user_id):
     })
 
 
+
+
+@login_required
+def message_photo(request, pk):
+    """Serve a photo attached to a private message. Scoped to sender or
+    recipient only, so nobody can view a photo from a conversation they're
+    not part of by guessing a pk."""
+    msg = get_object_or_404(Message, pk=pk)
+    if request.user.id not in (msg.sender_id, msg.recipient_id):
+        return HttpResponse(status=404)
+    if not msg.photo_data:
+        return HttpResponse(status=404)
+    return HttpResponse(bytes(msg.photo_data), content_type=msg.photo_mime or 'image/jpeg')
+
+
+@login_required
+@require_POST
+def message_react(request, pk):
+    """Toggle the current user's thumbs-up on a private message. Scoped to
+    sender or recipient only, matching message_photo's own scoping."""
+    msg = get_object_or_404(Message, pk=pk)
+    if request.user.id not in (msg.sender_id, msg.recipient_id):
+        return HttpResponse(status=404)
+    if msg.thumbs_up_by.filter(pk=request.user.pk).exists():
+        msg.thumbs_up_by.remove(request.user)
+        reacted = False
+    else:
+        msg.thumbs_up_by.add(request.user)
+        reacted = True
+    return JsonResponse({'reacted': reacted, 'count': msg.thumbs_up_by.count()})
 
 
 @login_required
@@ -178,19 +213,31 @@ def conversation(request, user_id):
     Message.objects.filter(sender=other, recipient=request.user, read=False).update(read=True)
 
     if request.method == 'POST':
-        data = json.loads(request.body)
-        text = data.get('text', '').strip()
-        if text:
-            msg = Message.objects.create(sender=request.user, recipient=other, text=text)
+        photo = request.FILES.get('photo')
+        if photo:
+            text = request.POST.get('text', '').strip()
+        else:
+            data = json.loads(request.body)
+            text = data.get('text', '').strip()
+        if text or photo:
+            msg = Message(sender=request.user, recipient=other, text=text)
+            if photo:
+                msg.photo_data = photo.read()
+                msg.photo_mime = photo.content_type or 'image/jpeg'
+            msg.save()
             # Create notification for recipient
             sender_name = request.user.get_full_name() or request.user.username
+            notif_text = f"{sender_name} sent you a message: {text[:80]}" if text else f"{sender_name} sent you a photo"
             Notification.objects.create(
                 user=other, type='message',
-                text=f"{sender_name} sent you a message: {text[:80]}",
+                text=notif_text,
                 link=f"/messages/{request.user.pk}/",
             )
             return JsonResponse({
                 'id': msg.pk, 'text': msg.text,
+                'has_photo': bool(msg.photo_data),
+                'photo_url': f'/messages/photo/{msg.pk}/' if msg.photo_data else None,
+                'thumbs_up_count': 0, 'i_reacted': False,
                 'sender': sender_name,
                 'timestamp': timezone.localtime(msg.timestamp).strftime('%d %b %Y, %H:%M'),
                 'is_me': True,
@@ -235,16 +282,24 @@ def conversation(request, user_id):
 def team_chat(request):
     if request.method == 'POST':
         import re
-        data = json.loads(request.body)
-        text = data.get('text', '').strip()
-        if not text:
+        photo = request.FILES.get('photo')
+        if photo:
+            text = request.POST.get('text', '').strip()
+        else:
+            data = json.loads(request.body)
+            text = data.get('text', '').strip()
+        if not text and not photo:
             return JsonResponse({'error': 'Empty'}, status=400)
         # Render mentions/#project-links to their final display form before
         # storing, so historic, freshly-sent, and polled messages all show
         # identically (previously this stored unprintable placeholder bytes).
         display_text = re.sub(r'@\[([^\]]+)\]\(\d+\)', r'@\1', text)
         display_text = re.sub(r'#\[([^\]]+)\]\((\d+)\)', r'<a href="/project/\2/edit/" style="color:var(--acc);font-weight:600">#\1</a>', display_text)
-        msg = TeamMessage.objects.create(user=request.user, text=display_text)
+        msg = TeamMessage(user=request.user, text=display_text)
+        if photo:
+            msg.photo_data = photo.read()
+            msg.photo_mime = photo.content_type or 'image/jpeg'
+        msg.save()
         sender_name = request.user.get_full_name() or request.user.username
 
         # Handle @mentions (from original raw text)
@@ -265,6 +320,9 @@ def team_chat(request):
             'id': msg.pk,
             'text': display_text,
             'raw_text': text,
+            'has_photo': bool(msg.photo_data),
+            'photo_url': f'/chat/photo/{msg.pk}/' if msg.photo_data else None,
+            'thumbs_up_count': 0, 'i_reacted': False,
             'user': sender_name,
             'initials': _initials(sender_name),
             'timestamp': timezone.localtime(msg.timestamp).strftime('%d %b %Y, %H:%M'),
@@ -285,6 +343,31 @@ def team_chat(request):
 
 
 @login_required
+def team_message_photo(request, pk):
+    """Serve a photo attached to a team chat message - visible to any
+    logged-in staff member, matching team chat's own shared-channel nature."""
+    msg = get_object_or_404(TeamMessage, pk=pk)
+    if not msg.photo_data:
+        return HttpResponse(status=404)
+    return HttpResponse(bytes(msg.photo_data), content_type=msg.photo_mime or 'image/jpeg')
+
+
+@login_required
+@require_POST
+def team_message_react(request, pk):
+    """Toggle the current user's thumbs-up on a team chat message - any
+    logged-in staff member can react, matching team chat's shared nature."""
+    msg = get_object_or_404(TeamMessage, pk=pk)
+    if msg.thumbs_up_by.filter(pk=request.user.pk).exists():
+        msg.thumbs_up_by.remove(request.user)
+        reacted = False
+    else:
+        msg.thumbs_up_by.add(request.user)
+        reacted = True
+    return JsonResponse({'reacted': reacted, 'count': msg.thumbs_up_by.count()})
+
+
+@login_required
 def team_chat_poll(request):
     """Return team chat messages newer than `after` for live updates."""
     after = request.GET.get('after', 0)
@@ -298,6 +381,10 @@ def team_chat_poll(request):
             {
                 'id': m.pk,
                 'text': m.text,
+                'has_photo': bool(m.photo_data),
+                'photo_url': f'/chat/photo/{m.pk}/' if m.photo_data else None,
+                'thumbs_up_count': m.thumbs_up_by.count(),
+                'i_reacted': m.thumbs_up_by.filter(pk=request.user.pk).exists(),
                 'user': m.user.get_full_name() or m.user.username,
                 'user_id': m.user_id,
                 'initials': _initials(m.user.get_full_name() or m.user.username),
