@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 import json
 
-from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence
+from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, SurveyPhoto
 from ..forms import RegisterForm, ProjectForm
 
 
@@ -165,6 +165,50 @@ def report_photo_file(request, pk):
     return HttpResponse('Not found', status=404)
 
 
+
+
+@login_required
+def survey_photos(request, pk):
+    """List (GET) or bulk-upload (POST) survey photos/videos for a project."""
+    project = get_object_or_404(Project, pk=pk)
+    if request.method == 'POST':
+        created = []
+        for f in request.FILES.getlist('survey_photos'):
+            p = SurveyPhoto.objects.create(
+                project=project,
+                file_data=f.read(),
+                file_mime=f.content_type or '',
+                file_original_name=f.name,
+                uploaded_by=request.user,
+            )
+            created.append({'pk': p.pk, 'url': f'/survey-photo/{p.pk}/file/', 'is_video': p.is_video, 'name': p.file_original_name})
+        return JsonResponse({'ok': True, 'photos': created})
+
+    photos = project.survey_photos.all()
+    return JsonResponse([{
+        'pk': p.pk,
+        'url': f'/survey-photo/{p.pk}/file/',
+        'is_video': p.is_video,
+        'name': p.file_original_name,
+        'uploaded_by': p.uploaded_by.get_full_name() if p.uploaded_by and p.uploaded_by.get_full_name() else (p.uploaded_by.username if p.uploaded_by else ''),
+    } for p in photos], safe=False)
+
+
+@login_required
+def survey_photo_file(request, pk):
+    from django.http import HttpResponse
+    photo = get_object_or_404(SurveyPhoto, pk=pk)
+    resp = HttpResponse(bytes(photo.file_data or b''), content_type=photo.file_mime or 'application/octet-stream')
+    resp['Content-Disposition'] = f'inline; filename="{photo.file_original_name or "file"}"'
+    return resp
+
+
+@login_required
+@require_POST
+def survey_photo_delete(request, pk):
+    photo = get_object_or_404(SurveyPhoto, pk=pk)
+    photo.delete()
+    return JsonResponse({'ok': True})
 
 
 @login_required

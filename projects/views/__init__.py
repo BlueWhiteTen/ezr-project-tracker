@@ -92,6 +92,7 @@ from .photos import (
     photo_library, photo_library_project, satisfaction_note_file,
     fitting_notes_list, fitting_note_upload, fitting_note_delete,
     fitting_note_update, fitting_note_download,
+    survey_photos, survey_photo_file, survey_photo_delete,
 )
 from .stock import (
     project_documents, document_download, document_delete,

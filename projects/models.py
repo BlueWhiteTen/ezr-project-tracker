@@ -369,6 +369,22 @@ class ReportPhoto(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
 
+class SurveyPhoto(models.Model):
+    project   = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='survey_photos')
+    file_data = models.BinaryField(null=True, blank=True)
+    file_mime = models.CharField(max_length=100, blank=True)
+    file_original_name = models.CharField(max_length=200, blank=True)
+    uploaded_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-uploaded_at']
+
+    @property
+    def is_video(self):
+        return (self.file_mime or '').lower().startswith('video/')
+
+
 class SatisfactionNote(models.Model):
     report    = models.ForeignKey(InstallationReport, on_delete=models.CASCADE, related_name='satisfaction_notes')
     file      = models.FileField(upload_to='satisfaction_notes/', null=True, blank=True)

@@ -626,10 +626,15 @@ def picking_from_costing(request, pk):
 
     lines = cost.lines.select_related('product').all()
 
-    # Build reference using existing function
+    # Build reference using existing function — respect any per-accessory
+    # custom-qty override set on the Costing page instead of always using
+    # the raw upright count (this previously ignored AccessoryOverride
+    # entirely, so e.g. an SM Footplates override never reached the
+    # picking list).
     uprights_count = sum(int(float(l.quantity)) * 2 for l in lines if l.line_type == 'frame')
+    overrides_map = {o.accessory_id: o.override_qty for o in AccessoryOverride.objects.filter(cost=cost)}
     acc_with_uprights = [
-        {'code': acc.code, 'uprights': uprights_count}
+        {'code': acc.code, 'uprights': overrides_map.get(acc.id) if overrides_map.get(acc.id) is not None else uprights_count}
         for acc in cost.accessories.all()
     ]
     ref = generate_picking_reference(list(lines), acc_with_uprights, cost.wall_fixings, cost.back_to_back_fixings, cost.mobile_base_sets)
@@ -676,10 +681,12 @@ def picking_from_costing(request, pk):
                         'quantity': float(titem.quantity) * mult,
                     })
 
-    # Add accessories
-    uprights = sum(int(float(l.quantity)) * 2 for l in lines if l.line_type == 'frame')
+    # Add accessories — respect the same per-accessory override used above.
+    # (Previously this unconditionally overwrote whatever generate_picking_reference
+    # had already computed with the flat, un-overridden upright count, which
+    # silently undid any custom-qty override set on the Costing page.)
     for acc in cost.accessories.all():
-        ref[acc.code or acc.name] = uprights
+        ref[acc.code or acc.name] = overrides_map.get(acc.id) if overrides_map.get(acc.id) is not None else uprights_count
 
     # Category sort order for picking list
     def picking_sort_key(code):

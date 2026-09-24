@@ -239,6 +239,22 @@
           <div id="doc-error" style="color:var(--red);font-size:.78rem;margin-top:.4rem;display:none;"></div>
         </div>
       </div>
+
+      <div class="form-card" style="border-color:rgba(22,163,74,.3);background:rgba(22,163,74,.03);">
+        <div class="section-title" style="color:#16a34a;">Survey Photos</div>
+        <div id="survey-photo-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:.5rem;margin-bottom:.75rem;"></div>
+        <div style="border:2px dashed rgba(22,163,74,.3);border-radius:var(--rad);padding:.75rem;background:rgba(22,163,74,.03);">
+          <div class="form-group" style="margin-bottom:.5rem;">
+            <label class="form-label">Photos &amp; Videos <span style="font-weight:400;color:var(--mut2);">(select as many as you like)</span></label>
+            <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:.5rem .75rem;font-size:.85rem;color:var(--txt2);" for="survey-photo-file">
+              <span style="background:#16a34a;color:#fff;border-radius:4px;padding:3px 10px;font-size:.75rem;font-weight:600;flex-shrink:0;">Choose files</span>
+              <span id="survey-photo-file-name">No files chosen</span>
+            </label>
+            <input type="file" id="survey-photo-file" accept="image/*,video/*" multiple style="display:none;" onchange="uploadSurveyPhotos({{ project.pk }}, this.files)">
+          </div>
+          <div id="survey-photo-error" style="color:var(--red);font-size:.78rem;margin-top:.4rem;display:none;"></div>
+        </div>
+      </div>
       {% endif %}
 
     </div>
@@ -738,6 +754,73 @@ async function loadDocs(pk){
   } catch(e) { console.log('Could not load docs', e); }
 }
 {% if project %}document.addEventListener('DOMContentLoaded', ()=>loadDocs({{ project.pk }}));{% endif %}
+
+// ── Survey Photos ────────────────────────────────────────────────────────────
+function surveyThumbHtml(p){
+  const inner = p.is_video
+    ? `<video src="${p.url}" style="width:100%;height:100%;object-fit:cover;" muted></video>
+       <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.6);pointer-events:none;">▶</div>`
+    : `<img src="${p.url}" style="width:100%;height:100%;object-fit:cover;">`;
+  return `
+    <div style="position:relative;width:90px;height:90px;border-radius:var(--rad);overflow:hidden;border:1px solid var(--bdr);cursor:pointer;background:#000;" data-pk="${p.pk}" onclick="openSurveyPhoto('${p.url}', ${p.is_video})">
+      ${inner}
+      <button onclick="event.stopPropagation();deleteSurveyPhoto(${p.pk})" title="Remove" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.55);border:none;color:#fff;border-radius:50%;width:20px;height:20px;line-height:20px;text-align:center;cursor:pointer;font-size:.75rem;padding:0;">✕</button>
+    </div>`;
+}
+
+function openSurveyPhoto(url, isVideo){
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;';
+  overlay.innerHTML = isVideo
+    ? `<video src="${url}" controls autoplay style="max-width:90vw;max-height:90vh;"></video>`
+    : `<img src="${url}" style="max-width:90vw;max-height:90vh;object-fit:contain;">`;
+  overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+}
+
+async function loadSurveyPhotos(pk){
+  const grid = document.getElementById('survey-photo-grid');
+  if(!grid) return;
+  try {
+    const r = await fetch(`/project/${pk}/survey-photos/`);
+    const photos = await r.json();
+    grid.innerHTML = photos.map(surveyThumbHtml).join('');
+  } catch(e) { console.log('Could not load survey photos', e); }
+}
+
+async function uploadSurveyPhotos(pk, fileList){
+  const files = Array.from(fileList || []);
+  if(!files.length) return;
+  const nameEl = document.getElementById('survey-photo-file-name');
+  const errEl = document.getElementById('survey-photo-error');
+  if(errEl) errEl.style.display = 'none';
+  if(nameEl) nameEl.textContent = `Uploading ${files.length} file${files.length > 1 ? 's' : ''}…`;
+
+  const formData = new FormData();
+  files.forEach(f => formData.append('survey_photos', f));
+  formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+  try {
+    const r = await fetch(`/project/${pk}/survey-photos/`, { method: 'POST', body: formData });
+    const text = await r.text();
+    let d;
+    try { d = JSON.parse(text); } catch(e) { throw new Error('Server error: ' + text.slice(0,200)); }
+    if(d.error){ throw new Error(d.error); }
+    const grid = document.getElementById('survey-photo-grid');
+    if(grid) grid.insertAdjacentHTML('beforeend', d.photos.map(surveyThumbHtml).join(''));
+  } catch(e) {
+    if(errEl){ errEl.textContent = `Upload failed: ${e.message}`; errEl.style.display = 'block'; }
+  }
+  if(nameEl) nameEl.textContent = 'No files chosen';
+  document.getElementById('survey-photo-file').value = '';
+}
+
+async function deleteSurveyPhoto(pk){
+  if(!confirm('Remove this file?')) return;
+  await fetch(`/survey-photo/${pk}/delete/`, { method: 'POST', headers: {'X-CSRFToken': '{{ csrf_token }}'} });
+  document.querySelector(`#survey-photo-grid [data-pk="${pk}"]`)?.remove();
+}
+
+{% if project %}document.addEventListener('DOMContentLoaded', ()=>loadSurveyPhotos({{ project.pk }}));{% endif %}
 
 // ── Postcode lookup (Postcodes.io — free, no API key) ───────────────────────
 async function lookupPostcode(){

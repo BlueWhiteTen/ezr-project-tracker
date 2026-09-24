@@ -125,8 +125,6 @@
         <th>Code</th>
         <th>Description</th>
         <th style="text-align:right;">Qty Needed</th>
-        <th style="text-align:right;">In Stock</th>
-        <th style="text-align:right;">Free Stock</th>
         <th style="width:40px;"></th>
       </tr></thead>
       <tbody id="items-tbody">
@@ -134,8 +132,7 @@
       {% if item.item_type == 'message' %}
       <tr id="row-{{ item.pk }}" style="background:var(--surf2);">
         <td></td>
-        <td colspan="4" style="font-style:italic;color:var(--mut);font-size:.88rem;">📝 {{ item.message|default:item.ns_description }}</td>
-        <td></td>
+        <td colspan="3" style="font-style:italic;color:var(--mut);font-size:.88rem;">📝 {{ item.message|default:item.ns_description }}</td>
         <td><button onclick="removeItem({{ item.pk }})" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;">✕</button></td>
       </tr>
       {% elif item.item_type == 'ns' %}
@@ -152,8 +149,6 @@
             onkeydown="if(event.key==='Enter')this.blur()">
           {% endif %}
         </td>
-        <td class="qty-cell" style="color:var(--mut);">—</td>
-        <td class="qty-cell" style="color:var(--mut);">—</td>
         <td style="white-space:nowrap;">
           <button onclick="addMsgAfter({{ item.pk }})" style="background:none;border:none;color:var(--acc);cursor:pointer;font-size:1.1rem;padding:2px 5px;border-radius:4px;font-weight:700;" title="Add note below">+</button>
           <button onclick="removeItem({{ item.pk }})" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;">✕</button>
@@ -173,8 +168,6 @@
             onkeydown="if(event.key==='Enter')this.blur()">
           {% endif %}
         </td>
-        <td class="qty-cell {% if item.product.quantity >= item.quantity %}stock-ok{% else %}stock-low{% endif %}">{{ item.product.quantity|floatformat:0 }}</td>
-        <td class="qty-cell {% if item.product.free_stock >= item.quantity %}stock-ok{% else %}stock-low{% endif %}">{{ item.product.free_stock|floatformat:0 }}</td>
         <td style="white-space:nowrap;">
           {% if not pl.allocated %}
           <button onclick="addMsgAfter({{ item.pk }})" style="background:none;border:none;color:var(--acc);cursor:pointer;font-size:1.1rem;padding:2px 5px;border-radius:4px;font-weight:700;" title="Add note below">+</button>
@@ -186,7 +179,7 @@
       </tr>
       {% endif %}
       {% empty %}
-      <tr id="empty-row"><td colspan="7" class="empty-msg">No items yet — add products below</td></tr>
+      <tr id="empty-row"><td colspan="5" class="empty-msg">No items yet — add products below</td></tr>
       {% endfor %}
       </tbody>
     </table>
@@ -452,8 +445,6 @@ async function addItem(){
       <td><span class="code">${selProduct.code}</span></td>
       <td style="font-size:.95rem;">${selProduct.desc}</td>
       <td class="qty-cell">${d.quantity}</td>
-      <td class="qty-cell ${selProduct.qty >= qty ? 'stock-ok':'stock-low'}">${selProduct.qty}</td>
-      <td class="qty-cell ${selProduct.free >= qty ? 'stock-ok':'stock-low'}">${selProduct.free}</td>
       <td><button onclick="removeItem(${d.item_pk})" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;">✕</button></td>`;
     tbody.appendChild(tr);
   }
@@ -471,7 +462,7 @@ async function removeItem(itemPk){
   document.getElementById(`row-${itemPk}`)?.remove();
   if(!document.querySelector('#items-tbody tr:not(#empty-row)')){
     const tbody = document.getElementById('items-tbody');
-    tbody.innerHTML = '<tr id="empty-row"><td colspan="6" class="empty-msg">No items yet — add products below</td></tr>';
+    tbody.innerHTML = '<tr id="empty-row"><td colspan="5" class="empty-msg">No items yet — add products below</td></tr>';
   }
 }
 
@@ -510,8 +501,6 @@ async function addNS(){
     <td><span style="background:var(--acc-bg);color:var(--acc);border:1px solid var(--acc-bdr);border-radius:4px;padding:1px 7px;font-family:var(--fm);font-size:.75rem;font-weight:700;">NS</span></td>
     <td style="font-size:.95rem;">${desc}</td>
     <td class="qty-cell">${qty}</td>
-    <td class="qty-cell" style="color:var(--mut);">—</td>
-    <td class="qty-cell" style="color:var(--mut);">—</td>
     <td><button onclick="removeItem(${d.item_pk})" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;">✕</button></td>`;
   tbody.appendChild(tr);
   document.getElementById('ns-desc').value = '';
@@ -541,8 +530,7 @@ async function addMsg(){
   tr.style.background = 'var(--surf2)';
   tr.innerHTML = `
     <td></td>
-    <td colspan="4" style="font-style:italic;color:var(--mut);font-size:.88rem;">📝 ${msg}</td>
-    <td></td>
+    <td colspan="3" style="font-style:italic;color:var(--mut);font-size:.88rem;">📝 ${msg}</td>
     <td><button onclick="removeItem(${d.item_pk})" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;">✕</button></td>`;
   tbody.appendChild(tr);
   document.getElementById('msg-text').value = '';

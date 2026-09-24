@@ -43,6 +43,8 @@
 .react-btn{background:none;border:1px solid var(--bdr);border-radius:12px;font-size:.7rem;padding:1px 8px;cursor:pointer;color:var(--mut);font-family:var(--f);line-height:1.6;}
 .react-btn:hover{background:var(--surf2);}
 .react-btn.reacted{background:var(--acc);border-color:var(--acc);color:#fff;}
+.react-btn.react-badge{cursor:default;background:var(--acc-bg);border-color:var(--acc-bdr);color:var(--acc);}
+.react-btn.react-badge:hover{background:var(--acc-bg);}
 .chat-photo-btn{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:9px 12px;cursor:pointer;font-size:.95rem;flex:0 0 auto;}
 .chat-photo-preview{display:none;align-items:center;gap:.5rem;padding:.4rem 0;}
 .chat-photo-preview img{height:40px;border-radius:4px;object-fit:cover;}
@@ -76,6 +78,10 @@
         {% if msg.user != request.user %}
         <div class="chat-react-row">
           <button type="button" class="react-btn{% if request.user in msg.thumbs_up_by.all %} reacted{% endif %}" onclick="toggleReaction({{ msg.pk }}, this)" title="{% if request.user in msg.thumbs_up_by.all %}Remove thumbs up{% else %}Thumbs up{% endif %}">👍{% if msg.thumbs_up_by.count %} {{ msg.thumbs_up_by.count }}{% endif %}</button>
+        </div>
+        {% elif msg.thumbs_up_by.count %}
+        <div class="chat-react-row">
+          <span class="react-btn react-badge" title="Liked by {% for u in msg.thumbs_up_by.all %}{{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}{% endfor %}">👍 {{ msg.thumbs_up_by.count }}</span>
         </div>
         {% endif %}
       </div>
@@ -149,8 +155,11 @@ function photoHtml(m){
 }
 
 function reactionRowHtml(m){
-  if(m.is_me) return '';
   const count = m.thumbs_up_count || 0;
+  if(m.is_me){
+    if(!count) return '';
+    return `<div class="chat-react-row"><span class="react-btn react-badge" title="Liked by others">👍 ${count}</span></div>`;
+  }
   const active = !!m.i_reacted;
   return `<div class="chat-react-row"><button type="button" class="react-btn${active ? ' reacted' : ''}" onclick="toggleReaction(${m.id}, this)" title="${active ? 'Remove thumbs up' : 'Thumbs up'}">👍${count > 0 ? ' ' + count : ''}</button></div>`;
 }

@@ -40,6 +40,8 @@
   .react-btn{background:none;border:1px solid var(--bdr);border-radius:12px;font-size:.68rem;padding:1px 7px;cursor:pointer;color:var(--mut);margin-left:.3rem;line-height:1.5;}
   .react-btn:hover{background:var(--surf2);}
   .react-btn.reacted{background:var(--acc);border-color:var(--acc);color:#fff;}
+  .react-btn.react-badge{cursor:default;background:var(--acc-bg);border-color:var(--acc-bdr);color:var(--acc);}
+  .react-btn.react-badge:hover{background:var(--acc-bg);}
   .msg-me .react-btn{margin-left:0;margin-right:.3rem;}
   .empty-thread{flex:1;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:.85rem;}
 
@@ -139,6 +141,10 @@
           {% if m.user != request.user %}
           <div>
             <button type="button" class="react-btn{% if request.user in m.thumbs_up_by.all %} reacted{% endif %}" onclick="toggleReaction('team', {{ m.pk }}, this)" title="{% if request.user in m.thumbs_up_by.all %}Remove thumbs up{% else %}Thumbs up{% endif %}">👍{% if m.thumbs_up_by.count %} {{ m.thumbs_up_by.count }}{% endif %}</button>
+          </div>
+          {% elif m.thumbs_up_by.count %}
+          <div>
+            <span class="react-btn react-badge" title="Liked by others">👍 {{ m.thumbs_up_by.count }}</span>
           </div>
           {% endif %}
         </div>
@@ -259,8 +265,11 @@ function photoHtml(m){
 }
 
 function reactionHtml(m, kind){
-  if(m.is_me) return '';
   const count = m.thumbs_up_count || 0;
+  if(m.is_me){
+    if(!count) return '';
+    return `<span class="react-btn react-badge" title="Liked by others">👍 ${count}</span>`;
+  }
   const active = !!m.i_reacted;
   return `<button type="button" class="react-btn${active ? ' reacted' : ''}" onclick="toggleReaction('${kind}', ${m.id}, this)" title="${active ? 'Remove thumbs up' : 'Thumbs up'}">👍${count > 0 ? ' ' + count : ''}</button>`;
 }
