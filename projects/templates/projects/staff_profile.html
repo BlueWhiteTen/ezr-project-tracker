@@ -70,7 +70,7 @@
             <option value="{{ val }}" {% if profile.theme == val %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
           </select>
-          <div style="font-size:.75rem;color:var(--mut2);margin-top:.35rem;">Dark mode is only available on the Default style for now.</div>
+          <div style="font-size:.75rem;color:var(--mut2);margin-top:.35rem;">Dark mode is available on Default and Ops Console. Works Order, Site Signage and Ledger are light-only for now.</div>
         </div>
         {% endif %}
         {% if request.user.is_superuser %}

@@ -309,6 +309,7 @@ class StaffProfile(models.Model):
         ('works_order', 'Works Order'),
         ('site_signage', 'Site Signage'),
         ('ledger', 'Ledger'),
+        ('ops_console', 'Ops Console'),
     ]
     theme = models.CharField(max_length=20, choices=THEME_CHOICES, default='default', help_text='Personal visual style — set on your own profile')
 

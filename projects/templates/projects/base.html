@@ -72,6 +72,33 @@
   --rad:6px;--rad-lg:8px;--shadow:0 1px 2px rgba(36,31,26,.05);--shadow-md:0 3px 10px rgba(36,31,26,.08);
 }
 [data-style="ledger"] h1,[data-style="ledger"] .page-title{font-family:'Fraunces',serif;font-weight:600;}
+
+/* ── Ops Console — industrial ledger/spec-sheet style. Unlike the other three
+   alt styles, this one DOES support dark mode (see toggleTheme() below). */
+[data-style="ops_console"]{
+  --bg:#F7F4EB;--surf:#FFFFFF;--surf2:#FBF9F3;--surf3:#EFEBE3;--bdr:#D9D2BE;--bdr2:#C4BB9F;
+  --acc:#D98A00;--acc-dark:#9C6300;--acc-light:#F2B36B;--acc-bg:#FBEACB;--acc-bdr:#E8C47A;
+  --blue:#38586F;--blue-light:#4F7490;--blue-bg:#E2EBF0;--blue-bdr:#BFD0D9;
+  --grn:#2C6B45;--grn-bg:#E3F0E7;--amb:#8A6A1F;--amb-bg:#F1E6C8;--red:#9E3220;--red-bg:#F5E0D8;
+  --txt:#1B1812;--txt2:#48453C;--mut:#7A7566;--mut2:#A39D8A;
+  --f:'IBM Plex Sans',system-ui,sans-serif;--fm:'IBM Plex Mono',monospace;
+  --rad:0px;--rad-lg:0px;--shadow:none;--shadow-md:0 2px 0 rgba(27,24,18,.08);
+}
+[data-style="ops_console"][data-theme="dark"]{
+  --bg:#15130F;--surf:#1E1B15;--surf2:#262219;--surf3:#302B1F;--bdr:#3A352A;--bdr2:#4A4536;
+  --acc:#F2A93B;--acc-dark:#D98A00;--acc-light:#F7C878;--acc-bg:rgba(242,169,59,.14);--acc-bdr:rgba(242,169,59,.35);
+  --blue:#7FA0B5;--blue-light:#9BB9CB;--blue-bg:rgba(127,160,181,.14);--blue-bdr:rgba(127,160,181,.35);
+  --grn:#5FA97D;--grn-bg:rgba(95,169,125,.14);--amb:#C9A227;--amb-bg:rgba(201,162,39,.14);
+  --red:#D97360;--red-bg:rgba(217,115,96,.14);
+  --txt:#F2EFE6;--txt2:#D8D2C2;--mut:#A39D8A;--mut2:#7A7566;
+}
+[data-style="ops_console"] .btn{border-radius:0;font-family:var(--fm);font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:.76rem;}
+[data-style="ops_console"] .form-input{border-radius:0;}
+[data-style="ops_console"] .card,[data-style="ops_console"] .form-card,[data-style="ops_console"] .stock-table-wrap{border-radius:0;box-shadow:none;}
+[data-style="ops_console"] h1,[data-style="ops_console"] h2,[data-style="ops_console"] .page-title{font-family:var(--f);font-weight:700;letter-spacing:-.01em;}
+[data-style="ops_console"] .badge{border-radius:0;font-family:var(--fm);font-weight:700;text-transform:uppercase;letter-spacing:.03em;border-width:1px;}
+[data-style="ops_console"] .tl{border-radius:0;font-family:var(--fm);}
+
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:var(--f);background:var(--bg);color:var(--txt);min-height:100vh;font-size:14px;line-height:1.5;}
 a{color:inherit;text-decoration:none;}
@@ -357,7 +384,8 @@ select.form-input{cursor:pointer;}
 document.addEventListener('DOMContentLoaded', function(){
   var b = document.getElementById('theme-btn');
   if(!b) return;
-  if(document.documentElement.dataset.style && document.documentElement.dataset.style !== 'default'){
+  var darkCapableStyles = ['default', 'ops_console'];
+  if(document.documentElement.dataset.style && darkCapableStyles.indexOf(document.documentElement.dataset.style) === -1){
     b.textContent = 'Dark mode not available yet';
     b.style.opacity = '.6';
     b.style.cursor = 'not-allowed';
@@ -369,7 +397,8 @@ document.addEventListener('DOMContentLoaded', function(){
 function toggleTheme(){
   var h = document.documentElement;
   var b = document.getElementById('theme-btn');
-  if(h.dataset.style && h.dataset.style !== 'default'){
+  var darkCapableStyles = ['default', 'ops_console'];
+  if(h.dataset.style && darkCapableStyles.indexOf(h.dataset.style) === -1){
     if(b) b.textContent = 'Dark mode not available yet';
     return;
   }
