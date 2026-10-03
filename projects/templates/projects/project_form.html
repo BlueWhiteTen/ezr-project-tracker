@@ -240,14 +240,14 @@
         </div>
       </div>
 
-      <div class="form-card" style="border-color:rgba(22,163,74,.3);background:rgba(22,163,74,.03);">
-        <div class="section-title" style="color:#16a34a;">Survey Photos</div>
+      <div class="form-card" style="border-color:rgba(234,88,12,.3);background:rgba(234,88,12,.03);">
+        <div class="section-title" style="color:#ea580c;">Survey Photos</div>
         <div id="survey-photo-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:.5rem;margin-bottom:.75rem;"></div>
-        <div style="border:2px dashed rgba(22,163,74,.3);border-radius:var(--rad);padding:.75rem;background:rgba(22,163,74,.03);">
+        <div style="border:2px dashed rgba(234,88,12,.3);border-radius:var(--rad);padding:.75rem;background:rgba(234,88,12,.03);">
           <div class="form-group" style="margin-bottom:.5rem;">
             <label class="form-label">Photos &amp; Videos <span style="font-weight:400;color:var(--mut2);">(select as many as you like)</span></label>
             <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:.5rem .75rem;font-size:.85rem;color:var(--txt2);" for="survey-photo-file">
-              <span style="background:#16a34a;color:#fff;border-radius:4px;padding:3px 10px;font-size:.75rem;font-weight:600;flex-shrink:0;">Choose files</span>
+              <span style="background:#ea580c;color:#fff;border-radius:4px;padding:3px 10px;font-size:.75rem;font-weight:600;flex-shrink:0;">Choose files</span>
               <span id="survey-photo-file-name">No files chosen</span>
             </label>
             <input type="file" id="survey-photo-file" accept="image/*,video/*" multiple style="display:none;" onchange="uploadSurveyPhotos({{ project.pk }}, this.files)">
@@ -756,26 +756,73 @@ async function loadDocs(pk){
 {% if project %}document.addEventListener('DOMContentLoaded', ()=>loadDocs({{ project.pk }}));{% endif %}
 
 // ── Survey Photos ────────────────────────────────────────────────────────────
-function surveyThumbHtml(p){
+let surveyPhotosData = [];
+
+function surveyThumbHtml(p, idx){
   const inner = p.is_video
     ? `<video src="${p.url}" style="width:100%;height:100%;object-fit:cover;" muted></video>
        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.6);pointer-events:none;">▶</div>`
     : `<img src="${p.url}" style="width:100%;height:100%;object-fit:cover;">`;
   return `
-    <div style="position:relative;width:90px;height:90px;border-radius:var(--rad);overflow:hidden;border:1px solid var(--bdr);cursor:pointer;background:#000;" data-pk="${p.pk}" onclick="openSurveyPhoto('${p.url}', ${p.is_video})">
+    <div style="position:relative;width:90px;height:90px;border-radius:var(--rad);overflow:hidden;border:1px solid var(--bdr);cursor:pointer;background:#000;" data-pk="${p.pk}" onclick="openSurveyPhoto(${idx})">
       ${inner}
       <button onclick="event.stopPropagation();deleteSurveyPhoto(${p.pk})" title="Remove" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.55);border:none;color:#fff;border-radius:50%;width:20px;height:20px;line-height:20px;text-align:center;cursor:pointer;font-size:.75rem;padding:0;">✕</button>
     </div>`;
 }
 
-function openSurveyPhoto(url, isVideo){
+function renderSurveyGrid(){
+  const grid = document.getElementById('survey-photo-grid');
+  if(!grid) return;
+  grid.innerHTML = surveyPhotosData.map(surveyThumbHtml).join('');
+}
+
+let surveyLightboxIdx = -1;
+
+function openSurveyPhoto(idx){
+  surveyLightboxIdx = idx;
   const overlay = document.createElement('div');
+  overlay.id = 'survey-lightbox';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;';
-  overlay.innerHTML = isVideo
-    ? `<video src="${url}" controls autoplay style="max-width:90vw;max-height:90vh;"></video>`
-    : `<img src="${url}" style="max-width:90vw;max-height:90vh;object-fit:contain;">`;
-  overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
+  overlay.onclick = (e) => { if(e.target === overlay) closeSurveyLightbox(); };
   document.body.appendChild(overlay);
+  document.addEventListener('keydown', surveyLightboxKeyHandler);
+  renderSurveyLightbox();
+}
+
+function renderSurveyLightbox(){
+  const overlay = document.getElementById('survey-lightbox');
+  if(!overlay) return;
+  const p = surveyPhotosData[surveyLightboxIdx];
+  if(!p) return;
+  const media = p.is_video
+    ? `<video src="${p.url}" controls autoplay style="max-width:85vw;max-height:90vh;"></video>`
+    : `<img src="${p.url}" style="max-width:85vw;max-height:90vh;object-fit:contain;">`;
+  const arrowBtn = (dir, label) => `
+    <button type="button" onclick="event.stopPropagation();navigateSurveyLightbox(${dir})" style="position:absolute;top:50%;${dir < 0 ? 'left:1rem;' : 'right:1rem;'}transform:translateY(-50%);background:rgba(234,88,12,.85);border:none;color:#fff;width:48px;height:48px;border-radius:50%;font-size:1.4rem;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="${label}">${dir < 0 ? '‹' : '›'}</button>`;
+  overlay.innerHTML = `
+    ${surveyPhotosData.length > 1 ? arrowBtn(-1, 'Previous') : ''}
+    ${media}
+    ${surveyPhotosData.length > 1 ? arrowBtn(1, 'Next') : ''}
+    <button type="button" onclick="event.stopPropagation();closeSurveyLightbox()" style="position:absolute;top:1rem;right:1rem;background:rgba(0,0,0,.55);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:1.1rem;cursor:pointer;">✕</button>
+  `;
+}
+
+function navigateSurveyLightbox(dir){
+  if(!surveyPhotosData.length) return;
+  surveyLightboxIdx = (surveyLightboxIdx + dir + surveyPhotosData.length) % surveyPhotosData.length;
+  renderSurveyLightbox();
+}
+
+function surveyLightboxKeyHandler(e){
+  if(e.key === 'ArrowLeft') navigateSurveyLightbox(-1);
+  else if(e.key === 'ArrowRight') navigateSurveyLightbox(1);
+  else if(e.key === 'Escape') closeSurveyLightbox();
+}
+
+function closeSurveyLightbox(){
+  document.getElementById('survey-lightbox')?.remove();
+  document.removeEventListener('keydown', surveyLightboxKeyHandler);
+  surveyLightboxIdx = -1;
 }
 
 async function loadSurveyPhotos(pk){
@@ -783,8 +830,8 @@ async function loadSurveyPhotos(pk){
   if(!grid) return;
   try {
     const r = await fetch(`/project/${pk}/survey-photos/`);
-    const photos = await r.json();
-    grid.innerHTML = photos.map(surveyThumbHtml).join('');
+    surveyPhotosData = await r.json();
+    renderSurveyGrid();
   } catch(e) { console.log('Could not load survey photos', e); }
 }
 
@@ -805,8 +852,8 @@ async function uploadSurveyPhotos(pk, fileList){
     let d;
     try { d = JSON.parse(text); } catch(e) { throw new Error('Server error: ' + text.slice(0,200)); }
     if(d.error){ throw new Error(d.error); }
-    const grid = document.getElementById('survey-photo-grid');
-    if(grid) grid.insertAdjacentHTML('beforeend', d.photos.map(surveyThumbHtml).join(''));
+    surveyPhotosData = surveyPhotosData.concat(d.photos);
+    renderSurveyGrid();
   } catch(e) {
     if(errEl){ errEl.textContent = `Upload failed: ${e.message}`; errEl.style.display = 'block'; }
   }
@@ -817,7 +864,8 @@ async function uploadSurveyPhotos(pk, fileList){
 async function deleteSurveyPhoto(pk){
   if(!confirm('Remove this file?')) return;
   await fetch(`/survey-photo/${pk}/delete/`, { method: 'POST', headers: {'X-CSRFToken': '{{ csrf_token }}'} });
-  document.querySelector(`#survey-photo-grid [data-pk="${pk}"]`)?.remove();
+  surveyPhotosData = surveyPhotosData.filter(p => p.pk !== pk);
+  renderSurveyGrid();
 }
 
 {% if project %}document.addEventListener('DOMContentLoaded', ()=>loadSurveyPhotos({{ project.pk }}));{% endif %}
