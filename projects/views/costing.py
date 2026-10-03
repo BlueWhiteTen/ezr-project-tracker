@@ -1127,12 +1127,6 @@ def generate_picking_reference(lines, selected_accessories=None, wall_fixings=0,
             for fix_code, qty_per in SM_FOOT_FIXINGS.items():
                 items[fix_code] += n_uprights * qty_per
 
-    # Subtract SM foot fixings replaced by mobile base sets (must run after accessories)
-    if mobile_bases:
-        for code in SM_FOOT_FIXINGS:
-            if items[code] > 0:
-                items[code] = max(0, items[code] - mobile_bases * SM_FOOT_FIXINGS[code])
-
     # Wall fixings
     if wall_fixings:
         for fix_code, qty_per in WALL_FIXING_KIT.items():
