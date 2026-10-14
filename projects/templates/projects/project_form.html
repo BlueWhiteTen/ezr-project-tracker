@@ -223,9 +223,9 @@
       <div class="form-card" style="border-color:rgba(37,99,235,.3);background:rgba(37,99,235,.03);">
         <div class="section-title" style="color:#2563eb;">Documents</div>
         <div id="doc-list" style="margin-bottom:.75rem;min-height:20px;"></div>
-        <div style="border:2px dashed rgba(37,99,235,.3);border-radius:var(--rad);padding:.75rem;background:rgba(37,99,235,.03);">
+        <div id="doc-dropzone" style="border:2px dashed rgba(37,99,235,.3);border-radius:var(--rad);padding:.75rem;background:rgba(37,99,235,.03);">
           <div class="form-group" style="margin-bottom:.5rem;">
-            <label class="form-label">Files <span style="font-weight:400;color:var(--mut2);">(select one or several)</span></label>
+            <label class="form-label">Files <span style="font-weight:400;color:var(--mut2);">(select one or several, or drag &amp; drop here)</span></label>
             <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:.5rem .75rem;font-size:.85rem;color:var(--txt2);" for="doc-file">
               <span style="background:#2563eb;color:#fff;border-radius:4px;padding:3px 10px;font-size:.75rem;font-weight:600;flex-shrink:0;">Choose files</span>
               <span id="doc-file-name">No files chosen</span>
@@ -243,9 +243,9 @@
       <div class="form-card" style="border-color:rgba(234,88,12,.3);background:rgba(234,88,12,.03);">
         <div class="section-title" style="color:#ea580c;">Survey Photos</div>
         <div id="survey-photo-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:.5rem;margin-bottom:.75rem;"></div>
-        <div style="border:2px dashed rgba(234,88,12,.3);border-radius:var(--rad);padding:.75rem;background:rgba(234,88,12,.03);">
+        <div id="survey-dropzone" style="border:2px dashed rgba(234,88,12,.3);border-radius:var(--rad);padding:.75rem;background:rgba(234,88,12,.03);">
           <div class="form-group" style="margin-bottom:.5rem;">
-            <label class="form-label">Photos &amp; Videos <span style="font-weight:400;color:var(--mut2);">(select as many as you like)</span></label>
+            <label class="form-label">Photos &amp; Videos <span style="font-weight:400;color:var(--mut2);">(select as many as you like, or drag &amp; drop here)</span></label>
             <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:.5rem .75rem;font-size:.85rem;color:var(--txt2);" for="survey-photo-file">
               <span style="background:#ea580c;color:#fff;border-radius:4px;padding:3px 10px;font-size:.75rem;font-weight:600;flex-shrink:0;">Choose files</span>
               <span id="survey-photo-file-name">No files chosen</span>
@@ -869,6 +869,33 @@ async function deleteSurveyPhoto(pk){
 }
 
 {% if project %}document.addEventListener('DOMContentLoaded', ()=>loadSurveyPhotos({{ project.pk }}));{% endif %}
+
+// ── Drag & drop onto the upload boxes ───────────────────────────────────────
+function setupDropZone(el, onFiles){
+  if(!el) return;
+  const hi = on => { el.style.outline = on ? '3px solid var(--acc)' : ''; el.style.outlineOffset = on ? '2px' : ''; };
+  ['dragenter','dragover'].forEach(ev => el.addEventListener(ev, e => { e.preventDefault(); hi(true); }));
+  ['dragleave','drop'].forEach(ev => el.addEventListener(ev, e => { e.preventDefault(); hi(false); }));
+  el.addEventListener('drop', e => {
+    const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+    if(files.length) onFiles(files);
+  });
+}
+// Stop a missed drop from navigating the browser away to the file
+['dragover','drop'].forEach(ev => window.addEventListener(ev, e => e.preventDefault()));
+
+{% if project %}
+document.addEventListener('DOMContentLoaded', () => {
+  setupDropZone(document.getElementById('doc-dropzone'), files => {
+    stagedDocFiles = stagedDocFiles.concat(files.map(f => ({file: f, name: f.name, type: 'other'})));
+    renderStagedDocs();
+  });
+  setupDropZone(document.getElementById('survey-dropzone'), files => {
+    const ok = files.filter(f => /^(image|video)\//.test(f.type));
+    if(ok.length) uploadSurveyPhotos({{ project.pk }}, ok);
+  });
+});
+{% endif %}
 
 // ── Postcode lookup (Postcodes.io — free, no API key) ───────────────────────
 async function lookupPostcode(){
