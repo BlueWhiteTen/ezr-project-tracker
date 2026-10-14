@@ -36,7 +36,7 @@
   {% for f in folders %}
   <a href="{% url 'photo_library_project' f.project.pk %}" class="folder-card">
     <div class="folder-cover">
-      <img src="{% url 'report_photo_file' f.cover.pk %}" alt="{{ f.project.project_name }}">
+      <img src="{% url 'report_photo_thumb' f.cover.pk %}?s=500" loading="lazy" alt="{{ f.project.project_name }}">
       <span class="folder-count">{{ f.count }} photo{{ f.count|pluralize }}</span>
     </div>
     <div class="folder-body">

@@ -176,7 +176,7 @@
       {% if slideshow_photos %}
       <div id="slideshow" style="position:relative;width:100%;height:100%;min-height:260px;">
         {% for p in slideshow_photos %}
-        <img src="{% url 'report_photo_file' p.pk %}" class="slide-img {% if forloop.first %}active{% endif %}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:{% if forloop.first %}1{% else %}0{% endif %};transition:opacity 1s;">
+        <img src="{% url 'report_photo_thumb' p.pk %}?s=1200" class="slide-img {% if forloop.first %}active{% endif %}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:{% if forloop.first %}1{% else %}0{% endif %};transition:opacity 1s;">
         {% endfor %}
         <div style="position:absolute;bottom:0;left:0;right:0;padding:.8rem 1rem .6rem;background:linear-gradient(to top,rgba(0,0,0,.7),transparent);">
           <div style="color:#fff;font-weight:700;font-size:.95rem;">📷 Photo Library</div>

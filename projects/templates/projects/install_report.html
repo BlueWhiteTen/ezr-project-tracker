@@ -117,7 +117,7 @@
         <div class="photo-grid" id="photo-grid">
           {% for photo in photos %}
           <div class="photo-item" id="photo-{{ photo.pk }}">
-            <img src="{% url 'report_photo_file' photo.pk %}" alt="{{ photo.caption }}" onclick="enlargePhoto(this.src)" style="cursor:zoom-in;">
+            <img src="{% url 'report_photo_thumb' photo.pk %}?s=400" data-full="{% url 'report_photo_file' photo.pk %}" loading="lazy" alt="{{ photo.caption }}" onclick="enlargePhoto(this.dataset.full)" style="cursor:zoom-in;">
             <button type="button" class="photo-del" onclick="deletePhoto({{ photo.pk }})" title="Delete">✕</button>
           </div>
           {% endfor %}
@@ -295,7 +295,7 @@ async function uploadPhotos(inp, droppedFiles){
         const div = document.createElement('div');
         div.className = 'photo-item';
         div.id = `photo-${p.pk}`;
-        div.innerHTML = `<img src="${p.url}" onclick="enlargePhoto(this.src)" style="cursor:zoom-in;"><button type="button" class="photo-del" onclick="deletePhoto(${p.pk})" title="Delete">✕</button>`;
+        div.innerHTML = `<img src="${p.thumb || p.url}" data-full="${p.url}" onclick="enlargePhoto(this.dataset.full)" style="cursor:zoom-in;"><button type="button" class="photo-del" onclick="deletePhoto(${p.pk})" title="Delete">✕</button>`;
         grid.appendChild(div);
       });
     }catch(e){ failed.push(files[i].name); }
@@ -361,11 +361,12 @@ async function deleteSat(pk){
 
 // ── Photo viewer with prev/next arrows (buttons + keyboard) ─────────────────
 let lbIdx = -1;
-function lbSources(){ return Array.from(document.querySelectorAll('#photo-grid .photo-item img')).map(i => i.src); }
+function lbSources(){ return Array.from(document.querySelectorAll('#photo-grid .photo-item img')).map(i => i.dataset.full || i.src); }
 
 function enlargePhoto(src){
   const list = lbSources();
-  lbIdx = Math.max(0, list.indexOf(src));
+  const abs = new URL(src, location.href).href;
+  lbIdx = Math.max(0, list.findIndex(s => new URL(s, location.href).href === abs));
   const ov = document.createElement('div');
   ov.id = 'report-lightbox';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:2rem;';
