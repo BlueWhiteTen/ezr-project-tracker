@@ -55,7 +55,7 @@ def project_create(request):
             p.save()
             ProjectLog.objects.create(project=p, user=request.user, field='Project created', old_value='', new_value=p.project_name)
             messages.success(request, 'Project created.')
-            return redirect('dashboard')
+            return redirect('project_edit', pk=p.pk)
     else:
         form = ProjectForm()
     return render(request, 'projects/project_form.html', {'form': form, 'action': 'Create'})
