@@ -124,7 +124,7 @@
         </div>
         <label class="upload-zone" style="margin-top:.75rem;" for="photo-input">
           <input type="file" name="photos" id="photo-input" accept="image/*" multiple onchange="uploadPhotos(this)">
-          <div id="photo-upload-label">📷 Click to upload photos</div>
+          <div id="photo-upload-label">📷 Click to upload photos, or drag &amp; drop here</div>
           <div id="photo-names" style="font-size:.78rem;margin-top:.3rem;"></div>
         </label>
         <div class="form-group" style="margin-top:.6rem;margin-bottom:0;">
@@ -272,18 +272,25 @@ document.addEventListener('DOMContentLoaded', loadCrews);
 <script>
 const RPT_PK = {{ project.pk }};
 
-async function uploadPhotos(inp){
-  if(!inp.files.length) return;
+async function uploadPhotos(inp, droppedFiles){
+  const files = droppedFiles || Array.from(inp.files);
+  if(!files.length) return;
   const label = document.getElementById('photo-upload-label');
-  label.textContent = '⏳ Uploading…';
-  const fd = new FormData();
-  Array.from(inp.files).forEach(f=>fd.append('photos', f));
-  fd.append('photo_caption', document.getElementById('photo-caption').value || '');
-  try{
-    const r = await fetch(`/project/${RPT_PK}/report/photo-upload/`,{method:'POST',headers:{'X-CSRFToken':CSRF},body:fd});
-    const d = await r.json();
-    if(d.ok){
-      const grid = document.getElementById('photo-grid');
+  const caption = document.getElementById('photo-caption').value || '';
+  const grid = document.getElementById('photo-grid');
+  const failed = [];
+  // One photo at a time: each is shrunk first, then sent on its own, so a big
+  // batch never sits in memory or in one huge request (that is what froze the page).
+  for(let i = 0; i < files.length; i++){
+    label.textContent = `⏳ Resizing & uploading ${i+1} of ${files.length}…`;
+    try{
+      const small = await shrinkImage(files[i]);
+      const fd = new FormData();
+      fd.append('photos', small, small.name);
+      fd.append('photo_caption', caption);
+      const r = await fetch(`/project/${RPT_PK}/report/photo-upload/`,{method:'POST',headers:{'X-CSRFToken':CSRF},body:fd});
+      const d = await r.json();
+      if(!d.ok) throw new Error(d.error || 'Upload failed');
       d.photos.forEach(p=>{
         const div = document.createElement('div');
         div.className = 'photo-item';
@@ -291,10 +298,32 @@ async function uploadPhotos(inp){
         div.innerHTML = `<img src="${p.url}" onclick="enlargePhoto(this.src)" style="cursor:zoom-in;"><button type="button" class="photo-del" onclick="deletePhoto(${p.pk})" title="Delete">✕</button>`;
         grid.appendChild(div);
       });
-    } else { alert(d.error||'Upload failed'); }
-  }catch(e){ alert('Upload failed'); }
-  inp.value=''; label.textContent='📷 Click to upload photos';
+    }catch(e){ failed.push(files[i].name); }
+  }
+  if(failed.length) alert('These photos failed to upload:\n' + failed.join('\n'));
+  inp.value=''; label.textContent='📷 Click to upload photos, or drag & drop here';
   document.getElementById('photo-names').textContent='';
+}
+
+// Shrink a photo to at most 2000px on its longest side (JPEG, quality 0.85).
+// Small photos are sent untouched; if anything goes wrong the original is sent.
+const MAX_PHOTO_PX = 2000;
+async function shrinkImage(file){
+  try{
+    if(!file.type.startsWith('image/') || file.type === 'image/gif' || file.type === 'image/svg+xml') return file;
+    const bmp = await createImageBitmap(file, {imageOrientation: 'from-image'});
+    const scale = Math.min(1, MAX_PHOTO_PX / Math.max(bmp.width, bmp.height));
+    if(scale === 1 && file.size < 1.5 * 1024 * 1024){ bmp.close(); return file; }
+    const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+    bmp.close();
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.85));
+    canvas.width = canvas.height = 0;   // free the pixel memory straight away
+    if(!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', {type: 'image/jpeg'});
+  }catch(e){ return file; }
 }
 
 async function uploadSat(inp){
@@ -330,14 +359,63 @@ async function deleteSat(pk){
   if((await r.json()).ok) document.getElementById(`sat-${pk}`)?.remove();
 }
 
+// ── Photo viewer with prev/next arrows (buttons + keyboard) ─────────────────
+let lbIdx = -1;
+function lbSources(){ return Array.from(document.querySelectorAll('#photo-grid .photo-item img')).map(i => i.src); }
+
 function enlargePhoto(src){
+  const list = lbSources();
+  lbIdx = Math.max(0, list.indexOf(src));
   const ov = document.createElement('div');
-  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:2rem;';
-  ov.onclick = ()=>ov.remove();
-  ov.innerHTML = `<img src="${src}" style="max-width:95%;max-height:95%;object-fit:contain;border-radius:8px;">`;
+  ov.id = 'report-lightbox';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:2rem;';
+  ov.onclick = e => { if(e.target === ov) closeLightbox(); };
   document.body.appendChild(ov);
+  document.addEventListener('keydown', lbKeyHandler);
+  renderLightbox();
 }
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.querySelector('[style*="zoom-out"]')?.remove();}});
+function renderLightbox(){
+  const ov = document.getElementById('report-lightbox');
+  if(!ov) return;
+  const list = lbSources();
+  if(!list.length){ closeLightbox(); return; }
+  const arrow = (dir, label) => `<button type="button" onclick="event.stopPropagation();stepLightbox(${dir})" title="${label}" style="position:absolute;top:50%;${dir < 0 ? 'left:1rem;' : 'right:1rem;'}transform:translateY(-50%);background:rgba(22,163,74,.85);border:none;color:#fff;width:48px;height:48px;border-radius:50%;font-size:1.4rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">${dir < 0 ? '‹' : '›'}</button>`;
+  ov.innerHTML = `${list.length > 1 ? arrow(-1,'Previous') : ''}
+    <img src="${list[lbIdx]}" style="max-width:85vw;max-height:90vh;object-fit:contain;border-radius:8px;">
+    ${list.length > 1 ? arrow(1,'Next') : ''}
+    <div style="position:absolute;bottom:1rem;left:50%;transform:translateX(-50%);color:#fff;font-size:.8rem;background:rgba(0,0,0,.5);padding:2px 10px;border-radius:99px;">${lbIdx + 1} / ${list.length}</div>
+    <button type="button" onclick="event.stopPropagation();closeLightbox()" title="Close" style="position:absolute;top:1rem;right:1rem;background:rgba(255,255,255,.15);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:1rem;cursor:pointer;">✕</button>`;
+}
+function stepLightbox(dir){
+  const n = lbSources().length;
+  if(!n) return;
+  lbIdx = (lbIdx + dir + n) % n;
+  renderLightbox();
+}
+function lbKeyHandler(e){
+  if(e.key === 'ArrowLeft') stepLightbox(-1);
+  else if(e.key === 'ArrowRight') stepLightbox(1);
+  else if(e.key === 'Escape') closeLightbox();
+}
+function closeLightbox(){
+  document.getElementById('report-lightbox')?.remove();
+  document.removeEventListener('keydown', lbKeyHandler);
+  lbIdx = -1;
+}
+
+// ── Drag & drop onto the photo upload zone ───────────────────────────────────
+(function(){
+  const zone = document.querySelector('label.upload-zone[for="photo-input"]');
+  if(!zone) return;
+  const hi = on => { zone.style.borderColor = on ? 'var(--acc)' : ''; zone.style.background = on ? 'var(--acc-bg)' : ''; };
+  ['dragenter','dragover'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); hi(true); }));
+  ['dragleave','drop'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); hi(false); }));
+  zone.addEventListener('drop', e => {
+    const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('image/'));
+    if(files.length) uploadPhotos(document.getElementById('photo-input'), files);
+  });
+  ['dragover','drop'].forEach(ev => window.addEventListener(ev, e => e.preventDefault()));
+})();
 
 function fillCrewPhone(name){
   const opt = document.querySelector(`#fitting-crew-options option[value="${CSS.escape(name)}"]`);
