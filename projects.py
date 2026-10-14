@@ -507,6 +507,13 @@ def dashboard(request):
 
     projects = Project.objects.select_related('assigned_to', 'last_edited_by')
 
+    # Each person chooses whether completed projects are listed. Searching, the Completed
+    # filter and the status dropdown always show them so nothing seems to go missing.
+    profile, _ = StaffProfile.objects.get_or_create(user=request.user)
+    show_completed = profile.show_completed
+    if not show_completed and not query and status != 'completed' and stat_filter != 'completed':
+        projects = projects.exclude(status='completed')
+
     if query:
         projects = projects.filter(
             Q(project_name__icontains=query) |
@@ -627,7 +634,22 @@ def dashboard(request):
         'tl': tl, 'stat_filter': stat_filter, 'counts': counts,
         'assigned_filter': assigned_filter, 'all_users': all_users,
         'page_obj': page_obj, 'total_matching': total_matching,
+        'show_completed': show_completed,
     })
+
+
+@login_required
+@require_POST
+def dashboard_show_completed(request):
+    """Remember, per user, whether the dashboard lists completed projects."""
+    try:
+        show = bool(json.loads(request.body).get('show'))
+    except Exception:
+        return JsonResponse({'ok': False}, status=400)
+    profile, _ = StaffProfile.objects.get_or_create(user=request.user)
+    profile.show_completed = show
+    profile.save(update_fields=['show_completed'])
+    return JsonResponse({'ok': True, 'show': show})
 
 
 # ── Project CRUD ──────────────────────────────────────────────────────────────

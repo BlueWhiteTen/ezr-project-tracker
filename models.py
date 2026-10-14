@@ -312,6 +312,7 @@ class StaffProfile(models.Model):
         ('ops_console', 'Ops Console'),
     ]
     theme = models.CharField(max_length=20, choices=THEME_CHOICES, default='default', help_text='Personal visual style — set on your own profile')
+    show_completed = models.BooleanField(default=True, help_text='Dashboard: include completed projects in the list (each person chooses for themselves)')
 
     def __str__(self):
         return f"{self.user.get_full_name()} — {self.role}"

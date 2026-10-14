@@ -203,6 +203,7 @@ urlpatterns = [
     path('project/<int:pk>/cost/accessory-toggle/', views.cost_accessory_toggle, name='cost_accessory_toggle'),
     path('bulk-status/',                     views.bulk_status_update,     name='bulk_status_update'),
     path('project/<int:pk>/duplicate/',      views.project_duplicate,       name='project_duplicate'),
+    path('dashboard/show-completed/',        views.dashboard_show_completed, name='dashboard_show_completed'),
     path('dashboard/save-filters/',          views.save_dashboard_filters,  name='save_dashboard_filters'),
     path('project/<int:pk>/satisfaction-note/', views.satisfaction_note, name='satisfaction_note'),
     path('project/<int:pk>/quote/',          views.customer_quote,          name='customer_quote'),
