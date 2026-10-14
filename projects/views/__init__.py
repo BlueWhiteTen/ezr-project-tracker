@@ -93,6 +93,7 @@ from .photos import (
     fitting_notes_list, fitting_note_upload, fitting_note_delete,
     fitting_note_update, fitting_note_download,
     survey_photos, survey_photo_file, survey_photo_delete,
+    report_photo_thumb, survey_photo_thumb,
 )
 from .stock import (
     project_documents, document_download, document_delete,

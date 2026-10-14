@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
-from django.db.models import Q, F as models_F, Count
+from django.db.models import Q, F as models_F, Count, Prefetch
 from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 import json
@@ -76,7 +76,7 @@ def install_report(request, pk):
 
     return render(request, 'projects/install_report.html', {
         'project': project, 'report': report,
-        'photos': report.photos.all(),
+        'photos': report.photos.defer('file_data'),
         'satisfaction_notes': report.satisfaction_notes.all(),
         'project_pk': project.pk,
         'fitting_crews': FittingCrew.objects.all(),
@@ -124,7 +124,7 @@ def report_photo_upload(request, pk):
             file_original_name=photo.name,
             caption=request.POST.get('photo_caption', ''),
         )
-        created.append({'pk': p.pk, 'url': f'/report/photo/{p.pk}/file/'})
+        created.append({'pk': p.pk, 'url': f'/report/photo/{p.pk}/file/', 'thumb': f'/report/photo/{p.pk}/thumb/'})
     return JsonResponse({'ok': True, 'photos': created})
 
 
@@ -152,6 +152,26 @@ def report_sat_upload(request, pk):
 
 
 
+def _thumbnail_response(data, mime, size):
+    """Small JPEG preview of an image blob (so galleries don't download full-size photos).
+    Falls back to the original bytes if it can't be decoded."""
+    import io
+    try:
+        from PIL import Image, ImageOps
+        img = Image.open(io.BytesIO(data))
+        img = ImageOps.exif_transpose(img)
+        img.thumbnail((size, size))
+        if img.mode not in ('RGB', 'L'):
+            img = img.convert('RGB')
+        buf = io.BytesIO()
+        img.save(buf, 'JPEG', quality=78, optimize=True)
+        resp = HttpResponse(buf.getvalue(), content_type='image/jpeg')
+    except Exception:
+        resp = HttpResponse(data, content_type=mime or 'image/jpeg')
+    resp['Cache-Control'] = 'private, max-age=604800'
+    return resp
+
+
 @login_required
 def report_photo_file(request, pk):
     from django.http import HttpResponse, FileResponse
@@ -159,10 +179,32 @@ def report_photo_file(request, pk):
     if photo.file_data:
         resp = HttpResponse(bytes(photo.file_data), content_type=photo.file_mime or 'image/jpeg')
         resp['Content-Disposition'] = f'inline; filename="{photo.file_original_name or "photo.jpg"}"'
+        resp['Cache-Control'] = 'private, max-age=86400'
         return resp
     if photo.image:
         return FileResponse(photo.image.open(), content_type='image/jpeg')
     return HttpResponse('Not found', status=404)
+
+
+@login_required
+def report_photo_thumb(request, pk):
+    """Small preview used by the photo library, installation report grid and homepage slideshow."""
+    try:
+        size = max(60, min(int(request.GET.get('s', 400)), 1600))
+    except ValueError:
+        size = 400
+    photo = get_object_or_404(ReportPhoto, pk=pk)
+    if photo.file_data:
+        return _thumbnail_response(bytes(photo.file_data), photo.file_mime, size)
+    return report_photo_file(request, pk)
+
+
+@login_required
+def survey_photo_thumb(request, pk):
+    photo = get_object_or_404(SurveyPhoto, pk=pk)
+    if not photo.file_data or photo.is_video:
+        return HttpResponse('Not found', status=404)
+    return _thumbnail_response(bytes(photo.file_data), photo.file_mime, 300)
 
 
 
@@ -181,13 +223,14 @@ def survey_photos(request, pk):
                 file_original_name=f.name,
                 uploaded_by=request.user,
             )
-            created.append({'pk': p.pk, 'url': f'/survey-photo/{p.pk}/file/', 'is_video': p.is_video, 'name': p.file_original_name})
+            created.append({'pk': p.pk, 'url': f'/survey-photo/{p.pk}/file/', 'thumb': f'/survey-photo/{p.pk}/thumb/', 'is_video': p.is_video, 'name': p.file_original_name})
         return JsonResponse({'ok': True, 'photos': created})
 
-    photos = project.survey_photos.all()
+    photos = project.survey_photos.defer('file_data').select_related('uploaded_by')
     return JsonResponse([{
         'pk': p.pk,
         'url': f'/survey-photo/{p.pk}/file/',
+        'thumb': f'/survey-photo/{p.pk}/thumb/',
         'is_video': p.is_video,
         'name': p.file_original_name,
         'uploaded_by': p.uploaded_by.get_full_name() if p.uploaded_by and p.uploaded_by.get_full_name() else (p.uploaded_by.username if p.uploaded_by else ''),
@@ -200,6 +243,7 @@ def survey_photo_file(request, pk):
     photo = get_object_or_404(SurveyPhoto, pk=pk)
     resp = HttpResponse(bytes(photo.file_data or b''), content_type=photo.file_mime or 'application/octet-stream')
     resp['Content-Disposition'] = f'inline; filename="{photo.file_original_name or "file"}"'
+    resp['Cache-Control'] = 'private, max-age=86400'
     return resp
 
 
@@ -218,7 +262,7 @@ def photo_library(request):
     reports = (InstallationReport.objects
                .filter(photos__isnull=False)
                .select_related('project')
-               .prefetch_related('photos')
+               .prefetch_related(Prefetch('photos', queryset=ReportPhoto.objects.defer('file_data')))
                .distinct()
                .order_by('-updated_at'))
     if q:
@@ -252,7 +296,7 @@ def photo_library_project(request, pk):
     """All install-report photos for a single project."""
     project = get_object_or_404(Project, pk=pk)
     report = get_object_or_404(InstallationReport, project=project)
-    photos = report.photos.all()
+    photos = report.photos.defer('file_data')
     return render(request, 'projects/photo_library_project.html', {
         'project': project, 'photos': photos,
     })

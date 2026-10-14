@@ -57,7 +57,7 @@ def home(request):
     photo_ids = list(ReportPhoto.objects.values_list('pk', flat=True))
     random.shuffle(photo_ids)
     slideshow_photos = list(
-        ReportPhoto.objects.filter(pk__in=photo_ids[:12]).select_related('report__project')
+        ReportPhoto.objects.filter(pk__in=photo_ids[:12]).defer('file_data').select_related('report__project')
     )
     random.shuffle(slideshow_photos)
 
