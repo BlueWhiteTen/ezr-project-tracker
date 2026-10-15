@@ -134,6 +134,7 @@ urlpatterns = [
     path('project/<int:pk>/fitter-link/',              views.fitter_link_info,    name='fitter_link_info'),
     path('project/<int:pk>/fitter-link/create/',       views.fitter_link_create,  name='fitter_link_create'),
     path('project/<int:pk>/fitter-link/revoke/',       views.fitter_link_revoke,  name='fitter_link_revoke'),
+    path('project/<int:pk>/fitter-link/report/<int:sub_pk>/delete/', views.fitter_submission_delete, name='fitter_submission_delete'),
     path('project/<int:pk>/fitter-link/clear-flag/',   views.fitter_clear_flag,   name='fitter_clear_flag'),
     path('f/<str:token>/',                             views.fitter_page,         name='fitter_page'),
     path('f/<str:token>/photo/',                       views.fitter_photo_upload, name='fitter_photo_upload'),

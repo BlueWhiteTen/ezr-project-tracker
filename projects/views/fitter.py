@@ -54,6 +54,7 @@ def fitter_link_info(request, pk):
         'completed': s.work_completed, 'return_visit': s.return_visit,
         'note': reverse('satisfaction_note', kwargs={'pk': pk}) + f'?sub={s.pk}',
         'pdf': reverse('document_download', kwargs={'pk': s.document_id}) if s.document_id else '',
+        'delete': reverse('fitter_submission_delete', kwargs={'pk': pk, 'sub_pk': s.pk}) if request.user.is_superuser else '',
     } for s in project.fitter_submissions.all()[:10]]
     return JsonResponse({
         'link': _link_json(request, link) if link else None,
@@ -74,6 +75,23 @@ def fitter_link_create(request, pk):
         link = FitterLink.objects.create(project=project, token=secrets.token_urlsafe(24), created_by=request.user)
         ProjectLog.objects.create(project=project, user=request.user, field='Fitter link', old_value='', new_value='Link created')
     return JsonResponse({'ok': True, 'link': _link_json(request, link)})
+
+
+@login_required
+@require_POST
+def fitter_submission_delete(request, pk, sub_pk):
+    """Admins only: delete a fitter report entry and its Satisfaction note PDF in Documents."""
+    if not request.user.is_superuser:
+        return JsonResponse({'ok': False, 'error': 'Only admins can delete fitter reports.'}, status=403)
+    project = get_object_or_404(Project, pk=pk)
+    sub = get_object_or_404(FitterSubmission, pk=sub_pk, project=project)
+    when = timezone.localtime(sub.submitted_at).strftime('%d %b %Y %H:%M')
+    if sub.document_id:
+        sub.document.delete()
+    sub.delete()
+    ProjectLog.objects.create(project=project, user=request.user, field='Fitter report',
+                              old_value=f"{sub.fitter_name}, {when}", new_value='Deleted')
+    return JsonResponse({'ok': True})
 
 
 @login_required
