@@ -5,6 +5,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
+<link rel="manifest" href="{% static 'app-manifest.json' %}">
+<meta name="theme-color" content="#d4700a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="EZR Tracker">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="{% static 'icon-192.png' %}">
 <script>document.documentElement.dataset.theme = localStorage.getItem('pt-theme') || 'light';</script>
 <title>{% block title %}EZR Project Tracker{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -365,6 +372,7 @@ select.form-input{cursor:pointer;}
     <a href="{% url 'price_list' %}" class="{% if request.resolver_match.url_name == 'price_list' %}sb-active{% endif %}" style="display:block;padding:.6rem .85rem;margin-bottom:.4rem;border-radius:var(--rad);font-size:.875rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">💷 Price List</a>
     <a href="{% url 'monthly_summary' %}" class="{% if request.resolver_match.url_name == 'monthly_summary' %}sb-active{% endif %}" style="display:block;padding:.6rem .85rem;margin-bottom:.4rem;border-radius:var(--rad);font-size:.875rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">📊 Projects Summary</a>
     <a href="{% url 'activity_log' %}" class="{% if request.resolver_match.url_name == 'activity_log' %}sb-active{% endif %}" style="display:block;padding:.6rem .85rem;margin-bottom:.4rem;border-radius:var(--rad);font-size:.875rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">📋 Activity Log</a>
+    <a href="{% url 'feedback_list' %}" class="{% if request.resolver_match.url_name == 'feedback_list' %}sb-active{% endif %}" style="display:block;padding:.6rem .85rem;margin-bottom:.4rem;border-radius:var(--rad);font-size:.875rem;font-weight:500;color:#ccc;text-decoration:none;border-left:3px solid transparent;">💡 Feedback</a>
     <button id="theme-btn" onclick="toggleTheme()">Dark mode</button>
   </div>
 </div>
@@ -623,5 +631,61 @@ function toggleMobileMenu(){
 })();
 </script>
 {% endif %}
+{% if request.user.is_authenticated %}
+<style>
+#fb-fab{position:fixed;right:16px;bottom:16px;z-index:900;background:var(--acc);color:#fff;border:none;border-radius:99px;padding:.55rem .95rem;font-weight:700;font-size:.82rem;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);font-family:inherit;opacity:.92;}
+#fb-fab:hover{opacity:1;}
+#fb-modal{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:1rem;}
+#fb-box{background:var(--surf);color:var(--txt);border-radius:var(--rad-lg,14px);width:100%;max-width:440px;padding:1.2rem 1.3rem;box-shadow:0 20px 50px rgba(0,0,0,.35);}
+#fb-box h3{margin:0 0 .2rem;font-size:1.05rem;}
+#fb-box p{margin:0 0 .8rem;font-size:.8rem;color:var(--mut);}
+#fb-kinds{display:flex;gap:.4rem;margin-bottom:.7rem;}
+#fb-kinds label{flex:1;text-align:center;padding:.45rem 0;border:2px solid var(--bdr);border-radius:var(--rad,8px);font-size:.82rem;font-weight:600;cursor:pointer;}
+#fb-kinds input{display:none;}
+#fb-kinds label:has(input:checked){border-color:var(--acc);background:var(--acc-bg);color:var(--acc);}
+#fb-text{width:100%;min-height:110px;border:1px solid var(--bdr);border-radius:var(--rad,8px);padding:.6rem;font-family:inherit;font-size:.9rem;resize:vertical;background:var(--surf);color:var(--txt);}
+#fb-actions{display:flex;gap:.5rem;align-items:center;margin-top:.8rem;}
+#fb-actions a{font-size:.78rem;color:var(--mut);margin-right:auto;}
+@media print{#fb-fab{display:none;}}
+</style>
+<button id="fb-fab" type="button" onclick="openFeedback()" title="Send an idea, report a problem or ask a question">💡 Feedback</button>
+<div id="fb-modal" onclick="if(event.target===this)closeFeedback()">
+  <div id="fb-box">
+    <h3>💡 Send feedback</h3>
+    <p>An idea, a problem or a question — it goes straight to the person running the app.</p>
+    <div id="fb-kinds">
+      <label><input type="radio" name="fbkind" value="idea" checked><span>💡 Idea</span></label>
+      <label><input type="radio" name="fbkind" value="problem"><span>⚠️ Problem</span></label>
+      <label><input type="radio" name="fbkind" value="question"><span>❓ Question</span></label>
+    </div>
+    <textarea id="fb-text" placeholder="What would make this better, or what went wrong?"></textarea>
+    <div id="fb-actions">
+      <a href="{% url 'feedback_list' %}">See my suggestions</a>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="closeFeedback()">Cancel</button>
+      <button type="button" class="btn btn-primary btn-sm" id="fb-send" onclick="sendFeedback()">Send</button>
+    </div>
+  </div>
+</div>
+<script>
+function openFeedback(){ document.getElementById('fb-modal').style.display = 'flex'; setTimeout(() => document.getElementById('fb-text').focus(), 50); }
+function closeFeedback(){ document.getElementById('fb-modal').style.display = 'none'; }
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeFeedback(); });
+async function sendFeedback(){
+  const msg = document.getElementById('fb-text').value.trim();
+  if(!msg){ document.getElementById('fb-text').focus(); return; }
+  const btn = document.getElementById('fb-send'); btn.disabled = true;
+  try{
+    const kind = (document.querySelector('input[name=fbkind]:checked') || {}).value || 'idea';
+    const r = await fetch('/feedback/add/', {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
+      body: JSON.stringify({kind, message: msg, page: location.pathname + location.search})});
+    const d = await r.json();
+    if(d.ok){ document.getElementById('fb-text').value = ''; closeFeedback(); alert('Thank you — feedback sent.'); }
+    else { alert(d.error || 'Could not send. Please try again.'); }
+  }catch(e){ alert('Could not send. Please try again.'); }
+  btn.disabled = false;
+}
+</script>
+{% endif %}
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){});});}</script>
 </body>
 </html>

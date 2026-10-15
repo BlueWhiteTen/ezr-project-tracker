@@ -15,7 +15,7 @@ from .auth import (
 )
 from .reporting import (
     home, home_layout_save, home_layout_reset, daily_accounts_report, activity_log, week_view, crew_capacity,
-    todo_widget, todo_add, todo_toggle, todo_edit, todo_delete,
+    todo_widget, todo_add, todo_toggle, todo_edit, todo_due, todo_delete,
     stock_valuation, stock_valuation_rate_update, goods_in_transit_add, goods_in_transit_delete, stock_valuation_items, stock_valuation_item_update, stock_valuation_export,
     monthly_summary, calendar_view, board_view, so_search,
     sales_summary, sales_summary_export,
@@ -56,6 +56,7 @@ from .messaging import (
     conversation, team_chat, team_chat_poll, message_photo, team_message_photo, message_react, team_message_react,
     message_delete, team_message_delete,
 )
+from .feedback import feedback_list, feedback_add, feedback_update
 from .staff import (
     staff_directory, staff_profile, get_bank_holidays,
     leave_overview, leave_add, leave_delete,
@@ -110,3 +111,8 @@ from .price_list import (
     ls_component_prices, ls_calc_frame_price, ls_calc_shelf_price,
     ls_calc_trolley_price,
 )
+
+from .pwa import service_worker, offline
+from .quote_email import quote_email, quote_pdf_download
+from .fitter import (fitter_link_info, fitter_link_create, fitter_link_revoke, fitter_clear_flag, fitter_page,
+                     fitter_photo_upload, fitter_photo_thumb, fitter_photo_delete, fitter_submit)

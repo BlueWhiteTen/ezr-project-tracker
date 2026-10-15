@@ -29,6 +29,13 @@
 .home-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.6rem;overflow-y:auto;flex:1;}
 .home-row{display:block;padding:.5rem .6rem;border-radius:8px;background:var(--surf2);text-decoration:none;color:var(--txt);font-size:.85rem;transition:background .12s;}
 .home-row:hover{background:var(--surf3);}
+.todo-meta{font-size:.7rem;color:var(--mut);margin-top:1px;cursor:pointer;line-height:1.35;}
+.todo-meta:hover{color:var(--acc);}
+.todo-meta b{font-weight:700;}
+.todo-meta[data-level="overdue"]{color:#dc2626;}
+.todo-meta[data-level="today"],.todo-meta[data-level="soon"]{color:#c2570c;}
+.todo-meta[data-level="overdue"] b,.todo-meta[data-level="today"] b{text-transform:uppercase;letter-spacing:.02em;}
+.todo-meta[data-level="done"]{opacity:.6;}
 .home-row-meta{color:var(--mut);font-size:.74rem;margin-top:2px;}
 .home-empty{color:var(--mut2);font-size:.85rem;font-style:italic;padding:1rem 0;text-align:center;}
 .tile-action .big-icon{font-size:2.6rem;margin-bottom:.6rem;}
@@ -78,7 +85,10 @@
       {% for t in todo_items %}
       <li id="todo-row-{{ t.pk }}" data-text="{{ t.text }}" style="display:flex;align-items:flex-start;gap:.5rem;">
         <input type="checkbox" class="todo-check" data-pk="{{ t.pk }}" {% if t.is_done %}checked{% endif %} style="margin-top:.4rem;cursor:pointer;flex-shrink:0;">
-        <span class="home-row todo-text" style="flex:1;cursor:default;{% if t.is_done %}text-decoration:line-through;color:var(--mut2);{% endif %}">{{ t.text }}</span>
+        <div class="todo-body" style="flex:1;min-width:0;">
+          <span class="home-row todo-text" style="cursor:default;{% if t.is_done %}text-decoration:line-through;color:var(--mut2);{% endif %}">{{ t.text }}</span>
+          {% with di=t.due_info %}<div class="todo-meta" data-level="{{ di.level }}" data-due="{{ t.due_date|date:'Y-m-d' }}" onclick="pickDue({{ t.pk }})" title="Click to set or change the do-by date">Added {{ t.created_at|date:"j M" }}{% if t.due_date %} · Do by {{ t.due_date|date:"D j M" }}{% if di.label %} · <b>{{ di.label }}</b>{% endif %}{% else %} · <u style="text-decoration:underline dotted;">+ do-by date</u>{% endif %}</div>{% endwith %}
+        </div>
         <button onclick="editTodo({{ t.pk }})" title="Edit" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:.85rem;padding:.35rem .3rem;line-height:1;" onmouseover="this.style.color='var(--acc)'" onmouseout="this.style.color='var(--mut)'">✎</button>
         <button onclick="deleteTodo({{ t.pk }})" title="Delete" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:.9rem;padding:.35rem .3rem;line-height:1;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--mut)'">✕</button>
       </li>
@@ -88,6 +98,7 @@
     </ul>
     <div style="display:flex;gap:.4rem;margin-top:.6rem;">
       <input type="text" id="todo-input" class="form-input" placeholder="Add a to-do…" style="flex:1;font-size:.85rem;padding:.4rem .6rem;" onkeydown="if(event.key==='Enter'){addTodo();}">
+      <input type="date" id="todo-due" class="form-input" title="Do by (optional)" style="width:auto;font-size:.78rem;padding:.3rem .4rem;">
       <button class="btn btn-ghost btn-sm" onclick="addTodo()">+ Add</button>
     </div>
   </div>
@@ -168,6 +179,28 @@
       <input type="text" id="home-chat-input" class="form-input" placeholder="Message EZR Chat… (Enter to send)" style="flex:1;font-size:.84rem;padding:.45rem .7rem;" autocomplete="off">
       <button class="btn btn-primary btn-sm" onclick="homeChat.send()" style="flex-shrink:0;">Send</button>
     </div>
+  </div>
+
+  <!-- This week (Monday summary) -->
+  <div class="home-tile hg-item" data-tile="this_week" data-title="This week">
+    <div class="home-tile-title">📅 This week <span style="margin-left:auto;font-size:.72rem;color:var(--mut);font-weight:400;">{{ week.monday|date:"d M" }} – {{ week.friday|date:"d M" }}</span></div>
+    <ul class="home-list" style="max-height:300px;overflow-y:auto;">
+      {% for d in week.days %}
+      <li class="home-row" style="cursor:default;display:block;{% if d.is_today %}background:var(--acc-bg);border-radius:6px;{% endif %}">
+        <strong style="font-size:.8rem;">{{ d.date|date:"D d" }}</strong>{% if d.is_today %} <span style="font-size:.68rem;color:var(--acc);">today</span>{% endif %}
+        {% for p in d.deliveries %}<div style="font-size:.78rem;"><a href="{% url 'project_edit' p.pk %}">🚚 {{ p.project_name }}</a>{% if not p.delivery_booked %} <span style="color:var(--red);">· not booked</span>{% endif %}</div>{% endfor %}
+        {% for p in d.installs %}<div style="font-size:.78rem;"><a href="{% url 'project_edit' p.pk %}">🔧 {{ p.project_name }}</a>{% if not p.installation_booked %} <span style="color:var(--red);">· not booked</span>{% endif %}</div>{% endfor %}
+        {% for o in d.off %}<div style="font-size:.78rem;color:var(--mut);">🌴 {{ o.user.get_full_name|default:o.user.username }} off{% if o.half_day != 'full' %} ({{ o.get_half_day_display }}){% endif %}</div>{% endfor %}
+        {% if d.empty %}<div style="font-size:.76rem;color:var(--mut2);">nothing booked</div>{% endif %}
+      </li>
+      {% endfor %}
+      {% if week.overdue %}<li class="home-row" style="cursor:default;display:block;"><strong style="font-size:.78rem;color:var(--red);">⏰ Overdue</strong>
+        {% for p,what,dt in week.overdue %}<div style="font-size:.76rem;"><a href="{% url 'project_edit' p.pk %}">{{ p.project_name }}</a> · {{ what }} {{ dt|date:"d M" }}</div>{% endfor %}</li>{% endif %}
+      {% if week.blocked %}<li class="home-row" style="cursor:default;display:block;"><strong style="font-size:.78rem;color:var(--amb);">🚧 Blocked</strong>
+        {% for p in week.blocked %}<div style="font-size:.76rem;"><a href="{% url 'project_edit' p.pk %}">{{ p.project_name }}</a></div>{% endfor %}</li>{% endif %}
+      {% if week.chase %}<li class="home-row" style="cursor:default;display:block;"><strong style="font-size:.78rem;">📨 Quotes to chase</strong>
+        {% for p in week.chase %}<div style="font-size:.76rem;"><a href="{% url 'project_edit' p.pk %}">{{ p.project_name }}</a> · quoted {{ p.updated_at|timesince }} ago</div>{% endfor %}</li>{% endif %}
+    </ul>
   </div>
 
   <!-- Who's off -->
@@ -445,16 +478,58 @@ async function dismissReminder(pk){
   }
 }
 
+
+function metaHtml(d){
+  let h = 'Added ' + d.added;
+  if(d.due){ h += ' · Do by ' + d.due_text + (d.label ? ' · <b>' + d.label + '</b>' : ''); }
+  else { h += ' · <u style="text-decoration:underline dotted;">+ do-by date</u>'; }
+  return h;
+}
+function applyMeta(row, d){
+  const m = row.querySelector('.todo-meta');
+  if(!m) return;
+  m.dataset.level = d.level || 'none';
+  m.dataset.due = d.due || '';
+  m.innerHTML = metaHtml(d);
+}
+function pickDue(pk){
+  const row = document.getElementById(`todo-row-${pk}`);
+  if(!row) return;
+  const old = row.querySelector('.todo-due-input');
+  if(old) old.remove();
+  const inp = document.createElement('input');
+  inp.type = 'date'; inp.className = 'todo-due-input';
+  inp.value = row.querySelector('.todo-meta').dataset.due || '';
+  inp.style.cssText = 'font-size:.78rem;margin-top:3px;border:1px solid var(--acc);border-radius:6px;padding:2px 4px;font-family:inherit;';
+  const clear = document.createElement('button');
+  clear.type = 'button'; clear.textContent = 'Clear'; clear.title = 'Remove the do-by date';
+  clear.style.cssText = 'font-size:.7rem;margin-left:4px;';
+  const wrap = document.createElement('div'); wrap.className = 'todo-due-input'; wrap.append(inp, clear);
+  row.querySelector('.todo-meta').after(wrap);
+  const save = async (val) => {
+    const r = await fetch(`/todo/${pk}/due/`, {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'}, body: JSON.stringify({due: val})});
+    const d = await r.json();
+    if(d.ok) applyMeta(row, d);
+    wrap.remove();
+  };
+  inp.addEventListener('change', () => save(inp.value));
+  clear.addEventListener('click', () => save(''));
+  inp.addEventListener('keydown', e => { if(e.key === 'Escape') wrap.remove(); });
+  inp.focus();
+  try{ inp.showPicker && inp.showPicker(); }catch(e){}
+}
+
 async function addTodo(){
   const TODO_CSRF = '{{ csrf_token }}';
   const input = document.getElementById('todo-input');
   const text = input.value.trim();
   if(!text) return;
   const r = await fetch('/todo/add/', {
-    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':TODO_CSRF}, body: JSON.stringify({text})
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':TODO_CSRF}, body: JSON.stringify({text, due: (document.getElementById('todo-due') || {}).value || null})
   });
   const d = await r.json();
   if(d.ok){
+    const dueEl = document.getElementById('todo-due'); if(dueEl) dueEl.value = '';
     const empty = document.getElementById('todo-empty');
     if(empty) empty.remove();
     const list = document.getElementById('todo-list');
@@ -464,10 +539,11 @@ async function addTodo(){
     li.style.cssText = 'display:flex;align-items:flex-start;gap:.5rem;';
     li.innerHTML = `
       <input type="checkbox" class="todo-check" data-pk="${d.id}" style="margin-top:.4rem;cursor:pointer;flex-shrink:0;">
-      <span class="home-row todo-text" style="flex:1;cursor:default;"></span>
+      <div class="todo-body" style="flex:1;min-width:0;"><span class="home-row todo-text" style="cursor:default;"></span><div class="todo-meta" onclick="pickDue(${d.id})" title="Click to set or change the do-by date"></div></div>
       <button onclick="editTodo(${d.id})" title="Edit" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:.85rem;padding:.35rem .3rem;line-height:1;" onmouseover="this.style.color='var(--acc)'" onmouseout="this.style.color='var(--mut)'">✎</button>
       <button onclick="deleteTodo(${d.id})" title="Delete" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:.9rem;padding:.35rem .3rem;line-height:1;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--mut)'">✕</button>`;
-    li.querySelector('span').textContent = text;
+    li.querySelector('.todo-text').textContent = text;
+    applyMeta(li, d);
     list.appendChild(li);
     li.querySelector('.todo-check').addEventListener('change', (e) => toggleTodo(d.id, e.target));
     input.value = '';
@@ -522,9 +598,11 @@ async function toggleTodo(pk, checkbox){
   const r = await fetch(`/todo/${pk}/toggle/`, {method:'POST', headers:{'X-CSRFToken':TODO_CSRF}});
   const d = await r.json();
   if(d.ok){
-    const span = checkbox.nextElementSibling;
+    const row = document.getElementById(`todo-row-${pk}`);
+    const span = row.querySelector('.todo-text');
     span.style.textDecoration = d.is_done ? 'line-through' : 'none';
     span.style.color = d.is_done ? 'var(--mut2)' : '';
+    applyMeta(row, d);
   }
 }
 

@@ -1,0 +1,30 @@
+{% load static humanize %}<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Quotation</title>
+<style>
+@page { size: A4; margin: 1.6cm 1.8cm 2cm 1.8cm; }
+body { font-family: Helvetica, Arial, sans-serif; font-size: 10pt; color:#222; line-height:1.4; }
+td { vertical-align: top; }
+.title { text-align:center; font-weight:bold; font-size:13pt; margin: 14pt 0 10pt 0; }
+.field { margin-top: 8pt; }
+.terms { color:#444; font-size:9pt; margin-top: 12pt; }
+.footer { margin-top: 18pt; border-top: 0.5pt solid #bbb; padding-top: 6pt; font-size:7.5pt; color:#777; text-align:center; }
+</style></head><body>
+<table width="100%"><tr>
+<td width="60%"><div style="color:#666;">{{ display.quote_date }}</div><div style="margin-top:6pt;">{{ display.address_block|linebreaksbr }}</div></td>
+<td width="40%" align="right"><img src="{% static 'logo.png' %}" width="140"><div style="margin-top:6pt;">{{ display.header_ref|linebreaksbr }}</div></td>
+</tr></table>
+<div class="title">Quotation</div>
+<div>{{ display.greeting }}</div>
+<div class="field">{{ display.thank_you }}</div>
+<div class="field">{{ display.supply_line }}</div>
+{% if quote.capacity %}<div class="field">{{ capacity_html }}</div>{% endif %}
+{% if quote.bay_breakdown %}<div class="field">{{ bay_breakdown_html }}</div>{% endif %}
+<table width="100%" style="margin-top:8pt;font-weight:bold;"><tr><td>{{ display.main_price_label }}</td><td align="right">&pound;{{ quote.main_price|floatformat:2|intcomma }}</td></tr>
+{% if quote.extra_label %}<tr><td>{{ quote.extra_label }}</td><td align="right">{% if quote.extra_price is not None %}&pound;{{ quote.extra_price|floatformat:2|intcomma }}{% endif %}</td></tr>{% endif %}</table>
+<p style="margin-top:10pt;"><b>Delivery lead time:</b> {{ quote.lead_time }}</p>
+<p><b>Payment Terms:</b> {{ quote.payment_terms }}</p>
+<div class="terms">{{ quote.terms_text|linebreaksbr }}</div>
+<div class="field"><p>{{ display.closing }}</p><p>Yours sincerely,<br>{{ display.signature_name }}</p></div>
+{% for src in photo_srcs %}<div style="margin-top:8pt;"><img src="{{ src }}" width="230"></div>{% endfor %}
+<div class="footer">Unit 8c Witan Park, Avenue Two Station Lane, Witney, OX28 4FH &nbsp; T: 01993 779494<br>E: sales@ezrshelving.com | www.ezrshelving.com<br>E-Z-Rect Ltd trading as EZR Shelving. Registered in England &amp; Wales. Company no. 2874065</div>
+</body></html>

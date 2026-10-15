@@ -49,6 +49,7 @@ class Project(models.Model):
     location       = models.CharField(max_length=300, blank=True)
     description    = models.CharField(max_length=300, blank=True)
     status         = models.CharField(max_length=30, choices=STATUS_CHOICES, default='enquiry')
+    no_customer_signature = models.BooleanField(default=False, help_text='Fitter finished the job without a customer sign-off (flag stays until cleared)')
     lost_reason    = models.TextField(blank=True, help_text='Why this didn\'t proceed — captured when marked Cancelled')
     is_blocked     = models.BooleanField(default=False, help_text='Flagged as stalled/at risk')
     blocked_reason = models.CharField(max_length=300, blank=True, help_text='Why this is blocked, e.g. waiting on customer, drawing sign-off, site not ready')
@@ -288,10 +289,29 @@ class TodoItem(models.Model):
     text       = models.CharField(max_length=300)
     is_done    = models.BooleanField(default=False)
     sort_order = models.PositiveIntegerField(default=0)
+    due_date   = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['is_done', 'sort_order', 'created_at']
+
+    @property
+    def due_info(self):
+        """Urgency of the 'do by' date: level is none/done/overdue/today/soon/later."""
+        if not self.due_date:
+            return {'level': 'none', 'label': ''}
+        if self.is_done:
+            return {'level': 'done', 'label': ''}
+        from django.utils import timezone as _tz
+        days = (self.due_date - _tz.localdate()).days
+        if days < 0:
+            n = -days
+            return {'level': 'overdue', 'label': f"overdue by {n} day{'s' if n != 1 else ''}"}
+        if days == 0:
+            return {'level': 'today', 'label': 'due today'}
+        if days == 1:
+            return {'level': 'soon', 'label': 'due tomorrow'}
+        return {'level': 'later', 'label': f'in {days} days'}
 
     def __str__(self):
         return self.text[:60]
@@ -414,6 +434,7 @@ class ReportPhoto(models.Model):
     file_original_name = models.CharField(max_length=200, blank=True)
     caption   = models.CharField(max_length=200, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    fitter_link = models.ForeignKey('FitterLink', null=True, blank=True, on_delete=models.SET_NULL, related_name='photos')
 
 
 class SurveyPhoto(models.Model):
@@ -1373,3 +1394,58 @@ class DeliveryPhase(models.Model):
 
     def __str__(self):
         return f"{self.project.project_name} — {self.label}"
+
+
+class Feedback(models.Model):
+    KINDS = [('idea', 'Idea'), ('problem', 'Problem'), ('question', 'Question')]
+    STATUSES = [('new', 'New'), ('planned', 'Planned'), ('done', 'Done'), ('declined', 'Not doing')]
+    user       = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='feedback')
+    kind       = models.CharField(max_length=10, choices=KINDS, default='idea')
+    message    = models.TextField()
+    page       = models.CharField(max_length=300, blank=True)
+    status     = models.CharField(max_length=10, choices=STATUSES, default='new')
+    reply      = models.TextField(blank=True, help_text='Short answer or update shown to the person who sent it')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.get_kind_display()}: {self.message[:40]}"
+
+
+class FitterLink(models.Model):
+    """Private no-login link for an (outsourced) fitter to report on one job from a phone.
+    Valid until the project is Completed/Cancelled or the link is revoked."""
+    project    = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='fitter_links')
+    token      = models.CharField(max_length=64, unique=True, db_index=True)
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='fitter_links')
+    is_revoked = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def is_active(self):
+        return (not self.is_revoked) and self.project.status not in ('completed', 'cancelled')
+
+    def __str__(self):
+        return f"Fitter link — {self.project}"
+
+
+class FitterSubmission(models.Model):
+    link          = models.ForeignKey(FitterLink, on_delete=models.CASCADE, related_name='submissions')
+    project       = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='fitter_submissions')
+    fitter_name   = models.CharField(max_length=200)
+    work_completed = models.BooleanField(default=False)
+    site_clear    = models.BooleanField(default=False)
+    return_visit  = models.BooleanField(default=False)
+    snags         = models.TextField(blank=True)
+    customer_name = models.CharField(max_length=200, blank=True)
+    signed        = models.BooleanField(default=False)
+    no_signature_reason = models.CharField(max_length=300, blank=True)
+    photo_count   = models.PositiveIntegerField(default=0)
+    document      = models.ForeignKey('ProjectDocument', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    submitted_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-submitted_at']

@@ -25,7 +25,7 @@ from django.contrib.auth.views import (
 )
 
 HOME_TILE_KEYS = ['dashboard', 'new_project', 'todo', 'reminders', 'messages',
-                  'my_projects', 'chat', 'whos_off', 'latest', 'photos']
+                  'my_projects', 'chat', 'whos_off', 'latest', 'photos', 'this_week']
 
 
 @login_required
@@ -97,7 +97,7 @@ def home(request):
     recent_team_messages = list(reversed(list(recent_team_messages)))
     last_team_msg_id = recent_team_messages[-1].pk if recent_team_messages else 0
 
-    todo_items = TodoItem.objects.filter(user=request.user)
+    todo_items = _todo_items(request.user)
 
     profile = StaffProfile.objects.filter(user=request.user).first()
     layout = profile.home_layout if profile and isinstance(profile.home_layout, dict) else {}
@@ -106,7 +106,9 @@ def home(request):
         'hidden': [k for k in layout.get('hidden', []) if k in HOME_TILE_KEYS],
     }
 
+    from ..weekly import weekly_summary
     return render(request, 'projects/home.html', {
+        'week': weekly_summary(),
         'home_layout': home_layout,
         'my_reminders': my_reminders,
         'upcoming_reminders': upcoming_reminders,
@@ -122,13 +124,42 @@ def home(request):
     })
 
 
+def _todo_items(user):
+    """Open items first, most urgent 'do by' date first (undated last), then the user's own order."""
+    items = list(TodoItem.objects.filter(user=user))
+    items.sort(key=lambda t: (t.is_done, t.due_date is None, t.due_date or date.max, t.sort_order, t.created_at))
+    return items
+
+
+def _todo_json(item):
+    info = item.due_info
+    return {
+        'ok': True, 'id': item.pk, 'text': item.text,
+        'added': item.created_at.astimezone(timezone.get_current_timezone()).strftime('%-d %b'),
+        'due': item.due_date.isoformat() if item.due_date else None,
+        'due_text': item.due_date.strftime('%a %-d %b') if item.due_date else '',
+        'level': info['level'], 'label': info['label'],
+    }
+
+
+def _parse_due(raw):
+    from datetime import datetime as _dt
+    raw = (raw or '').strip()
+    if not raw:
+        return None
+    try:
+        return _dt.strptime(raw, '%Y-%m-%d').date()
+    except ValueError:
+        return None
+
+
 @login_required
 def todo_widget(request):
     """A bare, standalone view of just the personal to-do list — no
     sidebar, no nav — meant to be installed as its own app/window via
     the browser's 'Install' feature, rather than opened as a normal
     page inside the full site."""
-    todo_items = TodoItem.objects.filter(user=request.user)
+    todo_items = _todo_items(request.user)
     return render(request, 'projects/todo_widget.html', {'todo_items': todo_items})
 
 
@@ -140,8 +171,23 @@ def todo_add(request):
     if not text:
         return JsonResponse({'error': 'Text is required.'}, status=400)
     next_order = TodoItem.objects.filter(user=request.user).count()
-    item = TodoItem.objects.create(user=request.user, text=text, sort_order=next_order)
-    return JsonResponse({'ok': True, 'id': item.pk})
+    item = TodoItem.objects.create(user=request.user, text=text, sort_order=next_order,
+                                   due_date=_parse_due(data.get('due')))
+    return JsonResponse(_todo_json(item))
+
+
+@login_required
+@require_POST
+def todo_due(request, pk):
+    """Set or clear the 'do by' date of one of your to-do items."""
+    item = get_object_or_404(TodoItem, pk=pk, user=request.user)
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'ok': False}, status=400)
+    item.due_date = _parse_due(data.get('due'))
+    item.save(update_fields=['due_date'])
+    return JsonResponse(_todo_json(item))
 
 
 @login_required
@@ -150,7 +196,7 @@ def todo_toggle(request, pk):
     item = get_object_or_404(TodoItem, pk=pk, user=request.user)
     item.is_done = not item.is_done
     item.save(update_fields=['is_done'])
-    return JsonResponse({'ok': True, 'is_done': item.is_done})
+    return JsonResponse(dict(_todo_json(item), is_done=item.is_done))
 
 
 @login_required

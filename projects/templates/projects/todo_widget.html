@@ -22,6 +22,14 @@
   li button{flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:1rem;padding:2px 4px;line-height:1;}
   li button:hover{color:var(--red);}
   li button[title="Edit"]:hover{color:var(--acc);}
+.todo-meta{font-size:.7rem;color:var(--mut);margin-top:1px;cursor:pointer;line-height:1.35;}
+  .todo-meta:hover{color:var(--acc);}
+  .todo-meta b{font-weight:700;}
+  .todo-meta[data-level="overdue"]{color:#dc2626;}
+  .todo-meta[data-level="today"],.todo-meta[data-level="soon"]{color:#c2570c;}
+  .todo-meta[data-level="overdue"] b,.todo-meta[data-level="today"] b{text-transform:uppercase;letter-spacing:.02em;}
+  .todo-meta[data-level="done"]{opacity:.6;}
+  .add-row input[type=date]{flex:0 0 auto;width:auto;font-size:.8rem;padding:.4rem .4rem;}
   .empty{color:var(--mut);font-size:.88rem;padding:1rem 0;text-align:center;}
   .add-row{display:flex;gap:.5rem;padding:.8rem 1.2rem 1.1rem;flex-shrink:0;background:var(--bg);border-top:1px solid var(--bdr);}
   .add-row input{flex:1;border:1px solid var(--bdr);border-radius:var(--rad);padding:.55rem .7rem;font-size:.92rem;font-family:var(--f);outline:none;}
@@ -39,7 +47,10 @@
       {% for t in todo_items %}
       <li id="todo-row-{{ t.pk }}" data-text="{{ t.text }}">
         <input type="checkbox" class="todo-check" data-pk="{{ t.pk }}" {% if t.is_done %}checked{% endif %}>
-        <span class="todo-text" style="{% if t.is_done %}text-decoration:line-through;color:var(--mut2);{% endif %}">{{ t.text }}</span>
+        <div class="todo-body" style="flex:1;min-width:0;">
+          <span class="todo-text" style="{% if t.is_done %}text-decoration:line-through;color:var(--mut2);{% endif %}">{{ t.text }}</span>
+          {% with di=t.due_info %}<div class="todo-meta" data-level="{{ di.level }}" data-due="{{ t.due_date|date:'Y-m-d' }}" onclick="pickDue({{ t.pk }})" title="Tap to set or change the do-by date">Added {{ t.created_at|date:"j M" }}{% if t.due_date %} · Do by {{ t.due_date|date:"D j M" }}{% if di.label %} · <b>{{ di.label }}</b>{% endif %}{% else %} · <u style="text-decoration:underline dotted;">+ do-by date</u>{% endif %}</div>{% endwith %}
+        </div>
         <button onclick="editTodo({{ t.pk }})" title="Edit" style="color:var(--mut);">✎</button>
         <button onclick="deleteTodo({{ t.pk }})" title="Delete">✕</button>
       </li>
@@ -50,6 +61,7 @@
   </div>
   <div class="add-row">
     <input type="text" id="todo-input" placeholder="Add a to-do…" onkeydown="if(event.key==='Enter'){addTodo();}">
+    <input type="date" id="todo-due" title="Do by (optional)">
     <button onclick="addTodo()">+ Add</button>
   </div>
 
@@ -63,15 +75,57 @@ window.addEventListener('orientationchange', setRealVh);
 
 const CSRF = '{{ csrf_token }}';
 
+function metaHtml(d){
+  let h = 'Added ' + d.added;
+  if(d.due){ h += ' · Do by ' + d.due_text + (d.label ? ' · <b>' + d.label + '</b>' : ''); }
+  else { h += ' · <u style="text-decoration:underline dotted;">+ do-by date</u>'; }
+  return h;
+}
+function applyMeta(row, d){
+  const m = row.querySelector('.todo-meta');
+  if(!m) return;
+  m.dataset.level = d.level || 'none';
+  m.dataset.due = d.due || '';
+  m.innerHTML = metaHtml(d);
+}
+function pickDue(pk){
+  const row = document.getElementById(`todo-row-${pk}`);
+  if(!row) return;
+  const old = row.querySelector('.todo-due-input');
+  if(old) old.remove();
+  const inp = document.createElement('input');
+  inp.type = 'date'; inp.className = 'todo-due-input';
+  inp.value = row.querySelector('.todo-meta').dataset.due || '';
+  inp.style.cssText = 'font-size:.78rem;margin-top:3px;border:1px solid var(--acc);border-radius:6px;padding:2px 4px;font-family:inherit;';
+  const clear = document.createElement('button');
+  clear.type = 'button'; clear.textContent = 'Clear'; clear.title = 'Remove the do-by date';
+  clear.style.cssText = 'font-size:.7rem;margin-left:4px;';
+  const wrap = document.createElement('div'); wrap.className = 'todo-due-input'; wrap.append(inp, clear);
+  row.querySelector('.todo-meta').after(wrap);
+  const save = async (val) => {
+    const r = await fetch(`/todo/${pk}/due/`, {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify({due: val})});
+    const d = await r.json();
+    if(d.ok) applyMeta(row, d);
+    wrap.remove();
+  };
+  inp.addEventListener('change', () => save(inp.value));
+  clear.addEventListener('click', () => save(''));
+  inp.addEventListener('keydown', e => { if(e.key === 'Escape') wrap.remove(); });
+  inp.focus();
+  try{ inp.showPicker && inp.showPicker(); }catch(e){}
+}
+
+
 async function addTodo(){
   const input = document.getElementById('todo-input');
   const text = input.value.trim();
   if(!text) return;
   const r = await fetch('/todo/add/', {
-    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify({text})
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify({text, due: (document.getElementById('todo-due') || {}).value || null})
   });
   const d = await r.json();
   if(d.ok){
+    const dueEl = document.getElementById('todo-due'); if(dueEl) dueEl.value = '';
     const empty = document.getElementById('todo-empty');
     if(empty) empty.remove();
     const list = document.getElementById('todo-list');
@@ -80,10 +134,11 @@ async function addTodo(){
     li.dataset.text = text;
     li.innerHTML = `
       <input type="checkbox" class="todo-check" data-pk="${d.id}">
-      <span class="todo-text"></span>
+      <div class="todo-body" style="flex:1;min-width:0;"><span class="todo-text"></span><div class="todo-meta" onclick="pickDue(${d.id})" title="Tap to set or change the do-by date"></div></div>
       <button onclick="editTodo(${d.id})" title="Edit" style="color:var(--mut);">✎</button>
       <button onclick="deleteTodo(${d.id})" title="Delete">✕</button>`;
-    li.querySelector('span').textContent = text;
+    li.querySelector('.todo-text').textContent = text;
+    applyMeta(li, d);
     li.querySelector('.todo-check').addEventListener('change', (e) => toggleTodo(d.id, e.target));
     list.appendChild(li);
     input.value = '';
@@ -137,9 +192,11 @@ async function toggleTodo(pk, checkbox){
   const r = await fetch(`/todo/${pk}/toggle/`, {method:'POST', headers:{'X-CSRFToken':CSRF}});
   const d = await r.json();
   if(d.ok){
-    const span = checkbox.nextElementSibling;
+    const row = document.getElementById(`todo-row-${pk}`);
+    const span = row.querySelector('.todo-text');
     span.style.textDecoration = d.is_done ? 'line-through' : 'none';
     span.style.color = d.is_done ? 'var(--mut2)' : '';
+    applyMeta(row, d);
   }
 }
 

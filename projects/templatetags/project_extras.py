@@ -38,4 +38,5 @@ def user_colour_map():
     for u in users:
         colour = profiles.get(u.id) or AVATAR_COLOURS[u.id % len(AVATAR_COLOURS)]
         parts.append(f'{u.id}:"{colour}"')
-    return '{' + ','.join(parts) + '}'
+    from django.utils.safestring import mark_safe
+    return mark_safe('{' + ','.join(parts) + '}')

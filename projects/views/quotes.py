@@ -25,6 +25,15 @@ from django.contrib.auth.views import (
     PasswordResetConfirmView, PasswordResetCompleteView,
 )
 
+def quote_ref(project, on=None):
+    """Quote reference: YYMMDD + first 2 letters of customer + first 2 letters of project name,
+    e.g. 261015ALBE."""
+    import datetime as _dt
+    on = on or _dt.date.today()
+    letters = lambda t: ''.join(ch for ch in (t or '') if ch.isalpha())[:2].upper()
+    return f"Ref: {on:%y%m%d}{letters(project.customer)}{letters(project.project_name)}"
+
+
 @login_required
 def customer_quote(request, pk, cost_pk=None):
     project = get_object_or_404(Project, pk=pk)
@@ -158,7 +167,10 @@ def customer_quote(request, pk, cost_pk=None):
     import datetime as _dt
     today = _dt.date.today()
     default_date = today.strftime('%d %B %Y').lstrip('0')
-    default_ref = f"{project.customer}\n{project.location}" if project.location else project.customer
+    default_ref = quote_ref(project)
+    if not quote.header_ref:
+        quote.header_ref = default_ref
+        quote.save(update_fields=['header_ref'])
     default_greeting = f"Dear {first_name}," if first_name else "Dear Sir/Madam,"
     default_closing = "We trust the above meets with your approval and if you require any further information, please do not hesitate to contact me."
     sig = request.user.get_full_name() or request.user.username
@@ -343,7 +355,7 @@ def quote_public_view(request, token):
 
     import datetime as _dt
     default_date = _dt.date.today().strftime('%d %B %Y').lstrip('0')
-    default_ref = f"{project.customer}\n{project.location}" if project.location else project.customer
+    default_ref = quote_ref(project)
     default_greeting = f"Dear {first_name}," if first_name else "Dear Sir/Madam,"
     default_thank_you = f"Thank you for your enquiry for shelving at {proj_label}, for which we now have the pleasure of quoting as follows:"
     default_closing = "We trust the above meets with your approval and if you require any further information, please do not hesitate to contact me."

@@ -31,6 +31,15 @@ def _pdf_link_callback(uri, rel):
     return uri
 
 
+def _pdf_bytes(template_name, context):
+    """Render a Django template to PDF bytes (for attaching to emails)."""
+    from xhtml2pdf import pisa
+    html = render_to_string(template_name, context)
+    buf = io.BytesIO()
+    pisa.CreatePDF(html, dest=buf, link_callback=_pdf_link_callback)
+    return buf.getvalue()
+
+
 def _render_pdf(template_name, context, filename):
     """Render a Django template to a PDF download response."""
     from xhtml2pdf import pisa

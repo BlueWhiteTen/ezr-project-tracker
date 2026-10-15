@@ -58,7 +58,7 @@ class ResendEmailBackend(BaseEmailBackend):
 
     @_force_ipv4
     def _post(self, req):
-        return urllib.request.urlopen(req, timeout=10)
+        return urllib.request.urlopen(req, timeout=30)
 
     def send_messages(self, email_messages):
         if not email_messages:
@@ -81,6 +81,19 @@ class ResendEmailBackend(BaseEmailBackend):
                 payload['cc'] = list(message.cc)
             if message.bcc:
                 payload['bcc'] = list(message.bcc)
+            if getattr(message, 'reply_to', None):
+                payload['reply_to'] = list(message.reply_to)
+            if getattr(message, 'attachments', None):
+                import base64
+                atts = []
+                for a in message.attachments:
+                    if isinstance(a, (tuple, list)) and len(a) >= 2:
+                        content = a[1]
+                        if isinstance(content, str):
+                            content = content.encode('utf-8')
+                        atts.append({'filename': a[0], 'content': base64.b64encode(content).decode('ascii')})
+                if atts:
+                    payload['attachments'] = atts
 
             data = json.dumps(payload).encode('utf-8')
             req = urllib.request.Request(
