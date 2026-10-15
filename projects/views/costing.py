@@ -1585,7 +1585,26 @@ def satisfaction_note(request, pk):
         if project.addr_county: city += ', ' + project.addr_county
         if project.addr_postcode: city += ' ' + project.addr_postcode
         address_parts.append(city)
+    # Filled-in version: pre-fill from a fitter-link submission (?sub=<id>, or the latest one with ?filled=1)
+    sub, sig_src = None, ''
+    if request.GET.get('sub') or request.GET.get('filled'):
+        subs = project.fitter_submissions.all()
+        sub = subs.filter(pk=request.GET['sub']).first() if request.GET.get('sub', '').isdigit() else subs.first()
+        if sub:
+            import base64
+            fitting_crew = sub.fitter_name or fitting_crew
+            job_tasks = job_tasks or project.description
+            if sub.signed and report:
+                notes = [n for n in report.satisfaction_notes.filter(file_mime='image/png', file_original_name='customer-signature.png') if n.file_data]
+                if notes:
+                    best = min(notes, key=lambda n: abs((n.uploaded_at - sub.submitted_at).total_seconds()))
+                    if abs((best.uploaded_at - sub.submitted_at).total_seconds()) < 600:
+                        sig_src = 'data:image/png;base64,' + base64.b64encode(bytes(best.file_data)).decode('ascii')
+            if not inst_date:
+                inst_date = timezone.localtime(sub.submitted_at).strftime('%d.%m.%y')
     return render(request, 'projects/satisfaction_note.html', {
+        'sub': sub, 'sig_src': sig_src,
+        'sub_date': timezone.localtime(sub.submitted_at).strftime('%d.%m.%y') if sub else '',
         'project': project,
         'report': report,
         'customer_profile': customer_profile,

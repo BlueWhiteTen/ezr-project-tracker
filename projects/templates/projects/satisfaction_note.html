@@ -72,7 +72,7 @@ body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#1a1a1a; ba
 
 <div class="no-print">
   <button onclick="window.print()" style="background:#1a1a1a;color:#fff;">🖨 Print / Save PDF</button>
-  <a href="{% url 'project_edit' project.pk %}" style="font-size:.82rem;color:#888;text-decoration:none;">← Back to project</a>
+  <a href="{% url 'install_report' project.pk %}" style="font-size:.82rem;color:#888;text-decoration:none;">← Back to installation report</a>
 </div>
 
 <div class="page">
@@ -149,15 +149,15 @@ body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#1a1a1a; ba
   <!-- SITE CLEARED -->
   <div class="yn-row">
     <span class="yn-label">Site cleared:</span>
-    <span class="yn-option"><span class="yn-box"></span> YES</span>
-    <span class="yn-option"><span class="yn-box"></span> NO</span>
-    <span class="yn-reason">If NO why? ………………………………………………………………………</span>
+    <span class="yn-option"><span class="yn-box">{% if sub and sub.site_clear %}✓{% endif %}</span> YES</span>
+    <span class="yn-option"><span class="yn-box">{% if sub and not sub.site_clear %}✓{% endif %}</span> NO</span>
+    <span class="yn-reason">{% if sub %}{% if not sub.site_clear %}See crew's comments{% endif %}{% else %}If NO why? ………………………………………………………………………{% endif %}</span>
   </div>
 
   <!-- CREW'S COMMENTS -->
   <div class="comments-box">
     <div class="comments-label">Crew's comments:</div>
-    <div style="min-height:24pt;"></div>
+    <div style="min-height:24pt;white-space:pre-wrap;font-size:9.5pt;">{% if sub %}{{ sub.snags }}{% endif %}</div>
   </div>
 
   <div class="gap"></div>
@@ -166,7 +166,7 @@ body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#1a1a1a; ba
   <div class="sec">Work Completed:</div>
   <div class="comments-box">
     <div class="comments-label">Comments:</div>
-    <div style="min-height:22pt;"></div>
+    <div style="min-height:22pt;font-size:9.5pt;">{% if sub and sub.work_completed %}Work completed — reported by {{ sub.fitter_name }} on {{ sub_date }}.{% endif %}</div>
   </div>
 
   <!-- STATEMENT -->
@@ -177,10 +177,10 @@ body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#1a1a1a; ba
 
   <!-- SIGNATURES -->
   <div class="sig-grid">
-    <div class="sig-cell"><div class="sig-line-text">Signed: …………………………………………………</div></div>
-    <div class="sig-cell"><div class="sig-line-text">Print: …………………………………………………</div></div>
+    <div class="sig-cell">{% if sub and sub.work_completed %}{% if sig_src %}<img src="{{ sig_src }}" style="height:34pt;display:block;">{% else %}<div style="font-size:8.5pt;color:#b91c1c;">No customer signature{% if sub.no_signature_reason %} — {{ sub.no_signature_reason }}{% endif %}</div>{% endif %}<div class="sig-line-text">Signed</div>{% else %}<div class="sig-line-text">Signed: …………………………………………………</div>{% endif %}</div>
+    <div class="sig-cell">{% if sub and sub.work_completed %}<div style="font-size:10.5pt;font-weight:600;min-height:14pt;">{{ sub.customer_name }}</div><div class="sig-line-text">Print</div>{% else %}<div class="sig-line-text">Print: …………………………………………………</div>{% endif %}</div>
     <div class="sig-cell"><div class="sig-line-text">Position: …………………………………………………</div></div>
-    <div class="sig-cell"><div class="sig-line-text">Date: …………………………………………………</div></div>
+    <div class="sig-cell">{% if sub and sub.work_completed %}<div style="font-size:10.5pt;font-weight:600;min-height:14pt;">{{ sub_date }}</div><div class="sig-line-text">Date</div>{% else %}<div class="sig-line-text">Date: …………………………………………………</div>{% endif %}</div>
   </div>
 
   <div class="gap"></div>
@@ -189,22 +189,22 @@ body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#1a1a1a; ba
   <div class="sec">Work Not Complete:</div>
   <div class="comments-box">
     <div class="comments-label">Please specify:</div>
-    <div style="min-height:20pt;"></div>
+    <div style="min-height:20pt;white-space:pre-wrap;font-size:9.5pt;">{% if sub and not sub.work_completed %}{{ sub.snags|default:"Work not complete — see fitter report." }}{% endif %}</div>
   </div>
 
   <!-- RETURN VISIT -->
   <div class="yn-row">
     <span class="yn-label">Return visit required:</span>
-    <span class="yn-option"><span class="yn-box"></span> YES</span>
-    <span class="yn-option"><span class="yn-box"></span> NO</span>
+    <span class="yn-option"><span class="yn-box">{% if sub and sub.return_visit %}✓{% endif %}</span> YES</span>
+    <span class="yn-option"><span class="yn-box">{% if sub and not sub.return_visit %}✓{% endif %}</span> NO</span>
   </div>
 
   <!-- SECOND SIGNATURE BLOCK -->
   <div class="sig-grid" style="border-top:none;">
-    <div class="sig-cell"><div class="sig-line-text">Signed: …………………………………………………</div></div>
-    <div class="sig-cell"><div class="sig-line-text">Print: …………………………………………………</div></div>
+    <div class="sig-cell">{% if sub and not sub.work_completed %}{% if sig_src %}<img src="{{ sig_src }}" style="height:34pt;display:block;">{% else %}<div style="font-size:8.5pt;color:#b91c1c;">No customer signature{% if sub.no_signature_reason %} — {{ sub.no_signature_reason }}{% endif %}</div>{% endif %}<div class="sig-line-text">Signed</div>{% else %}<div class="sig-line-text">Signed: …………………………………………………</div>{% endif %}</div>
+    <div class="sig-cell">{% if sub and not sub.work_completed %}<div style="font-size:10.5pt;font-weight:600;min-height:14pt;">{{ sub.customer_name }}</div><div class="sig-line-text">Print</div>{% else %}<div class="sig-line-text">Print: …………………………………………………</div>{% endif %}</div>
     <div class="sig-cell"><div class="sig-line-text">Position: …………………………………………………</div></div>
-    <div class="sig-cell"><div class="sig-line-text">Date: …………………………………………………</div></div>
+    <div class="sig-cell">{% if sub and not sub.work_completed %}<div style="font-size:10.5pt;font-weight:600;min-height:14pt;">{{ sub_date }}</div><div class="sig-line-text">Date</div>{% else %}<div class="sig-line-text">Date: …………………………………………………</div>{% endif %}</div>
   </div>
 
 </div>

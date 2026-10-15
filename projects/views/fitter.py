@@ -52,6 +52,7 @@ def fitter_link_info(request, pk):
         'id': s.pk, 'name': s.fitter_name, 'when': timezone.localtime(s.submitted_at).strftime('%d %b %Y %H:%M'),
         'signed': s.signed, 'reason': s.no_signature_reason, 'photos': s.photo_count,
         'completed': s.work_completed, 'return_visit': s.return_visit,
+        'note': reverse('satisfaction_note', kwargs={'pk': pk}) + f'?sub={s.pk}',
         'pdf': reverse('document_download', kwargs={'pk': s.document_id}) if s.document_id else '',
     } for s in project.fitter_submissions.all()[:10]]
     return JsonResponse({
