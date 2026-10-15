@@ -1552,10 +1552,8 @@ def fitting_crew_api(request):
 
 
 
-@login_required
-def satisfaction_note(request, pk):
-    """Generate a client satisfaction note as a printable HTML page."""
-    project = get_object_or_404(Project, pk=pk)
+def satisfaction_context(project, sub=None, sig_src='', want_filled=False, sub_id=''):
+    """Everything the satisfaction note (screen + PDF) needs; `sub` = a FitterSubmission to fill it in."""
     report = getattr(project, 'install_report', None)
     customer_profile = project.customer_profile or CustomerProfile.objects.filter(name__iexact=project.customer).first()
     # Pre-resolve all fields so template is simple
@@ -1586,15 +1584,15 @@ def satisfaction_note(request, pk):
         if project.addr_postcode: city += ' ' + project.addr_postcode
         address_parts.append(city)
     # Filled-in version: pre-fill from a fitter-link submission (?sub=<id>, or the latest one with ?filled=1)
-    sub, sig_src = None, ''
-    if request.GET.get('sub') or request.GET.get('filled'):
+    if want_filled and sub is None:
         subs = project.fitter_submissions.all()
-        sub = subs.filter(pk=request.GET['sub']).first() if request.GET.get('sub', '').isdigit() else subs.first()
-        if sub:
+        sub = subs.filter(pk=sub_id).first() if str(sub_id).isdigit() else subs.first()
+    if sub:
+        if True:
             import base64
             fitting_crew = sub.fitter_name or fitting_crew
             job_tasks = job_tasks or project.description
-            if sub.signed and report:
+            if sub.signed and report and not sig_src:
                 notes = [n for n in report.satisfaction_notes.filter(file_mime='image/png', file_original_name='customer-signature.png') if n.file_data]
                 if notes:
                     best = min(notes, key=lambda n: abs((n.uploaded_at - sub.submitted_at).total_seconds()))
@@ -1602,7 +1600,7 @@ def satisfaction_note(request, pk):
                         sig_src = 'data:image/png;base64,' + base64.b64encode(bytes(best.file_data)).decode('ascii')
             if not inst_date:
                 inst_date = timezone.localtime(sub.submitted_at).strftime('%d.%m.%y')
-    return render(request, 'projects/satisfaction_note.html', {
+    return {
         'sub': sub, 'sig_src': sig_src,
         'sub_date': timezone.localtime(sub.submitted_at).strftime('%d.%m.%y') if sub else '',
         'project': project,
@@ -1615,6 +1613,14 @@ def satisfaction_note(request, pk):
         'job_tasks': job_tasks,
         'inst_date': inst_date,
         'site_address': '\n'.join(filter(None, address_parts)),
-    })
+    }
+
+
+@login_required
+def satisfaction_note(request, pk):
+    """Generate a client satisfaction note as a printable HTML page."""
+    project = get_object_or_404(Project, pk=pk)
+    ctx = satisfaction_context(project, want_filled=bool(request.GET.get('sub') or request.GET.get('filled')), sub_id=request.GET.get('sub', ''))
+    return render(request, 'projects/satisfaction_note.html', ctx)
 
 

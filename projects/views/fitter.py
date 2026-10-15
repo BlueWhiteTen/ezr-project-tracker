@@ -303,13 +303,10 @@ def fitter_submit(request, token):
         snags=snags, customer_name=cust, signed=bool(sig), no_signature_reason='' if sig else reason,
         photo_count=len(photos))
     try:
-        pdf = _pdf_bytes('projects/fitter_report_pdf.html', {
-            'project': project, 'ref': _ref(project), 'sub': sub, 'stamp': stamp, 'sig_src': sig_src,
-            'photo_srcs': _photo_srcs(photos),
-            'addr': ', '.join(x for x in [project.addr_line1, project.addr_city, project.addr_postcode] if x),
-        })
-        fname = re.sub(r'[^\w\- ]+', '', f"Install report {_ref(project)} {project.project_name} {now:%Y-%m-%d}").strip() + '.pdf'
-        doc = ProjectDocument.objects.create(project=project, name=f"Fitter report {now:%d %b %Y}", doc_type='other',
+        from .costing import satisfaction_context
+        pdf = _pdf_bytes('projects/satisfaction_note_pdf.html', satisfaction_context(project, sub=sub, sig_src=sig_src))
+        fname = re.sub(r'[^\w\- ]+', '', f"Satisfaction note {_ref(project)} {project.project_name} {now:%Y-%m-%d}").strip() + '.pdf'
+        doc = ProjectDocument.objects.create(project=project, name=f"Satisfaction note {now:%d %b %Y}", doc_type='other',
                                              file_data=pdf, file_mime='application/pdf', file_original_name=fname,
                                              notes=f"Auto-generated from the fitter link ({name})")
         sub.document = doc

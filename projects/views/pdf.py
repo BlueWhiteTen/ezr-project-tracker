@@ -16,6 +16,38 @@ def _pdf_link_callback(uri, rel):
     """Resolves /static/ and /media/ URLs to real file paths on disk, so
     xhtml2pdf can actually embed images (like the EZR logo) instead of
     silently failing to find them."""
+    if uri.startswith('data:image'):
+        # xhtml2pdf draws two different PNGs on one page as the same picture -> give it flattened JPEG temp files
+        import base64, tempfile
+        try:
+            raw = base64.b64decode(uri.split(',', 1)[1])
+            ext = '.jpg'
+            try:  # flatten transparency onto white (canvas signatures are transparent PNGs)
+                from PIL import Image
+                im = Image.open(io.BytesIO(raw)).convert('RGBA')
+                bg = Image.new('RGB', im.size, (255, 255, 255))
+                bg.paste(im, mask=im.split()[3])
+                out = io.BytesIO()
+                bg.save(out, 'JPEG', quality=90)
+                raw = out.getvalue()
+            except Exception:
+                pass
+            tdir = os.path.join(str(settings.BASE_DIR), '.pdf_tmp')
+            os.makedirs(tdir, exist_ok=True)
+            import time
+            for old in os.listdir(tdir):   # tidy anything older than an hour
+                fp = os.path.join(tdir, old)
+                try:
+                    if time.time() - os.path.getmtime(fp) > 3600:
+                        os.remove(fp)
+                except OSError:
+                    pass
+            fd, tmp = tempfile.mkstemp(suffix=ext, prefix='ezrpdf_', dir=tdir)
+            with os.fdopen(fd, 'wb') as fh:
+                fh.write(raw)
+            return tmp
+        except Exception:
+            return uri
     if uri.startswith(settings.STATIC_URL):
         path = uri.replace(settings.STATIC_URL, '', 1)
         for d in getattr(settings, 'STATICFILES_DIRS', []):
