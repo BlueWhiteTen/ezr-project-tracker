@@ -28,6 +28,55 @@
   {% if project.installation_date %} · Installed {{ project.installation_date|date:"d M Y" }}{% endif %}
 </div>
 
+      {% if project %}
+      <div class="form-card" id="fitter-card" style="border-color:rgba(212,112,10,.35);">
+        <div class="section-title" style="color:var(--acc);">FITTER LINK</div>
+        <div id="fl-flag" style="display:none;background:var(--red-bg);color:var(--red);border-radius:8px;padding:.5rem .7rem;font-size:.82rem;margin-bottom:.7rem;">⚠ <strong>No customer signature</strong> on this job. <a href="#" onclick="flClear();return false;" style="color:var(--red);">Clear flag</a></div>
+        <p style="font-size:.82rem;color:var(--mut);margin-bottom:.8rem;">A private link for the fitter's phone: photos, completion checks and an optional customer signature. Fills in the Installation Report and makes a PDF. Works until the project is Completed.</p>
+        <div id="fl-none"><button type="button" class="btn" style="width:100%;justify-content:center;background:var(--acc);color:#fff;font-weight:600;" onclick="flCreate()">📱 Create fitter link</button></div>
+        <div id="fl-have" style="display:none;">
+          <input type="text" id="fl-url" readonly style="width:100%;font-size:.78rem;padding:.4rem .5rem;border:1px solid var(--bdr);border-radius:6px;margin-bottom:.5rem;" onclick="this.select()">
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="flCopy()" id="fl-copy">Copy link</button>
+            <a class="btn btn-ghost btn-sm" id="fl-wa" target="_blank" rel="noopener">WhatsApp</a>
+            <a class="btn btn-ghost btn-sm" id="fl-sms">Text</a>
+            <a class="btn btn-ghost btn-sm" id="fl-mail">Email</a>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="flRevoke()" style="color:var(--red);">Turn off</button>
+          </div>
+        </div>
+        <div id="fl-closed" style="display:none;font-size:.82rem;color:var(--mut);">This project is closed, so the fitter link is off.</div>
+        <div id="fl-subs" style="margin-top:.8rem;font-size:.82rem;"></div>
+      </div>
+      <script>
+      (function(){
+        var PK={{ project.pk }}, csrf='{{ csrf_token }}';
+        function post(u){return fetch(u,{method:'POST',headers:{'X-CSRFToken':csrf}}).then(function(r){return r.json();});}
+        function show(d){
+          var have=!!d.link;
+          document.getElementById('fl-none').style.display=(!have&&!d.closed)?'block':'none';
+          document.getElementById('fl-have').style.display=have?'block':'none';
+          document.getElementById('fl-closed').style.display=d.closed?'block':'none';
+          document.getElementById('fl-flag').style.display=d.no_signature?'block':'none';
+          if(have){var u=d.link.url,msg='Hi, here is the link to report on the job at '+d.project+' (photos, completion checks, customer sign-off): '+u;
+            document.getElementById('fl-url').value=u;
+            document.getElementById('fl-wa').href='https://wa.me/?text='+encodeURIComponent(msg);
+            document.getElementById('fl-sms').href='sms:?&body='+encodeURIComponent(msg);
+            document.getElementById('fl-mail').href='mailto:?subject='+encodeURIComponent('EZR job report link – '+d.project)+'&body='+encodeURIComponent(msg);}
+          var h='';(d.submissions||[]).forEach(function(s){
+            h+='<div style="padding:.35rem 0;border-top:1px solid var(--bdr);"><strong>'+esc(s.name)+'</strong> · '+esc(s.when)+'<br><span style="color:var(--mut);">'+(s.completed?'✓ complete':'✗ not complete')+' · '+s.photos+' photos · '+(s.signed?'signed':'<span style="color:var(--red);">no signature ('+esc(s.reason)+')</span>')+(s.return_visit?' · <strong>return visit</strong>':'')+'</span>'+(s.pdf?' · <a href="'+s.pdf+'" target="_blank">PDF</a>':'')+'</div>';});
+          document.getElementById('fl-subs').innerHTML=h?'<div style="font-weight:700;margin-bottom:.2rem;">Fitter reports</div>'+h:'';
+        }
+        function esc(t){var d=document.createElement('div');d.textContent=t==null?'':t;return d.innerHTML;}
+        function load(){fetch('/project/'+PK+'/fitter-link/').then(function(r){return r.json();}).then(show);}
+        window.flCreate=function(){post('/project/'+PK+'/fitter-link/create/').then(load);};
+        window.flRevoke=function(){if(confirm('Turn this link off? The fitter will no longer be able to use it.'))post('/project/'+PK+'/fitter-link/revoke/').then(load);};
+        window.flClear=function(){post('/project/'+PK+'/fitter-link/clear-flag/').then(load);};
+        window.flCopy=function(){var i=document.getElementById('fl-url');i.select();try{navigator.clipboard.writeText(i.value);}catch(e){document.execCommand('copy');}var b=document.getElementById('fl-copy');b.textContent='Copied ✓';setTimeout(function(){b.textContent='Copy link';},1800);};
+        load();
+      })();
+      </script>
+      {% endif %}
+
 <form method="post" enctype="multipart/form-data" id="report-form">
   {% csrf_token %}
   <div class="report-layout">

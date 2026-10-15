@@ -113,6 +113,5 @@ from .price_list import (
 )
 
 from .pwa import service_worker, offline
-from .quote_email import quote_email, quote_pdf_download
 from .fitter import (fitter_link_info, fitter_link_create, fitter_link_revoke, fitter_clear_flag, fitter_page,
                      fitter_photo_upload, fitter_photo_thumb, fitter_photo_delete, fitter_submit)
