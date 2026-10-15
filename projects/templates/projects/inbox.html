@@ -54,7 +54,8 @@
 .msg-deleted{display:inline-block;font-size:.82rem;font-style:italic;color:var(--mut);border:1px dashed var(--bdr);border-radius:14px;padding:.4rem .85rem;}
 .msg-del-btn{background:none;border:none;color:#dc2626;font-size:.7rem;font-weight:600;cursor:pointer;padding:1px 6px;font-family:var(--f);}
 .msg-del-btn:hover{color:#b91c1c;text-decoration:underline;}
-.msg-photo-btn{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:8px 12px;cursor:pointer;font-size:.95rem;flex:0 0 auto;}
+.msg-photo-btn{background:#fff;color:var(--acc);border:2px solid var(--acc);border-radius:var(--rad);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;padding:8px 11px;}
+.msg-photo-btn:hover{background:var(--acc-bg);}
 .msg-photo-preview{display:none;align-items:center;gap:.5rem;padding:.4rem 1.1rem;background:var(--surf2);border-top:1px solid var(--bdr);}
 .msg-photo-preview img{height:40px;border-radius:4px;object-fit:cover;}
 .msg-photo-preview span{font-size:.78rem;color:var(--mut);flex:1;}
@@ -189,7 +190,7 @@
     </div>
     <div class="chat-input-row">
       <input type="file" accept="image/*,application/pdf" id="msg-photo-input" style="display:none;" onchange="handlePhotoSelect()">
-      <button type="button" class="msg-photo-btn" onclick="document.getElementById('msg-photo-input').click()" title="Attach a photo or PDF">📎</button>
+      <button type="button" class="msg-photo-btn" onclick="document.getElementById('msg-photo-input').click()" title="Attach a photo or PDF"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
       <div class="chat-input-wrap">
         <input class="chat-input" id="chat-input" placeholder="Type a message… (# to tag a project)" autocomplete="off" style="width:100%;box-sizing:border-box;">
         <div class="mention-dd" id="mention-dd"></div>
