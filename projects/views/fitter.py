@@ -143,9 +143,9 @@ def _clean_image(f):
         img = ImageOps.exif_transpose(img)
         if img.mode not in ('RGB', 'L'):
             img = img.convert('RGB')
-        img.thumbnail((1800, 1800))
+        img.thumbnail((1600, 1600))
         out = io.BytesIO()
-        img.save(out, 'JPEG', quality=82, optimize=True)
+        img.save(out, 'JPEG', quality=78, optimize=True)
         return out.getvalue(), None
     except Exception:
         return None, 'That file does not look like a photo.'

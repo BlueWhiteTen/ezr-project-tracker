@@ -139,7 +139,7 @@ function addOne(file){
 }
 function shrink(file){
   return new Promise(function(res){
-    function fromBitmap(bmp){var s=Math.min(1,1800/Math.max(bmp.width,bmp.height));var c=document.createElement('canvas');c.width=Math.round(bmp.width*s);c.height=Math.round(bmp.height*s);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);c.toBlob(function(b){res(b||file);},'image/jpeg',0.82);}
+    function fromBitmap(bmp){var s=Math.min(1,1600/Math.max(bmp.width,bmp.height));var c=document.createElement('canvas');c.width=Math.round(bmp.width*s);c.height=Math.round(bmp.height*s);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);c.toBlob(function(b){res(b||file);},'image/jpeg',0.78);}
     if(window.createImageBitmap){createImageBitmap(file,{imageOrientation:'from-image'}).then(fromBitmap).catch(function(){res(file);});}
     else{var im=new Image();im.onload=function(){fromBitmap(im);};im.onerror=function(){res(file);};im.src=URL.createObjectURL(file);}
   });
@@ -149,7 +149,7 @@ function delPhoto(btn){var box=btn.parentNode;var id=box.dataset.id;if(!id){box.
 
 /* ---- signature ---- */
 var cv=$('sig'),ctx=cv.getContext('2d'),drawing=false,ink=0,last=null;
-function sizeSig(){var r=cv.getBoundingClientRect();if(!r.width)return;var d=window.devicePixelRatio||1;
+function sizeSig(){if(drawing||ink>0)return;var r=cv.getBoundingClientRect();if(!r.width)return;var d=window.devicePixelRatio||1;
   if(cv.width!==Math.round(r.width*d)){var keep=ink;cv.width=Math.round(r.width*d);cv.height=Math.round(r.height*d);ctx.scale(d,d);ctx.lineWidth=2.6;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#111';ink=0;$('sighint').style.display='flex';}}
 function pt(e){var r=cv.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};}
 cv.addEventListener('pointerdown',function(e){e.preventDefault();cv.setPointerCapture(e.pointerId);drawing=true;last=pt(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(last.x+.1,last.y+.1);ctx.stroke();$('sighint').style.display='none';});
