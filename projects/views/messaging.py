@@ -261,6 +261,45 @@ def team_message_delete(request, pk):
     return JsonResponse({'ok': True, 'id': msg.pk})
 
 
+def _recent_deleted_ids(model, flt):
+    """pks of deleted messages among the 300 most recent in this thread, so
+    open pages can swap them for the 'deleted' placeholder live."""
+    recent = list(model.objects.filter(flt).order_by('-pk').values_list('pk', 'is_deleted')[:300])
+    return [pk for pk, d in recent if d]
+
+
+@login_required
+@require_POST
+def message_delete(request, pk):
+    """Sender erases their own private message for good; a placeholder remains."""
+    msg = get_object_or_404(Message, pk=pk, sender=request.user)
+    msg.text = ''
+    msg.photo_data = None
+    msg.photo_mime = ''
+    msg.is_deleted = True
+    msg.read = True
+    msg.save()
+    msg.thumbs_up_by.clear()
+    Notification.objects.filter(
+        user=msg.recipient, type='message', link=f"/messages/{request.user.pk}/", read=False
+    ).delete()
+    return JsonResponse({'ok': True, 'id': msg.pk})
+
+
+@login_required
+@require_POST
+def team_message_delete(request, pk):
+    """Author erases their own EZR Chat message for good; a placeholder remains."""
+    msg = get_object_or_404(TeamMessage, pk=pk, user=request.user)
+    msg.text = ''
+    msg.photo_data = None
+    msg.photo_mime = ''
+    msg.is_deleted = True
+    msg.save()
+    msg.thumbs_up_by.clear()
+    return JsonResponse({'ok': True, 'id': msg.pk})
+
+
 @login_required
 def message_photo(request, pk):
     """Serve a photo attached to a private message. Scoped to sender or
