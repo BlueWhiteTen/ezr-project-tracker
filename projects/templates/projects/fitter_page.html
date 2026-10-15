@@ -84,7 +84,7 @@ textarea{min-height:90px;resize:vertical;}
     <div class="small" style="margin:0 0 9px;">Ask the customer to sign with a finger to confirm the work is complete.</div>
     <input type="text" id="cname" placeholder="Customer name (optional)" style="margin-bottom:10px;">
     <div class="sigbox" id="sigbox"><canvas id="sig"></canvas><div class="hint" id="sighint">Sign here</div></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;"><button type="button" onclick="clearSig()" style="background:none;border:0;color:var(--acc);font-weight:700;font-size:.95rem;padding:6px 0;">Clear</button></div>
+    <button type="button" id="clearsig" class="btn ghost" onclick="clearSig()" style="margin-top:10px;padding:12px;">✕ Clear signature &amp; try again</button>
     <label class="chk" style="border-top:1px solid #f0ebe3;margin-top:8px;"><input type="checkbox" id="nos" onchange="toggleNos()"> Customer not on site</label>
     <div id="nosbox" style="display:none;"><input type="text" id="reason" maxlength="300" placeholder="Short reason, e.g. left key with security"><div class="small">The office will be flagged that there is no signature on this job.</div></div>
   </div>
