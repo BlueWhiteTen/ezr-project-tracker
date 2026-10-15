@@ -49,6 +49,7 @@
 .pdf-card:hover{border-color:var(--acc);}
 .pdf-card span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .team-me .pdf-card,.pdf-card.pdf-me{margin-left:auto;}
+.drop-over{outline:2px dashed var(--acc);outline-offset:-3px;background:var(--acc-bg) !important;}
 .msg-deleted{display:inline-block;font-size:.82rem;font-style:italic;color:var(--mut);border:1px dashed var(--bdr);border-radius:12px;padding:.35rem .8rem;}
 .msg-del-btn{background:none;border:none;color:#dc2626;font-size:.7rem;font-weight:600;cursor:pointer;padding:1px 6px;font-family:var(--f);}
 .msg-del-btn:hover{color:#b91c1c;text-decoration:underline;}
@@ -388,5 +389,31 @@ document.addEventListener('click', e=>{
   if(!e.target.closest('.chat-input-wrap'))
     document.getElementById('mention-dd').style.display='none';
 });
+
+// ── Drag & drop a photo/PDF onto the message box to attach it ───────────────
+function setupFileDrop(row, input, onPicked){
+  if(!row || !input) return;
+  const hasFiles = e => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+  let depth = 0;
+  row.addEventListener('dragenter', e => { if(!hasFiles(e)) return; e.preventDefault(); depth++; row.classList.add('drop-over'); });
+  row.addEventListener('dragover', e => { if(!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+  row.addEventListener('dragleave', e => { if(!hasFiles(e)) return; depth = Math.max(0, depth - 1); if(!depth) row.classList.remove('drop-over'); });
+  row.addEventListener('drop', e => {
+    if(!hasFiles(e)) return;
+    e.preventDefault(); depth = 0; row.classList.remove('drop-over');
+    const files = Array.from(e.dataTransfer.files);
+    const ok = files.filter(f => f.type.startsWith('image/') || f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+    if(!ok.length){ alert('Only photos and PDF files can be attached.'); return; }
+    const dt = new DataTransfer(); dt.items.add(ok[0]);
+    input.files = dt.files;
+    onPicked();
+    if(files.length > 1) alert('One file per message — attached "' + ok[0].name + '". Send it, then drop the next one.');
+  });
+}
+// Stop a file dropped elsewhere on the page from navigating away to open it.
+['dragover','drop'].forEach(ev => window.addEventListener(ev, e => {
+  if(e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files')) e.preventDefault();
+}));
+setupFileDrop(document.querySelector('.chat-input-row'), document.getElementById('chat-photo-input'), handlePhotoSelect);
 </script>
 {% endblock %}
