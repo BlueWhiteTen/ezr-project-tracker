@@ -60,12 +60,14 @@ textarea{min-height:90px;resize:vertical;}
   </div>
   {% if tasks %}<div class="card"><h3>Work to carry out</h3><div style="white-space:pre-wrap;line-height:1.5;">{{ tasks }}</div></div>{% endif %}
   <div class="card"><h3>Photos <span id="pcount" style="float:right;color:var(--acc)"></span></h3>
-    <button class="btn" type="button" onclick="document.getElementById('file').click()">📷 Take / add photos</button>
+    <button class="btn" type="button" onclick="document.getElementById('cam').click()">📷 Take photo</button>
+    <button class="btn ghost" type="button" style="margin-top:8px;" onclick="document.getElementById('file').click()">🖼 Choose from gallery</button>
+    <input type="file" id="cam" accept="image/*" capture="environment" hidden>
     <input type="file" id="file" accept="image/*" multiple hidden>
     <div class="thumbs" id="thumbs">
       {% for pid in photo_ids %}<div class="ph" data-id="{{ pid }}"><img src="{% url 'fitter_photo_thumb' link.token pid %}" alt=""><button class="x" type="button" onclick="delPhoto(this)">×</button></div>{% endfor %}
     </div>
-    <div class="small">Photos go straight into the project's photo library. Take a few of the finished job, plus anything unusual.</div>
+    <div class="small">Photos go straight into the project's photo library. Tap Take photo again for each new picture. Take a few of the finished job, plus anything unusual.</div>
   </div>
 </div>
 
@@ -119,7 +121,7 @@ try{$('fname').value=localStorage.getItem('ezr-fitter-name')||'';}catch(e){}
 function cnt(){$('pcount').textContent=photos?photos+' added':'';}cnt();
 
 /* ---- photos: shrink on the phone, then upload one by one ---- */
-$('file').addEventListener('change',function(){var fs=[].slice.call(this.files);this.value='';fs.forEach(function(f){queue.push(f);});pump();});
+['file','cam'].forEach(function(id){$(id).addEventListener('change',function(){var fs=[].slice.call(this.files);this.value='';fs.forEach(function(f){queue.push(f);});pump();});});
 var queue=[],busy=0;
 function pump(){while(busy<2&&queue.length){busy++;pending++;addOne(queue.shift());}}
 function addOne(file){
