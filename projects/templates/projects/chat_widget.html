@@ -43,7 +43,12 @@
   .react-btn.react-badge{cursor:default;background:var(--acc-bg);border-color:var(--acc-bdr);color:var(--acc);}
   .react-btn.react-badge:hover{background:var(--acc-bg);}
   .msg-deleted{font-size:.8rem;font-style:italic;opacity:.75;}
-  .msg-del-btn{background:none;border:none;color:inherit;font-size:.66rem;cursor:pointer;padding:0 4px;opacity:.7;}
+  .msg-del-btn{background:none;border:none;color:#dc2626;font-size:.66rem;font-weight:600;cursor:pointer;padding:0 4px;}
+  .msg-me .msg-del-btn{background:#fff;color:#dc2626;border-radius:8px;padding:1px 7px;margin-left:.3rem;opacity:1;}
+  .team-msg.team-me{flex-direction:row-reverse;}
+  .team-msg.team-me .team-msg-body{text-align:right;}
+  .team-msg.team-me a.m-del-hide{display:block;}
+  .team-msg.team-me a.m-del-hide img{margin-left:auto;}
   .msg-del-btn:hover{color:#dc2626;opacity:1;text-decoration:underline;}
   .msg-me .react-btn{margin-left:0;margin-right:.3rem;}
   .empty-thread{flex:1;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:.85rem;}
@@ -135,7 +140,7 @@
   <div class="panel" id="panel-team">
     <div class="team-messages" id="team-messages">
       {% for m in team_messages %}
-      <div class="team-msg" id="tm-{{ m.pk }}">
+      <div class="team-msg{% if m.user == request.user %} team-me{% endif %}" id="tm-{{ m.pk }}">
         <div class="team-av">{{ m.user.get_full_name|default:m.user.username|slice:":2"|upper }}</div>
         <div class="team-msg-body">
           <div><span class="team-msg-name">{{ m.user.get_full_name|default:m.user.username }}</span><span class="team-msg-time">{{ m.timestamp|date:"d M, H:i" }}</span></div>
@@ -311,7 +316,7 @@ async function deleteMsg(kind, pk){
   if(r.ok) markDeleted(kind, pk);
 }
 function delBtnHtml(m, kind){
-  return m.is_me ? `<button type="button" class="msg-del-btn" onclick="deleteMsg('${kind}', ${m.id})" title="Delete this message for everyone">🗑</button>` : '';
+  return m.is_me ? `<button type="button" class="msg-del-btn" onclick="deleteMsg('${kind}', ${m.id})" title="Delete this message for everyone">🗑 Delete</button>` : '';
 }
 
 function renderThread(msgs){
@@ -415,7 +420,7 @@ async function sendTeam(){
 function appendTeamMessage(m){
   const box = document.getElementById('team-messages');
   const div = document.createElement('div');
-  div.className = 'team-msg';
+  div.className = 'team-msg' + (m.is_me ? ' team-me' : '');
   div.id = `tm-${m.id}`;
   div.innerHTML = `
     <div class="team-av">${(m.initials || (m.user||'').slice(0,2)).toUpperCase()}</div>
