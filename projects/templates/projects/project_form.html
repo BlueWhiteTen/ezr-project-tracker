@@ -251,6 +251,8 @@
               <span id="survey-photo-file-name">No files chosen</span>
             </label>
             <input type="file" id="survey-photo-file" accept="image/*,video/*" multiple style="display:none;" onchange="uploadSurveyPhotos({{ project.pk }}, this.files)">
+            <button type="button" onclick="document.getElementById('survey-photo-cam').click()" style="margin-top:.5rem;width:100%;display:flex;align-items:center;justify-content:center;gap:.5rem;background:#ea580c;color:#fff;border:0;border-radius:var(--rad);padding:.7rem;font-size:.95rem;font-weight:700;cursor:pointer;">📷 Take photo with camera</button>
+            <input type="file" id="survey-photo-cam" accept="image/*" capture="environment" style="display:none;" onchange="uploadSurveyPhotos({{ project.pk }}, this.files)">
           </div>
           <div id="survey-photo-error" style="color:var(--red);font-size:.78rem;margin-top:.4rem;display:none;"></div>
         </div>
@@ -867,12 +869,11 @@ async function uploadSurveyPhotos(pk, fileList){
     errEl.style.display = 'block';
   }
   if(nameEl) nameEl.textContent = 'No files chosen';
-  const inp = document.getElementById('survey-photo-file');
-  if(inp) inp.value = '';
+  ['survey-photo-file','survey-photo-cam'].forEach(function(id){ const inp = document.getElementById(id); if(inp) inp.value = ''; });
 }
 
-// Shrinks a photo to max 2000px (JPEG 85%) in the browser. Videos, GIFs, SVGs and small photos go up unchanged.
-const SURVEY_MAX_PX = 2000;
+// Shrinks a photo to max 1600px (JPEG 78%) in the browser. Videos, GIFs, SVGs and small photos go up unchanged.
+const SURVEY_MAX_PX = 1600;
 async function shrinkSurveyImage(file){
   try{
     if(!file.type.startsWith('image/') || file.type === 'image/gif' || file.type === 'image/svg+xml') return file;
@@ -882,7 +883,7 @@ async function shrinkSurveyImage(file){
     const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
     const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
     canvas.getContext('2d').drawImage(bmp, 0, 0, w, h); bmp.close();
-    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.85));
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.78));
     canvas.width = canvas.height = 0;
     if(!blob || blob.size >= file.size) return file;
     return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', {type: 'image/jpeg'});

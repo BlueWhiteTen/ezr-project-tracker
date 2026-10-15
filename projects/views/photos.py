@@ -216,11 +216,30 @@ def survey_photos(request, pk):
     if request.method == 'POST':
         created = []
         for f in request.FILES.getlist('survey_photos'):
+            data, mime, name = f.read(), f.content_type or '', f.name
+            if mime.startswith('image/') and mime not in ('image/gif', 'image/svg+xml'):
+                # Safety net for older browsers: shrink big photos on the server too (max 1600px, JPEG)
+                try:
+                    import io
+                    from PIL import Image, ImageOps
+                    img = Image.open(io.BytesIO(data))
+                    if max(img.size) > 1600 or len(data) > 900 * 1024:
+                        img = ImageOps.exif_transpose(img)
+                        img = img.convert('RGB')
+                        img.thumbnail((1600, 1600))
+                        out = io.BytesIO()
+                        img.save(out, 'JPEG', quality=78, optimize=True)
+                        if len(out.getvalue()) < len(data):
+                            data, mime = out.getvalue(), 'image/jpeg'
+                            if name and not name.lower().endswith(('.jpg', '.jpeg')):
+                                name = name.rsplit('.', 1)[0] + '.jpg'
+                except Exception:
+                    pass
             p = SurveyPhoto.objects.create(
                 project=project,
-                file_data=f.read(),
-                file_mime=f.content_type or '',
-                file_original_name=f.name,
+                file_data=data,
+                file_mime=mime,
+                file_original_name=name,
                 uploaded_by=request.user,
             )
             created.append({'pk': p.pk, 'url': f'/survey-photo/{p.pk}/file/', 'thumb': f'/survey-photo/{p.pk}/thumb/', 'is_video': p.is_video, 'name': p.file_original_name})

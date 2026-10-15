@@ -307,6 +307,39 @@ select.form-input{cursor:pointer;}
 .toast-body{font-size:.85rem;color:var(--txt);padding-right:1.2rem;line-height:1.4;}
 @keyframes toast-in{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 </style>
+<style id="mobile-polish">
+/* ── Phone tidy-up (loaded after each page's own styles so it wins) ── */
+@media (max-width: 768px){
+  html,body{max-width:100%;overflow-x:hidden;}
+  /* two-column page layouts become one column that cannot be pushed wider by its contents */
+  .form-2col,.report-layout,.cost-grid,.grid-2,.grid-3{grid-template-columns:minmax(0,1fr) !important;}
+  .form-2col>*,.report-layout>*,.cost-grid>*,.grid-2>*,.grid-3>*,.form-col{min-width:0;}
+  .form-card,.cost-card-body{padding:1rem;}
+  input,select,textarea{max-width:100%;}
+  /* status pills: scroll instead of getting cut off */
+  .status-bar{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .status-bar-btn{flex:0 0 auto;padding:.6rem .8rem;font-size:.8rem;}
+  /* header button rows wrap onto several lines */
+  .form-header,.cost-hdr{flex-wrap:wrap;gap:.6rem;}
+  .form-header>div,.cost-hdr>div{flex-wrap:wrap;gap:.5rem;min-width:0;}
+  .form-header .btn,.cost-hdr .btn{flex:1 1 auto;justify-content:center;}
+  .cost-hdr h1{font-size:1.2rem !important;}
+  /* wide tables scroll inside their card, not the whole page */
+  .cost-card,.form-card{overflow-x:auto;}
+  .summary-stat{padding:1rem;}
+  .summary-stat-v{font-size:1.4rem;overflow-wrap:anywhere;}
+  /* bigger finger targets */
+  .btn,.btn-sm{min-height:38px;}
+  .page-wrap,.container{max-width:100%;}
+  h1{overflow-wrap:anywhere;}
+  img,video,canvas{max-width:100%;}
+  #fb-fab{padding:.45rem .7rem !important;font-size:.72rem !important;bottom:.7rem !important;right:.7rem !important;opacity:.92;}
+}
+@media (max-width: 480px){
+  .form-header{align-items:stretch;}
+  .form-header>div{width:100%;}
+}
+</style>
 </head>
 <body>
 <div id="toast-stack"></div>
