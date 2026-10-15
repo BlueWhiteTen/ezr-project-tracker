@@ -32,6 +32,15 @@ tbody tr:nth-child(even) td{background:var(--surf2);}
 tbody tr:hover td{background:var(--surf3) !important;}
 .pname{font-weight:600;color:var(--txt);font-size:.9rem;display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .psub{color:var(--mut);font-size:.78rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+@media(max-width:900px){
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .dash-table{min-width:860px;}
+  .dash-table td:nth-child(3),.dash-table th:nth-child(3),.dash-table td:nth-child(4),.dash-table th:nth-child(4){display:none;}
+  .dash-table td:nth-child(5),.dash-table th:nth-child(5){min-width:250px;}
+  .pname{white-space:normal !important;overflow:visible !important;text-overflow:clip !important;line-height:1.25;}
+  .dash-table .inline-status-sel{font-size:.66rem;padding:2px 7px;max-width:118px;}
+  .dash-table td:nth-child(6),.dash-table th:nth-child(6){width:124px !important;}
+}
 .so-tag{font-family:var(--fm);font-size:.78rem;color:var(--acc);background:var(--acc-bg);padding:2px 8px;border-radius:5px;border:1px solid var(--acc-bdr);white-space:nowrap;}
 .ck-wrap{display:flex;align-items:center;gap:5px;margin-top:4px;}
 .ck-box{width:14px;height:14px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;font-weight:700;}
