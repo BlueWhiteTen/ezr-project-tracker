@@ -42,6 +42,9 @@
   .react-btn.reacted{background:var(--acc);border-color:var(--acc);color:#fff;}
   .react-btn.react-badge{cursor:default;background:var(--acc-bg);border-color:var(--acc-bdr);color:var(--acc);}
   .react-btn.react-badge:hover{background:var(--acc-bg);}
+  .msg-deleted{font-size:.8rem;font-style:italic;opacity:.75;}
+  .msg-del-btn{background:none;border:none;color:inherit;font-size:.66rem;cursor:pointer;padding:0 4px;opacity:.7;}
+  .msg-del-btn:hover{color:#dc2626;opacity:1;text-decoration:underline;}
   .msg-me .react-btn{margin-left:0;margin-right:.3rem;}
   .empty-thread{flex:1;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:.85rem;}
 
@@ -132,20 +135,25 @@
   <div class="panel" id="panel-team">
     <div class="team-messages" id="team-messages">
       {% for m in team_messages %}
-      <div class="team-msg">
+      <div class="team-msg" id="tm-{{ m.pk }}">
         <div class="team-av">{{ m.user.get_full_name|default:m.user.username|slice:":2"|upper }}</div>
         <div class="team-msg-body">
           <div><span class="team-msg-name">{{ m.user.get_full_name|default:m.user.username }}</span><span class="team-msg-time">{{ m.timestamp|date:"d M, H:i" }}</span></div>
-          {% if m.photo_data %}<a href="{% url 'team_message_photo' m.pk %}" target="_blank"><img src="{% url 'team_message_photo' m.pk %}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;{% if m.text %}margin-bottom:.4rem;{% endif %}"></a>{% endif %}
-          {% if m.text %}<div>{{ m.text|safe }}</div>{% endif %}
+          {% if m.is_deleted %}
+          <div class="msg-deleted">🚫 This message was deleted</div>
+          {% else %}
+          {% if m.photo_data %}<a class="m-del-hide" href="{% url 'team_message_photo' m.pk %}" target="_blank"><img src="{% url 'team_message_photo' m.pk %}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;{% if m.text %}margin-bottom:.4rem;{% endif %}"></a>{% endif %}
+          {% if m.text %}<div class="m-del-hide">{{ m.text|safe }}</div>{% endif %}
           {% if m.user != request.user %}
-          <div>
+          <div class="m-del-hide">
             <button type="button" class="react-btn{% if request.user in m.thumbs_up_by.all %} reacted{% endif %}" onclick="toggleReaction('team', {{ m.pk }}, this)" title="{% if request.user in m.thumbs_up_by.all %}Remove thumbs up{% else %}Thumbs up{% endif %}">👍{% if m.thumbs_up_by.count %} {{ m.thumbs_up_by.count }}{% endif %}</button>
           </div>
-          {% elif m.thumbs_up_by.count %}
-          <div>
-            <span class="react-btn react-badge" title="Liked by others">👍 {{ m.thumbs_up_by.count }}</span>
+          {% else %}
+          <div class="m-del-hide">
+            {% if m.thumbs_up_by.count %}<span class="react-btn react-badge" title="Liked by others">👍 {{ m.thumbs_up_by.count }}</span>{% endif %}
+            <button type="button" class="msg-del-btn" onclick="deleteMsg('team', {{ m.pk }})" title="Delete this message for everyone">🗑 Delete</button>
           </div>
+          {% endif %}
           {% endif %}
         </div>
       </div>
@@ -261,7 +269,7 @@ async function openConversation(userId, name){
 
 function photoHtml(m){
   if(!m.has_photo) return '';
-  return `<a href="${m.photo_url}" target="_blank"><img src="${m.photo_url}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;margin-bottom:${m.text ? '.4rem' : '0'};"></a>`;
+  return `<a class="m-del-hide" href="${m.photo_url}" target="_blank"><img src="${m.photo_url}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;margin-bottom:${m.text ? '.4rem' : '0'};"></a>`;
 }
 
 function reactionHtml(m, kind){
@@ -284,13 +292,35 @@ async function toggleReaction(kind, pk, btn){
   btn.title = d.reacted ? 'Remove thumbs up' : 'Thumbs up';
 }
 
+function markDeleted(kind, id){
+  const el = document.getElementById(`${kind === 'private' ? 'wm' : 'tm'}-${id}`);
+  if(!el || el.dataset.deleted) return;
+  el.dataset.deleted = '1';
+  const hide = el.querySelectorAll('.m-del-hide');
+  if(!hide.length) return;
+  const ph = document.createElement('div');
+  ph.className = 'msg-deleted';
+  ph.textContent = '🚫 This message was deleted';
+  hide[0].parentNode.insertBefore(ph, hide[0]);
+  hide.forEach(x => x.remove());
+}
+async function deleteMsg(kind, pk){
+  if(!confirm('Delete this message for everyone? The text/photo will be erased for good.')) return;
+  const url = kind === 'private' ? `/messages/${pk}/delete/` : `/chat/${pk}/delete/`;
+  const r = await fetch(url, { method:'POST', headers:{'X-CSRFToken':CSRF} });
+  if(r.ok) markDeleted(kind, pk);
+}
+function delBtnHtml(m, kind){
+  return m.is_me ? `<button type="button" class="msg-del-btn" onclick="deleteMsg('${kind}', ${m.id})" title="Delete this message for everyone">🗑</button>` : '';
+}
+
 function renderThread(msgs){
   const box = document.getElementById('thread-messages');
   if(!msgs.length){ box.innerHTML = '<div class="empty-thread">No messages yet — say hello.</div>'; return; }
   box.innerHTML = msgs.map(m => `
-    <div class="msg-bubble ${m.is_me ? 'msg-me' : 'msg-them'}">
-      ${photoHtml(m)}${m.text ? `<div>${escapeHtml(m.text)}</div>` : ''}
-      <div class="msg-meta">${m.is_me ? '' : m.sender + ' · '}${m.timestamp} ${reactionHtml(m, 'private')}</div>
+    <div id="wm-${m.id}" class="msg-bubble ${m.is_me ? 'msg-me' : 'msg-them'}">
+      ${m.deleted ? '<div class="msg-deleted">🚫 This message was deleted</div>' : `${photoHtml(m)}${m.text ? `<div class="m-del-hide">${escapeHtml(m.text)}</div>` : ''}`}
+      <div class="msg-meta">${m.is_me ? '' : m.sender + ' · '}${m.timestamp} ${m.deleted ? '' : `<span class="m-del-hide">${reactionHtml(m, 'private')}${delBtnHtml(m, 'private')}</span>`}</div>
     </div>`).join('');
   box.scrollTop = box.scrollHeight;
 }
@@ -300,7 +330,8 @@ function appendThreadMessage(m){
   if(box.querySelector('.empty-thread')) box.innerHTML = '';
   const div = document.createElement('div');
   div.className = `msg-bubble ${m.is_me ? 'msg-me' : 'msg-them'}`;
-  div.innerHTML = `${photoHtml(m)}${m.text ? `<div>${escapeHtml(m.text)}</div>` : ''}<div class="msg-meta">${m.is_me ? '' : m.sender + ' · '}${m.timestamp} ${reactionHtml(m, 'private')}</div>`;
+  div.id = `wm-${m.id}`;
+  div.innerHTML = `${m.deleted ? '<div class="msg-deleted">🚫 This message was deleted</div>' : `${photoHtml(m)}${m.text ? `<div class="m-del-hide">${escapeHtml(m.text)}</div>` : ''}`}<div class="msg-meta">${m.is_me ? '' : m.sender + ' · '}${m.timestamp} ${m.deleted ? '' : `<span class="m-del-hide">${reactionHtml(m, 'private')}${delBtnHtml(m, 'private')}</span>`}</div>`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
 }
@@ -385,12 +416,12 @@ function appendTeamMessage(m){
   const box = document.getElementById('team-messages');
   const div = document.createElement('div');
   div.className = 'team-msg';
+  div.id = `tm-${m.id}`;
   div.innerHTML = `
     <div class="team-av">${(m.initials || (m.user||'').slice(0,2)).toUpperCase()}</div>
     <div class="team-msg-body">
       <div><span class="team-msg-name">${escapeHtml(m.user)}</span><span class="team-msg-time">${m.timestamp}</span></div>
-      ${photoHtml(m)}${m.text ? `<div>${m.text}</div>` : ''}
-      <div>${reactionHtml(m, 'team')}</div>
+      ${m.deleted ? '<div class="msg-deleted">🚫 This message was deleted</div>' : `${photoHtml(m)}${m.text ? `<div class="m-del-hide">${m.text}</div>` : ''}<div class="m-del-hide">${reactionHtml(m, 'team')}${delBtnHtml(m, 'team')}</div>`}
     </div>`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
@@ -438,9 +469,10 @@ async function pollAll(){
       lastNotifiedMsgId = d.latest_msg.id;
     }
     // If the open conversation is the one that just got a new message, refresh it live
-    if(activeConvoUserId && d.latest_msg){
+    if(activeConvoUserId && (d.latest_msg || document.getElementById('panel-private').classList.contains('active'))){
       const r2 = await fetch(`/messages/${activeConvoUserId}/poll/?after=${lastPrivateSeenPk}`);
       const d2 = await r2.json();
+      (d2.deleted_ids || []).forEach(id => markDeleted('private', id));
       if(d2.messages.length){
         d2.messages.forEach(appendThreadMessage);
         lastPrivateSeenPk = Math.max(...d2.messages.map(m => m.id));
@@ -452,10 +484,11 @@ async function pollAll(){
   try{
     const r = await fetch(`/chat/poll/?after=${lastTeamSeenPk}`);
     const d = await r.json();
+    (d.deleted_ids || []).forEach(id => markDeleted('team', id));
     if(d.messages.length){
       const isTeamTabActive = document.getElementById('panel-team').classList.contains('active');
       d.messages.forEach(m => {
-        if(!m.is_me){
+        if(!m.is_me && !m.deleted){
           if(notifiedTeamBaseline) notifySilently(m.user, m.text.replace(/<[^>]+>/g,''));
           if(!isTeamTabActive) unreadTeamSinceOpen++;
         }

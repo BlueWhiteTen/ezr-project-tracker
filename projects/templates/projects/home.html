@@ -122,7 +122,7 @@
     </div>
     <div id="home-chat-messages" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;padding-bottom:.5rem;min-height:0;">
       {% for m in recent_team_messages %}
-      <div style="display:flex;align-items:flex-start;gap:.5rem;">
+      <div id="hc-{{ m.pk }}" style="display:flex;align-items:flex-start;gap:.5rem;">
         <div style="width:26px;height:26px;border-radius:50%;background:{{ m.user.pk|avatar_colour }};display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;color:#fff;flex-shrink:0;">
           {% with n=m.user.get_full_name|default:m.user.username %}{% with p=n.split %}{{ p.0|slice:":1"|upper }}{% if p|length > 1 %}{{ p|last|slice:":1"|upper }}{% endif %}{% endwith %}{% endwith %}
         </div>
@@ -131,7 +131,7 @@
             <strong style="color:var(--txt);">{{ m.user.get_full_name|default:m.user.username }}</strong>
             · {{ m.timestamp|date:"d M, H:i" }}
           </div>
-          <div style="font-size:.84rem;color:var(--txt2);word-break:break-word;">{{ m.text }}</div>
+          {% if m.is_deleted %}<div class="hc-text" style="font-size:.82rem;font-style:italic;color:var(--mut);">🚫 This message was deleted</div>{% else %}<div class="hc-text" style="font-size:.84rem;color:var(--txt2);word-break:break-word;">{{ m.text }}</div>{% endif %}
         </div>
       </div>
       {% empty %}
@@ -209,8 +209,9 @@ const homeChat = (function(){
     const name = m.user || '';
     const initials = name.split(' ').filter(Boolean).map((w,i,a)=>i===0||i===a.length-1?w[0]:'').join('').toUpperCase().slice(0,2);
     const div = document.createElement('div');
+    if(m.id) div.id = `hc-${m.id}`;
     div.style.cssText = 'display:flex;align-items:flex-start;gap:.5rem;';
-    div.innerHTML = `<div style="width:26px;height:26px;border-radius:50%;background:${colour};display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;color:#fff;flex-shrink:0;">${initials}</div><div style="flex:1;min-width:0;"><div style="font-size:.75rem;color:var(--mut);margin-bottom:1px;"><strong style="color:var(--txt);">${name}</strong> · ${m.timestamp}</div><div style="font-size:.84rem;color:var(--txt2);word-break:break-word;">${m.text}</div></div>`;
+    div.innerHTML = `<div style="width:26px;height:26px;border-radius:50%;background:${colour};display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;color:#fff;flex-shrink:0;">${initials}</div><div style="flex:1;min-width:0;"><div style="font-size:.75rem;color:var(--mut);margin-bottom:1px;"><strong style="color:var(--txt);">${name}</strong> · ${m.timestamp}</div>${m.deleted ? '<div class="hc-text" style="font-size:.82rem;font-style:italic;color:var(--mut);">🚫 This message was deleted</div>' : `<div class="hc-text" style="font-size:.84rem;color:var(--txt2);word-break:break-word;">${m.text}</div>`}</div>`;
     if(box) box.appendChild(div);
   }
 
@@ -219,6 +220,14 @@ const homeChat = (function(){
       const r = await fetch(`/chat/poll/?after=${lastId}`);
       if(!r.ok) return;
       const d = await r.json();
+      (d.deleted_ids || []).forEach(id => {
+        const t = document.querySelector(`#hc-${id} .hc-text`);
+        if(t && !t.dataset.del){
+          t.dataset.del = '1';
+          t.style.cssText = 'font-size:.82rem;font-style:italic;color:var(--mut);';
+          t.textContent = '🚫 This message was deleted';
+        }
+      });
       if(d.messages && d.messages.length){
         // Remove empty state if present
         const empty = box && box.querySelector('.home-empty');

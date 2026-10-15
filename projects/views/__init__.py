@@ -25,7 +25,7 @@ from .projects import (
     project_data, project_quick_status, project_payment_method, project_add_comment,
     project_manual_po_add, project_manual_po_update, project_manual_po_delete, project_toggle_blocked,
     project_presence, project_duplicate, bulk_status_update,
-    save_dashboard_filters, dashboard, add_comment_with_tags,
+    save_dashboard_filters, dashboard, dashboard_show_completed, add_comment_with_tags,
     projects_search, project_address_save,
 )
 from .reminders import (
@@ -54,13 +54,14 @@ from .purchasing import (
 from .messaging import (
     notification_count, notifications_view, notification_dismiss, inbox, chat_widget, conversation_poll,
     conversation, team_chat, team_chat_poll, message_photo, team_message_photo, message_react, team_message_react,
+    message_delete, team_message_delete,
 )
 from .staff import (
     staff_directory, staff_profile, get_bank_holidays,
     leave_overview, leave_add, leave_delete,
 )
 from .costing import (
-    project_cost, project_cost_save, cost_line_add, cost_line_delete,
+    project_cost, project_cost_save, project_cost_commit, cost_line_add, cost_line_delete,
     cost_line_update, material_price_update, cost_option_add, project_cost_stock_reference,
     cost_option_delete, cost_option_accept, cost_option_rename, project_cost_refresh_prices,
     project_cost_print, product_toggle_active, cost_accessory_toggle,
@@ -90,6 +91,7 @@ from .photos import (
     install_report, delete_report_photo, delete_satisfaction_note,
     report_photo_upload, report_sat_upload, report_photo_file,
     photo_library, photo_library_project, satisfaction_note_file,
+    photo_library_latest, photo_library_project_zip, photo_library_bulk,
     fitting_notes_list, fitting_note_upload, fitting_note_delete,
     fitting_note_update, fitting_note_download,
     survey_photos, survey_photo_file, survey_photo_delete,

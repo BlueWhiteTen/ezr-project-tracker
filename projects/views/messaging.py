@@ -30,9 +30,9 @@ def notification_count(request):
     # is now indicated on the EZR Chat / Private Chat nav buttons themselves,
     # not via the bell or the notifications list, so it isn't shown twice.
     notif_count = Notification.objects.filter(user=request.user, read=False).exclude(type='message').count()
-    msg_count   = Message.objects.filter(recipient=request.user, read=False).count()
+    msg_count   = Message.objects.filter(recipient=request.user, read=False, is_deleted=False).count()
     latest_notif = Notification.objects.filter(user=request.user, read=False).exclude(type='message').order_by('-timestamp').first()
-    latest_msg = Message.objects.filter(recipient=request.user, read=False).order_by('-timestamp').select_related('sender').first()
+    latest_msg = Message.objects.filter(recipient=request.user, read=False, is_deleted=False).order_by('-timestamp').select_related('sender').first()
     latest_team_pk = TeamMessage.objects.order_by('-pk').values_list('pk', flat=True).first() or 0
     return JsonResponse({
         'count': notif_count, 'messages': msg_count,
@@ -84,12 +84,12 @@ def inbox(request):
             Q(sender=request.user, recipient=u) |
             Q(sender=u, recipient=request.user)
         ).order_by('-timestamp').first()
-        unread = Message.objects.filter(sender=u, recipient=request.user, read=False).count()
+        unread = Message.objects.filter(sender=u, recipient=request.user, read=False, is_deleted=False).count()
         conversations.append({'user': u, 'last_msg': last_msg, 'unread': unread})
 
     conversations.sort(key=lambda x: x['last_msg'].timestamp if x['last_msg'] else date.today(), reverse=True)
     all_users = User.objects.filter(is_active=True).exclude(id=request.user.id).order_by('first_name', 'last_name')
-    total_unread = Message.objects.filter(recipient=request.user, read=False).count()
+    total_unread = Message.objects.filter(recipient=request.user, read=False, is_deleted=False).count()
 
     return render(request, 'projects/inbox.html', {
         'conversations': conversations,
@@ -117,12 +117,12 @@ def chat_widget(request):
             _Q(sender=request.user, recipient=u) |
             _Q(sender=u, recipient=request.user)
         ).order_by('-timestamp').first()
-        unread = Message.objects.filter(sender=u, recipient=request.user, read=False).count()
+        unread = Message.objects.filter(sender=u, recipient=request.user, read=False, is_deleted=False).count()
         conversations.append({'user': u, 'last_msg': last_msg, 'unread': unread})
     conversations.sort(key=lambda x: x['last_msg'].timestamp if x['last_msg'] else date.today(), reverse=True)
 
     all_users = User.objects.filter(is_active=True).exclude(id=request.user.id).order_by('first_name', 'last_name')
-    total_unread_private = Message.objects.filter(recipient=request.user, read=False).count()
+    total_unread_private = Message.objects.filter(recipient=request.user, read=False, is_deleted=False).count()
 
     team_messages = TeamMessage.objects.select_related('user').order_by('-timestamp')[:100]
     team_messages = list(reversed(list(team_messages)))
@@ -164,12 +164,53 @@ def conversation_poll(request, user_id):
                 'sender': m.sender.get_full_name() or m.sender.username,
                 'timestamp': timezone.localtime(m.timestamp).strftime('%d %b %Y, %H:%M'),
                 'is_me': m.sender_id == request.user.id,
+                'deleted': m.is_deleted,
             }
             for m in new_msgs
-        ]
+        ],
+        'deleted_ids': _recent_deleted_ids(Message, Q(sender=request.user, recipient=other) | Q(sender=other, recipient=request.user)),
     })
 
 
+
+
+def _recent_deleted_ids(model, flt):
+    """pks of deleted messages among the 300 most recent in this thread, so
+    open pages can swap them for the 'deleted' placeholder live."""
+    recent = list(model.objects.filter(flt).order_by('-pk').values_list('pk', 'is_deleted')[:300])
+    return [pk for pk, d in recent if d]
+
+
+@login_required
+@require_POST
+def message_delete(request, pk):
+    """Sender erases their own private message for good; a placeholder remains."""
+    msg = get_object_or_404(Message, pk=pk, sender=request.user)
+    msg.text = ''
+    msg.photo_data = None
+    msg.photo_mime = ''
+    msg.is_deleted = True
+    msg.read = True
+    msg.save()
+    msg.thumbs_up_by.clear()
+    Notification.objects.filter(
+        user=msg.recipient, type='message', link=f"/messages/{request.user.pk}/", read=False
+    ).delete()
+    return JsonResponse({'ok': True, 'id': msg.pk})
+
+
+@login_required
+@require_POST
+def team_message_delete(request, pk):
+    """Author erases their own EZR Chat message for good; a placeholder remains."""
+    msg = get_object_or_404(TeamMessage, pk=pk, user=request.user)
+    msg.text = ''
+    msg.photo_data = None
+    msg.photo_mime = ''
+    msg.is_deleted = True
+    msg.save()
+    msg.thumbs_up_by.clear()
+    return JsonResponse({'ok': True, 'id': msg.pk})
 
 
 @login_required
@@ -190,7 +231,7 @@ def message_photo(request, pk):
 def message_react(request, pk):
     """Toggle the current user's thumbs-up on a private message. Scoped to
     sender or recipient only, matching message_photo's own scoping."""
-    msg = get_object_or_404(Message, pk=pk)
+    msg = get_object_or_404(Message, pk=pk, is_deleted=False)
     if request.user.id not in (msg.sender_id, msg.recipient_id):
         return HttpResponse(status=404)
     if msg.thumbs_up_by.filter(pk=request.user.pk).exists():
@@ -260,7 +301,7 @@ def conversation(request, user_id):
             Q(sender=request.user, recipient=u) |
             Q(sender=u, recipient=request.user)
         ).order_by('-timestamp').first()
-        unread = Message.objects.filter(sender=u, recipient=request.user, read=False).count()
+        unread = Message.objects.filter(sender=u, recipient=request.user, read=False, is_deleted=False).count()
         conversations.append({'user': u, 'last_msg': last_msg, 'unread': unread})
     from django.utils.timezone import make_aware
     from datetime import datetime as _dt, timezone as _tz
@@ -272,7 +313,7 @@ def conversation(request, user_id):
         'all_users': all_users,
         'active_user': other,
         'messages_qs': messages_qs,
-        'total_unread': Message.objects.filter(recipient=request.user, read=False).count(),
+        'total_unread': Message.objects.filter(recipient=request.user, read=False, is_deleted=False).count(),
     })
 
 
@@ -357,7 +398,7 @@ def team_message_photo(request, pk):
 def team_message_react(request, pk):
     """Toggle the current user's thumbs-up on a team chat message - any
     logged-in staff member can react, matching team chat's shared nature."""
-    msg = get_object_or_404(TeamMessage, pk=pk)
+    msg = get_object_or_404(TeamMessage, pk=pk, is_deleted=False)
     if msg.thumbs_up_by.filter(pk=request.user.pk).exists():
         msg.thumbs_up_by.remove(request.user)
         reacted = False
@@ -390,9 +431,11 @@ def team_chat_poll(request):
                 'initials': _initials(m.user.get_full_name() or m.user.username),
                 'timestamp': timezone.localtime(m.timestamp).strftime('%d %b %Y, %H:%M'),
                 'is_me': m.user_id == request.user.id,
+                'deleted': m.is_deleted,
             }
             for m in new_msgs
-        ]
+        ],
+        'deleted_ids': _recent_deleted_ids(TeamMessage, Q()),
     })
 
 
