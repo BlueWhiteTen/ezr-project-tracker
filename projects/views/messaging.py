@@ -164,6 +164,7 @@ def conversation_poll(request, user_id):
                 'timestamp': timezone.localtime(m.timestamp).strftime('%d %b %Y, %H:%M'),
                 'is_me': m.sender_id == request.user.id,
                 'deleted': m.is_deleted,
+                'quote': None if m.is_deleted else _quote_json(m, request.user),
             }
             for m in new_msgs
         ],
@@ -197,6 +198,13 @@ def _attach_upload(msg, upload):
     msg.photo_mime = mime or 'image/jpeg'
     msg.file_name = ''
     return None
+
+
+def _quote_json(msg, me):
+    q = msg.quote_info
+    if q:
+        q = dict(q, is_me=(q['author_id'] == me.pk))
+    return q
 
 
 def _attach_json(msg, url):
@@ -237,6 +245,7 @@ def message_delete(request, pk):
     msg.photo_mime = ''
     msg.file_name = ''
     msg.is_deleted = True
+    msg.reply_to = None
     msg.read = True
     msg.save()
     msg.thumbs_up_by.clear()
@@ -256,45 +265,7 @@ def team_message_delete(request, pk):
     msg.photo_mime = ''
     msg.file_name = ''
     msg.is_deleted = True
-    msg.save()
-    msg.thumbs_up_by.clear()
-    return JsonResponse({'ok': True, 'id': msg.pk})
-
-
-def _recent_deleted_ids(model, flt):
-    """pks of deleted messages among the 300 most recent in this thread, so
-    open pages can swap them for the 'deleted' placeholder live."""
-    recent = list(model.objects.filter(flt).order_by('-pk').values_list('pk', 'is_deleted')[:300])
-    return [pk for pk, d in recent if d]
-
-
-@login_required
-@require_POST
-def message_delete(request, pk):
-    """Sender erases their own private message for good; a placeholder remains."""
-    msg = get_object_or_404(Message, pk=pk, sender=request.user)
-    msg.text = ''
-    msg.photo_data = None
-    msg.photo_mime = ''
-    msg.is_deleted = True
-    msg.read = True
-    msg.save()
-    msg.thumbs_up_by.clear()
-    Notification.objects.filter(
-        user=msg.recipient, type='message', link=f"/messages/{request.user.pk}/", read=False
-    ).delete()
-    return JsonResponse({'ok': True, 'id': msg.pk})
-
-
-@login_required
-@require_POST
-def team_message_delete(request, pk):
-    """Author erases their own EZR Chat message for good; a placeholder remains."""
-    msg = get_object_or_404(TeamMessage, pk=pk, user=request.user)
-    msg.text = ''
-    msg.photo_data = None
-    msg.photo_mime = ''
-    msg.is_deleted = True
+    msg.reply_to = None
     msg.save()
     msg.thumbs_up_by.clear()
     return JsonResponse({'ok': True, 'id': msg.pk})
@@ -342,11 +313,20 @@ def conversation(request, user_id):
         photo = request.FILES.get('photo')
         if photo:
             text = request.POST.get('text', '').strip()
+            reply_id = request.POST.get('reply_to')
         else:
             data = json.loads(request.body)
             text = data.get('text', '').strip()
+            reply_id = data.get('reply_to')
         if text or photo:
             msg = Message(sender=request.user, recipient=other, text=text)
+            if reply_id:
+                try:
+                    msg.reply_to = Message.objects.filter(
+                        Q(sender=request.user, recipient=other) | Q(sender=other, recipient=request.user),
+                        pk=int(reply_id)).first()
+                except (ValueError, TypeError):
+                    pass
             if photo:
                 err = _attach_upload(msg, photo)
                 if err:
@@ -364,6 +344,7 @@ def conversation(request, user_id):
                 'id': msg.pk, 'text': msg.text,
                 **_attach_json(msg, f'/messages/photo/{msg.pk}/'),
                 'thumbs_up_count': 0, 'i_reacted': False,
+                'quote': _quote_json(msg, request.user),
                 'sender': sender_name,
                 'timestamp': timezone.localtime(msg.timestamp).strftime('%d %b %Y, %H:%M'),
                 'is_me': True,
@@ -411,9 +392,11 @@ def team_chat(request):
         photo = request.FILES.get('photo')
         if photo:
             text = request.POST.get('text', '').strip()
+            reply_id = request.POST.get('reply_to')
         else:
             data = json.loads(request.body)
             text = data.get('text', '').strip()
+            reply_id = data.get('reply_to')
         if not text and not photo:
             return JsonResponse({'error': 'Empty'}, status=400)
         # Render mentions/#project-links to their final display form before
@@ -422,6 +405,11 @@ def team_chat(request):
         display_text = re.sub(r'@\[([^\]]+)\]\(\d+\)', r'@\1', text)
         display_text = re.sub(r'#\[([^\]]+)\]\((\d+)\)', r'<a href="/project/\2/edit/" style="color:var(--acc);font-weight:600">#\1</a>', display_text)
         msg = TeamMessage(user=request.user, text=display_text)
+        if reply_id:
+            try:
+                msg.reply_to = TeamMessage.objects.filter(pk=int(reply_id)).first()
+            except (ValueError, TypeError):
+                pass
         if photo:
             err = _attach_upload(msg, photo)
             if err:
@@ -449,6 +437,7 @@ def team_chat(request):
             'raw_text': text,
             **_attach_json(msg, f'/chat/photo/{msg.pk}/'),
             'thumbs_up_count': 0, 'i_reacted': False,
+            'quote': _quote_json(msg, request.user),
             'user': sender_name,
             'initials': _initials(sender_name),
             'timestamp': timezone.localtime(msg.timestamp).strftime('%d %b %Y, %H:%M'),
@@ -499,7 +488,7 @@ def team_chat_poll(request):
         after = int(after)
     except (ValueError, TypeError):
         after = 0
-    new_msgs = TeamMessage.objects.select_related('user').filter(pk__gt=after).order_by('timestamp')
+    new_msgs = TeamMessage.objects.select_related('user', 'reply_to', 'reply_to__user').filter(pk__gt=after).order_by('timestamp')
     return JsonResponse({
         'messages': [
             {
@@ -514,6 +503,7 @@ def team_chat_poll(request):
                 'timestamp': timezone.localtime(m.timestamp).strftime('%d %b %Y, %H:%M'),
                 'is_me': m.user_id == request.user.id,
                 'deleted': m.is_deleted,
+                'quote': None if m.is_deleted else _quote_json(m, request.user),
             }
             for m in new_msgs
         ],

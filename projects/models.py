@@ -197,6 +197,28 @@ class Comment(models.Model):
         return f"{self.project} — comment by {self.user}"
 
 
+
+def _quote_plain(text):
+    import re as _re, html as _html
+    return _html.unescape(_re.sub(r'<[^>]+>', '', text or '')).strip()
+
+
+def _quote_info(msg, author_user):
+    """What a quoted message looks like inside a reply (None if no quote)."""
+    if msg is None:
+        return None
+    name = author_user.get_full_name() or author_user.username
+    if msg.is_deleted:
+        snip = 'Original message was deleted'
+    else:
+        snip = _quote_plain(msg.text)
+        if not snip:
+            snip = ('\U0001F4C4 ' + (msg.file_name or 'PDF')) if msg.photo_mime == 'application/pdf' else '\U0001F4F7 Photo'
+        if len(snip) > 90:
+            snip = snip[:90].rstrip() + '\u2026'
+    return {'id': msg.pk, 'author': name, 'author_id': author_user.pk, 'snippet': snip, 'deleted': msg.is_deleted}
+
+
 class Message(models.Model):
     sender    = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages')
@@ -207,10 +229,19 @@ class Message(models.Model):
     thumbs_up_by = models.ManyToManyField(User, related_name='thumbs_up_messages', blank=True)
     read      = models.BooleanField(default=False)
     is_deleted = models.BooleanField(default=False)
+    reply_to  = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='replies')
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['timestamp']
+
+    @property
+    def quote_info(self):
+        return _quote_info(self.reply_to, self.reply_to.sender) if self.reply_to_id else None
+
+    @property
+    def as_quote(self):
+        return _quote_info(self, self.sender)
 
     def __str__(self):
         return f"{self.sender} → {self.recipient}: {self.text[:40]}"
@@ -274,10 +305,19 @@ class TeamMessage(models.Model):
     file_name = models.CharField(max_length=200, blank=True)
     thumbs_up_by = models.ManyToManyField(User, related_name='thumbs_up_team_messages', blank=True)
     is_deleted = models.BooleanField(default=False)
+    reply_to  = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='replies')
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['timestamp']
+
+    @property
+    def quote_info(self):
+        return _quote_info(self.reply_to, self.reply_to.user) if self.reply_to_id else None
+
+    @property
+    def as_quote(self):
+        return _quote_info(self, self.user)
 
     def __str__(self):
         return f"{self.user}: {self.text[:40]}"

@@ -47,6 +47,23 @@
 .pdf-card span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .team-me .pdf-card,.pdf-card.pdf-me{margin-left:auto;}
   .drop-over{outline:2px dashed var(--acc);outline-offset:-3px;background:var(--acc-bg) !important;}
+  .quote-block{display:block;max-width:280px;border-left:3px solid var(--acc);background:var(--surf2);border-radius:6px;padding:.25rem .55rem;margin:0 0 .3rem;font-size:.74rem;color:var(--mut);cursor:pointer;text-align:left;}
+  .quote-block b{display:block;color:var(--txt);font-size:.72rem;}
+  .quote-block span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .quote-block .q-del{font-style:italic;}
+  .quote-bar{display:none;align-items:center;gap:.6rem;padding:.4rem .7rem;margin:.3rem .7rem 0;border-left:3px solid var(--acc);background:var(--surf);border-radius:6px;font-size:.78rem;}
+  .quote-bar .qb-text{flex:1;min-width:0;}
+  .quote-bar .qb-author{font-weight:700;color:var(--acc);display:block;}
+  .quote-bar .qb-snip{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mut);}
+  .quote-bar button{background:none;border:none;cursor:pointer;color:var(--mut);font-size:1rem;}
+  .msg-quote-btn{background:none;border:none;color:var(--acc);font-size:.7rem;font-weight:600;cursor:pointer;padding:1px 6px;font-family:var(--f);}
+  .msg-quote-btn:hover{text-decoration:underline;}
+  .msg-me .msg-quote-btn{background:#fff;border-radius:8px;padding:1px 7px;margin-left:.3rem;}
+  .msg-me .quote-block{background:rgba(255,255,255,.22);border-left-color:#fff;color:#fff;}
+  .msg-me .quote-block b{color:#fff;}
+  .quote-block.quote-me{margin-left:auto;}
+  .q-flash{animation:qflash 1.4s ease;}
+  @keyframes qflash{0%,60%{background:var(--acc-bg);}100%{background:transparent;}}
   .msg-deleted{font-size:.8rem;font-style:italic;opacity:.75;}
   .msg-del-btn{background:none;border:none;color:#dc2626;font-size:.66rem;font-weight:600;cursor:pointer;padding:0 4px;}
   .msg-me .msg-del-btn{background:#fff;color:#dc2626;border-radius:8px;padding:1px 7px;margin-left:.3rem;opacity:1;}
@@ -130,6 +147,7 @@
       <div class="thread-messages" id="thread-messages">
         <div class="empty-thread">Pick a conversation, or start a new one.</div>
       </div>
+      <div class="quote-bar" id="quote-bar-private"><div class="qb-text"><span class="qb-author"></span><span class="qb-snip"></span></div><button type="button" onclick="clearQuote('private')" title="Cancel quote">✕</button></div>
       <div id="private-photo-preview" style="display:none;padding:.4rem .8rem;background:var(--surf);border-top:1px solid var(--bdr);align-items:center;gap:.5rem;">
         <img id="private-photo-preview-img" style="height:40px;border-radius:4px;object-fit:cover;">
         <span style="font-size:.78rem;color:var(--mut);flex:1;">Photo attached</span>
@@ -147,22 +165,25 @@
   <div class="panel" id="panel-team">
     <div class="team-messages" id="team-messages">
       {% for m in team_messages %}
-      <div class="team-msg{% if m.user == request.user %} team-me{% endif %}" id="tm-{{ m.pk }}">
+      <div class="team-msg{% if m.user == request.user %} team-me{% endif %}" id="tm-{{ m.pk }}"{% if not m.is_deleted %}{% with aq=m.as_quote %} data-qauthor="{{ aq.author }}" data-qsnip="{{ aq.snippet }}"{% endwith %}{% endif %}>
         <div class="team-av">{{ m.user.get_full_name|default:m.user.username|slice:":2"|upper }}</div>
         <div class="team-msg-body">
           <div><span class="team-msg-name">{{ m.user.get_full_name|default:m.user.username }}</span><span class="team-msg-time">{{ m.timestamp|date:"d M, H:i" }}</span></div>
           {% if m.is_deleted %}
           <div class="msg-deleted">🚫 This message was deleted</div>
           {% else %}
+          {% with q=m.quote_info %}{% if q %}<div class="quote-block m-del-hide{% if m.user == request.user %} quote-me{% endif %}" onclick="jumpToMsg({{ q.id }}, 'tm-')"><b>{% if q.author_id == request.user.pk %}You{% else %}{{ q.author }}{% endif %}</b><span class="{% if q.deleted %}q-del{% endif %}">{{ q.snippet }}</span></div>{% endif %}{% endwith %}
           {% if m.photo_data and m.photo_mime == 'application/pdf' %}<a class="m-del-hide pdf-card" href="{% url 'team_message_photo' m.pk %}" target="_blank" title="Open PDF">📄 <span>{{ m.file_name|default:'PDF' }}</span></a>{% elif m.photo_data %}<a class="m-del-hide" href="{% url 'team_message_photo' m.pk %}" target="_blank"><img src="{% url 'team_message_photo' m.pk %}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;{% if m.text %}margin-bottom:.4rem;{% endif %}"></a>{% endif %}
           {% if m.text %}<div class="m-del-hide">{{ m.text|safe }}</div>{% endif %}
           {% if m.user != request.user %}
           <div class="m-del-hide">
             <button type="button" class="react-btn{% if request.user in m.thumbs_up_by.all %} reacted{% endif %}" onclick="toggleReaction('team', {{ m.pk }}, this)" title="{% if request.user in m.thumbs_up_by.all %}Remove thumbs up{% else %}Thumbs up{% endif %}">👍{% if m.thumbs_up_by.count %} {{ m.thumbs_up_by.count }}{% endif %}</button>
+            <button type="button" class="msg-quote-btn" onclick="quoteMsg('team', {{ m.pk }})" title="Quote this message in your reply">↩ Quote</button>
           </div>
           {% else %}
           <div class="m-del-hide">
             {% if m.thumbs_up_by.count %}<span class="react-btn react-badge" title="Liked by others">👍 {{ m.thumbs_up_by.count }}</span>{% endif %}
+            <button type="button" class="msg-quote-btn" onclick="quoteMsg('team', {{ m.pk }})" title="Quote this message in your reply">↩ Quote</button>
             <button type="button" class="msg-del-btn" onclick="deleteMsg('team', {{ m.pk }})" title="Delete this message for everyone">🗑 Delete</button>
           </div>
           {% endif %}
@@ -173,6 +194,7 @@
       <div style="color:var(--mut);font-size:.85rem;text-align:center;padding:1rem;">No messages yet.</div>
       {% endfor %}
     </div>
+    <div class="quote-bar" id="quote-bar-team"><div class="qb-text"><span class="qb-author"></span><span class="qb-snip"></span></div><button type="button" onclick="clearQuote('team')" title="Cancel quote">✕</button></div>
     <div id="team-photo-preview" style="display:none;padding:.4rem .8rem;background:var(--surf);border-top:1px solid var(--bdr);align-items:center;gap:.5rem;">
       <img id="team-photo-preview-img" style="height:40px;border-radius:4px;object-fit:cover;">
       <span style="font-size:.78rem;color:var(--mut);flex:1;">Photo attached</span>
@@ -323,16 +345,53 @@ async function deleteMsg(kind, pk){
   const r = await fetch(url, { method:'POST', headers:{'X-CSRFToken':CSRF} });
   if(r.ok) markDeleted(kind, pk);
 }
+const replyTo = {private: null, team: null};
+const Q_PFX = {private: 'wm-', team: 'tm-'};
+function snipOf(m){
+  let t = (m.text || '').replace(/<[^>]+>/g, '').trim();
+  if(!t) t = m.is_pdf ? '📄 ' + (m.file_name || 'PDF') : (m.has_photo ? '📷 Photo' : '');
+  return t.length > 90 ? t.slice(0, 90) + '…' : t;
+}
+function quoteBlockHtml(q, kind, mine){
+  if(!q) return '';
+  return `<div class="quote-block m-del-hide${mine ? ' quote-me' : ''}" onclick="jumpToMsg(${q.id}, '${Q_PFX[kind]}')"><b>${q.is_me ? 'You' : escapeHtmlPdf(q.author)}</b><span class="${q.deleted ? 'q-del' : ''}">${escapeHtmlPdf(q.snippet)}</span></div>`;
+}
+function jumpToMsg(id, pfx){
+  const el = document.getElementById(pfx + id);
+  if(!el) return;
+  el.scrollIntoView({behavior:'smooth', block:'center'});
+  el.classList.add('q-flash');
+  setTimeout(() => el.classList.remove('q-flash'), 1500);
+}
+function quoteMsg(kind, id){
+  const el = document.getElementById(Q_PFX[kind] + id);
+  if(!el) return;
+  replyTo[kind] = {id: id, author: el.dataset.qauthor || '', snip: el.dataset.qsnip || ''};
+  renderQuoteBar(kind);
+  const inp = document.getElementById(kind + '-input');
+  if(inp) inp.focus();
+}
+function renderQuoteBar(kind){
+  const bar = document.getElementById('quote-bar-' + kind);
+  if(!bar) return;
+  const q = replyTo[kind];
+  if(!q){ bar.style.display = 'none'; return; }
+  bar.querySelector('.qb-author').textContent = 'Replying to ' + q.author;
+  bar.querySelector('.qb-snip').textContent = q.snip;
+  bar.style.display = 'flex';
+}
+function clearQuote(kind){ replyTo[kind] = null; renderQuoteBar(kind); }
+function quoteBtnHtml(kind, id){ return `<button type="button" class="msg-quote-btn" onclick="quoteMsg('${kind}', ${id})" title="Quote this message in your reply">↩ Quote</button>`; }
 function delBtnHtml(m, kind){
-  return m.is_me ? `<button type="button" class="msg-del-btn" onclick="deleteMsg('${kind}', ${m.id})" title="Delete this message for everyone">🗑 Delete</button>` : '';
+  return quoteBtnHtml(kind, m.id) + (m.is_me ? `<button type="button" class="msg-del-btn" onclick="deleteMsg('${kind}', ${m.id})" title="Delete this message for everyone">🗑 Delete</button>` : '');
 }
 
 function renderThread(msgs){
   const box = document.getElementById('thread-messages');
   if(!msgs.length){ box.innerHTML = '<div class="empty-thread">No messages yet — say hello.</div>'; return; }
   box.innerHTML = msgs.map(m => `
-    <div id="wm-${m.id}" class="msg-bubble ${m.is_me ? 'msg-me' : 'msg-them'}">
-      ${m.deleted ? '<div class="msg-deleted">🚫 This message was deleted</div>' : `${photoHtml(m)}${m.text ? `<div class="m-del-hide">${escapeHtml(m.text)}</div>` : ''}`}
+    <div id="wm-${m.id}" data-qauthor="${escapeHtmlPdf(m.sender || '')}" data-qsnip="${escapeHtmlPdf(snipOf(m))}" class="msg-bubble ${m.is_me ? 'msg-me' : 'msg-them'}">
+      ${m.deleted ? '<div class="msg-deleted">🚫 This message was deleted</div>' : `${quoteBlockHtml(m.quote, 'private', m.is_me)}${photoHtml(m)}${m.text ? `<div class="m-del-hide">${escapeHtml(m.text)}</div>` : ''}`}
       <div class="msg-meta">${m.is_me ? '' : m.sender + ' · '}${m.timestamp} ${m.deleted ? '' : `<span class="m-del-hide">${reactionHtml(m, 'private')}${delBtnHtml(m, 'private')}</span>`}</div>
     </div>`).join('');
   box.scrollTop = box.scrollHeight;
@@ -344,7 +403,8 @@ function appendThreadMessage(m){
   const div = document.createElement('div');
   div.className = `msg-bubble ${m.is_me ? 'msg-me' : 'msg-them'}`;
   div.id = `wm-${m.id}`;
-  div.innerHTML = `${m.deleted ? '<div class="msg-deleted">🚫 This message was deleted</div>' : `${photoHtml(m)}${m.text ? `<div class="m-del-hide">${escapeHtml(m.text)}</div>` : ''}`}<div class="msg-meta">${m.is_me ? '' : m.sender + ' · '}${m.timestamp} ${m.deleted ? '' : `<span class="m-del-hide">${reactionHtml(m, 'private')}${delBtnHtml(m, 'private')}</span>`}</div>`;
+  div.dataset.qauthor = m.sender || ''; div.dataset.qsnip = snipOf(m);
+  div.innerHTML = `${m.deleted ? '<div class="msg-deleted">🚫 This message was deleted</div>' : `${quoteBlockHtml(m.quote, 'private', m.is_me)}${photoHtml(m)}${m.text ? `<div class="m-del-hide">${escapeHtml(m.text)}</div>` : ''}`}<div class="msg-meta">${m.is_me ? '' : m.sender + ' · '}${m.timestamp} ${m.deleted ? '' : `<span class="m-del-hide">${reactionHtml(m, 'private')}${delBtnHtml(m, 'private')}</span>`}</div>`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
 }
@@ -388,16 +448,17 @@ async function sendPrivate(){
     const fd = new FormData();
     fd.append('text', text);
     fd.append('photo', photo);
+    if(replyTo.private) fd.append('reply_to', replyTo.private.id);
     r = await fetch(`/messages/${activeConvoUserId}/`, { method:'POST', headers:{'X-CSRFToken':CSRF}, body: fd });
     clearPhotoSelect('private');
   } else {
     r = await fetch(`/messages/${activeConvoUserId}/`, {
-      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify({text})
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify({text, reply_to: replyTo.private ? replyTo.private.id : null})
     });
   }
   const d = await r.json();
   if(d.error) alert(d.error);
-  if(d.id){ appendThreadMessage(d); lastPrivateSeenPk = Math.max(lastPrivateSeenPk, d.id); }
+  if(d.id){ clearQuote('private'); appendThreadMessage(d); lastPrivateSeenPk = Math.max(lastPrivateSeenPk, d.id); }
 }
 
 function refreshConvoUnreadBadge(userId){
@@ -421,16 +482,17 @@ async function sendTeam(){
     const fd = new FormData();
     fd.append('text', text);
     fd.append('photo', photo);
+    if(replyTo.team) fd.append('reply_to', replyTo.team.id);
     r = await fetch('/chat/', { method:'POST', headers:{'X-CSRFToken':CSRF}, body: fd });
     clearPhotoSelect('team');
   } else {
     r = await fetch('/chat/', {
-      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify({text})
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify({text, reply_to: replyTo.team ? replyTo.team.id : null})
     });
   }
   const d = await r.json();
   if(d.error) alert(d.error);
-  if(d.id){ appendTeamMessage(d); lastTeamSeenPk = Math.max(lastTeamSeenPk, d.id); }
+  if(d.id){ clearQuote('team'); appendTeamMessage(d); lastTeamSeenPk = Math.max(lastTeamSeenPk, d.id); }
 }
 
 function appendTeamMessage(m){
@@ -438,11 +500,12 @@ function appendTeamMessage(m){
   const div = document.createElement('div');
   div.className = 'team-msg' + (m.is_me ? ' team-me' : '');
   div.id = `tm-${m.id}`;
+  div.dataset.qauthor = m.user || ''; div.dataset.qsnip = snipOf(m);
   div.innerHTML = `
     <div class="team-av">${(m.initials || (m.user||'').slice(0,2)).toUpperCase()}</div>
     <div class="team-msg-body">
       <div><span class="team-msg-name">${escapeHtml(m.user)}</span><span class="team-msg-time">${m.timestamp}</span></div>
-      ${m.deleted ? '<div class="msg-deleted">🚫 This message was deleted</div>' : `${photoHtml(m)}${m.text ? `<div class="m-del-hide">${m.text}</div>` : ''}<div class="m-del-hide">${reactionHtml(m, 'team')}${delBtnHtml(m, 'team')}</div>`}
+      ${m.deleted ? '<div class="msg-deleted">🚫 This message was deleted</div>' : `${quoteBlockHtml(m.quote, 'team', m.is_me)}${photoHtml(m)}${m.text ? `<div class="m-del-hide">${m.text}</div>` : ''}<div class="m-del-hide">${reactionHtml(m, 'team')}${delBtnHtml(m, 'team')}</div>`}
     </div>`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
