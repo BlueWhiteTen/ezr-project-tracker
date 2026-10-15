@@ -30,9 +30,9 @@ def notification_count(request):
     # is now indicated on the EZR Chat / Private Chat nav buttons themselves,
     # not via the bell or the notifications list, so it isn't shown twice.
     notif_count = Notification.objects.filter(user=request.user, read=False).exclude(type='message').count()
-    msg_count   = Message.objects.filter(recipient=request.user, read=False).count()
+    msg_count   = Message.objects.filter(recipient=request.user, read=False, is_deleted=False).count()
     latest_notif = Notification.objects.filter(user=request.user, read=False).exclude(type='message').order_by('-timestamp').first()
-    latest_msg = Message.objects.filter(recipient=request.user, read=False).order_by('-timestamp').select_related('sender').first()
+    latest_msg = Message.objects.filter(recipient=request.user, read=False, is_deleted=False).order_by('-timestamp').select_related('sender').first()
     latest_team_pk = TeamMessage.objects.order_by('-pk').values_list('pk', flat=True).first() or 0
     return JsonResponse({
         'count': notif_count, 'messages': msg_count,
@@ -84,12 +84,12 @@ def inbox(request):
             Q(sender=request.user, recipient=u) |
             Q(sender=u, recipient=request.user)
         ).order_by('-timestamp').first()
-        unread = Message.objects.filter(sender=u, recipient=request.user, read=False).count()
+        unread = Message.objects.filter(sender=u, recipient=request.user, read=False, is_deleted=False).count()
         conversations.append({'user': u, 'last_msg': last_msg, 'unread': unread})
 
     conversations.sort(key=lambda x: x['last_msg'].timestamp if x['last_msg'] else date.today(), reverse=True)
     all_users = User.objects.filter(is_active=True).exclude(id=request.user.id).order_by('first_name', 'last_name')
-    total_unread = Message.objects.filter(recipient=request.user, read=False).count()
+    total_unread = Message.objects.filter(recipient=request.user, read=False, is_deleted=False).count()
 
     return render(request, 'projects/inbox.html', {
         'conversations': conversations,
@@ -117,12 +117,12 @@ def chat_widget(request):
             _Q(sender=request.user, recipient=u) |
             _Q(sender=u, recipient=request.user)
         ).order_by('-timestamp').first()
-        unread = Message.objects.filter(sender=u, recipient=request.user, read=False).count()
+        unread = Message.objects.filter(sender=u, recipient=request.user, read=False, is_deleted=False).count()
         conversations.append({'user': u, 'last_msg': last_msg, 'unread': unread})
     conversations.sort(key=lambda x: x['last_msg'].timestamp if x['last_msg'] else date.today(), reverse=True)
 
     all_users = User.objects.filter(is_active=True).exclude(id=request.user.id).order_by('first_name', 'last_name')
-    total_unread_private = Message.objects.filter(recipient=request.user, read=False).count()
+    total_unread_private = Message.objects.filter(recipient=request.user, read=False, is_deleted=False).count()
 
     team_messages = TeamMessage.objects.select_related('user').order_by('-timestamp')[:100]
     team_messages = list(reversed(list(team_messages)))
@@ -157,19 +157,108 @@ def conversation_poll(request, user_id):
         'messages': [
             {
                 'id': m.pk, 'text': m.text,
-                'has_photo': bool(m.photo_data),
-                'photo_url': f'/messages/photo/{m.pk}/' if m.photo_data else None,
+                **_attach_json(m, f'/messages/photo/{m.pk}/'),
                 'thumbs_up_count': m.thumbs_up_by.count(),
                 'i_reacted': m.thumbs_up_by.filter(pk=request.user.pk).exists(),
                 'sender': m.sender.get_full_name() or m.sender.username,
                 'timestamp': timezone.localtime(m.timestamp).strftime('%d %b %Y, %H:%M'),
                 'is_me': m.sender_id == request.user.id,
+                'deleted': m.is_deleted,
             }
             for m in new_msgs
-        ]
+        ],
+        'deleted_ids': _recent_deleted_ids(Message, Q(sender=request.user, recipient=other) | Q(sender=other, recipient=request.user)),
     })
 
 
+
+MAX_PDF_BYTES = 15 * 1024 * 1024
+
+
+def _attach_upload(msg, upload):
+    """Store an uploaded image or PDF on a (Team)Message. Returns an error
+    string, or None if fine."""
+    data = upload.read()
+    mime = (upload.content_type or '').lower()
+    name = (upload.name or '')[:200]
+    is_pdf = mime == 'application/pdf' or name.lower().endswith('.pdf')
+    if is_pdf:
+        if not data.startswith(b'%PDF'):
+            return "That doesn't look like a valid PDF."
+        if len(data) > MAX_PDF_BYTES:
+            return 'PDF is too large (15 MB maximum).'
+        msg.photo_data = data
+        msg.photo_mime = 'application/pdf'
+        msg.file_name = name or 'document.pdf'
+        return None
+    if not mime.startswith('image/'):
+        return 'Only photos and PDF files can be attached.'
+    msg.photo_data = data
+    msg.photo_mime = mime or 'image/jpeg'
+    msg.file_name = ''
+    return None
+
+
+def _attach_json(msg, url):
+    has = bool(msg.photo_data)
+    return {
+        'has_photo': has,
+        'photo_url': url if has else None,
+        'is_pdf': has and msg.photo_mime == 'application/pdf',
+        'file_name': msg.file_name if has else '',
+    }
+
+
+def _serve_attachment(msg):
+    if not msg.photo_data:
+        return HttpResponse(status=404)
+    resp = HttpResponse(bytes(msg.photo_data), content_type=msg.photo_mime or 'image/jpeg')
+    if msg.photo_mime == 'application/pdf':
+        safe = (msg.file_name or 'document.pdf').replace('"', '').replace('\n', ' ')
+        resp['Content-Disposition'] = f'inline; filename="{safe}"'
+    return resp
+
+
+
+def _recent_deleted_ids(model, flt):
+    """pks of deleted messages among the 300 most recent in this thread, so
+    open pages can swap them for the 'deleted' placeholder live."""
+    recent = list(model.objects.filter(flt).order_by('-pk').values_list('pk', 'is_deleted')[:300])
+    return [pk for pk, d in recent if d]
+
+
+@login_required
+@require_POST
+def message_delete(request, pk):
+    """Sender erases their own private message for good; a placeholder remains."""
+    msg = get_object_or_404(Message, pk=pk, sender=request.user)
+    msg.text = ''
+    msg.photo_data = None
+    msg.photo_mime = ''
+    msg.file_name = ''
+    msg.is_deleted = True
+    msg.read = True
+    msg.save()
+    msg.thumbs_up_by.clear()
+    Notification.objects.filter(
+        user=msg.recipient, type='message', link=f"/messages/{request.user.pk}/", read=False
+    ).delete()
+    return JsonResponse({'ok': True, 'id': msg.pk})
+
+
+@login_required
+@require_POST
+def team_message_delete(request, pk):
+    """Author erases their own EZR Chat message for good; a placeholder remains."""
+    msg = get_object_or_404(TeamMessage, pk=pk, user=request.user)
+    msg.text = ''
+    msg.photo_data = None
+    msg.photo_mime = ''
+    msg.file_name = ''
+    msg.is_deleted = True
+    msg.save()
+    msg.thumbs_up_by.clear()
+    return JsonResponse({'ok': True, 'id': msg.pk})
 
 
 @login_required
@@ -180,9 +269,7 @@ def message_photo(request, pk):
     msg = get_object_or_404(Message, pk=pk)
     if request.user.id not in (msg.sender_id, msg.recipient_id):
         return HttpResponse(status=404)
-    if not msg.photo_data:
-        return HttpResponse(status=404)
-    return HttpResponse(bytes(msg.photo_data), content_type=msg.photo_mime or 'image/jpeg')
+    return _serve_attachment(msg)
 
 
 @login_required
@@ -190,7 +277,7 @@ def message_photo(request, pk):
 def message_react(request, pk):
     """Toggle the current user's thumbs-up on a private message. Scoped to
     sender or recipient only, matching message_photo's own scoping."""
-    msg = get_object_or_404(Message, pk=pk)
+    msg = get_object_or_404(Message, pk=pk, is_deleted=False)
     if request.user.id not in (msg.sender_id, msg.recipient_id):
         return HttpResponse(status=404)
     if msg.thumbs_up_by.filter(pk=request.user.pk).exists():
@@ -222,12 +309,13 @@ def conversation(request, user_id):
         if text or photo:
             msg = Message(sender=request.user, recipient=other, text=text)
             if photo:
-                msg.photo_data = photo.read()
-                msg.photo_mime = photo.content_type or 'image/jpeg'
+                err = _attach_upload(msg, photo)
+                if err:
+                    return JsonResponse({'error': err}, status=400)
             msg.save()
             # Create notification for recipient
             sender_name = request.user.get_full_name() or request.user.username
-            notif_text = f"{sender_name} sent you a message: {text[:80]}" if text else f"{sender_name} sent you a photo"
+            notif_text = f"{sender_name} sent you a message: {text[:80]}" if text else f"{sender_name} sent you {'a PDF' if msg.photo_mime == 'application/pdf' else 'a photo'}"
             Notification.objects.create(
                 user=other, type='message',
                 text=notif_text,
@@ -235,8 +323,7 @@ def conversation(request, user_id):
             )
             return JsonResponse({
                 'id': msg.pk, 'text': msg.text,
-                'has_photo': bool(msg.photo_data),
-                'photo_url': f'/messages/photo/{msg.pk}/' if msg.photo_data else None,
+                **_attach_json(msg, f'/messages/photo/{msg.pk}/'),
                 'thumbs_up_count': 0, 'i_reacted': False,
                 'sender': sender_name,
                 'timestamp': timezone.localtime(msg.timestamp).strftime('%d %b %Y, %H:%M'),
@@ -260,7 +347,7 @@ def conversation(request, user_id):
             Q(sender=request.user, recipient=u) |
             Q(sender=u, recipient=request.user)
         ).order_by('-timestamp').first()
-        unread = Message.objects.filter(sender=u, recipient=request.user, read=False).count()
+        unread = Message.objects.filter(sender=u, recipient=request.user, read=False, is_deleted=False).count()
         conversations.append({'user': u, 'last_msg': last_msg, 'unread': unread})
     from django.utils.timezone import make_aware
     from datetime import datetime as _dt, timezone as _tz
@@ -272,7 +359,7 @@ def conversation(request, user_id):
         'all_users': all_users,
         'active_user': other,
         'messages_qs': messages_qs,
-        'total_unread': Message.objects.filter(recipient=request.user, read=False).count(),
+        'total_unread': Message.objects.filter(recipient=request.user, read=False, is_deleted=False).count(),
     })
 
 
@@ -297,8 +384,9 @@ def team_chat(request):
         display_text = re.sub(r'#\[([^\]]+)\]\((\d+)\)', r'<a href="/project/\2/edit/" style="color:var(--acc);font-weight:600">#\1</a>', display_text)
         msg = TeamMessage(user=request.user, text=display_text)
         if photo:
-            msg.photo_data = photo.read()
-            msg.photo_mime = photo.content_type or 'image/jpeg'
+            err = _attach_upload(msg, photo)
+            if err:
+                return JsonResponse({'error': err}, status=400)
         msg.save()
         sender_name = request.user.get_full_name() or request.user.username
 
@@ -320,8 +408,7 @@ def team_chat(request):
             'id': msg.pk,
             'text': display_text,
             'raw_text': text,
-            'has_photo': bool(msg.photo_data),
-            'photo_url': f'/chat/photo/{msg.pk}/' if msg.photo_data else None,
+            **_attach_json(msg, f'/chat/photo/{msg.pk}/'),
             'thumbs_up_count': 0, 'i_reacted': False,
             'user': sender_name,
             'initials': _initials(sender_name),
@@ -347,9 +434,7 @@ def team_message_photo(request, pk):
     """Serve a photo attached to a team chat message - visible to any
     logged-in staff member, matching team chat's own shared-channel nature."""
     msg = get_object_or_404(TeamMessage, pk=pk)
-    if not msg.photo_data:
-        return HttpResponse(status=404)
-    return HttpResponse(bytes(msg.photo_data), content_type=msg.photo_mime or 'image/jpeg')
+    return _serve_attachment(msg)
 
 
 @login_required
@@ -357,7 +442,7 @@ def team_message_photo(request, pk):
 def team_message_react(request, pk):
     """Toggle the current user's thumbs-up on a team chat message - any
     logged-in staff member can react, matching team chat's shared nature."""
-    msg = get_object_or_404(TeamMessage, pk=pk)
+    msg = get_object_or_404(TeamMessage, pk=pk, is_deleted=False)
     if msg.thumbs_up_by.filter(pk=request.user.pk).exists():
         msg.thumbs_up_by.remove(request.user)
         reacted = False
@@ -381,8 +466,7 @@ def team_chat_poll(request):
             {
                 'id': m.pk,
                 'text': m.text,
-                'has_photo': bool(m.photo_data),
-                'photo_url': f'/chat/photo/{m.pk}/' if m.photo_data else None,
+                **_attach_json(m, f'/chat/photo/{m.pk}/'),
                 'thumbs_up_count': m.thumbs_up_by.count(),
                 'i_reacted': m.thumbs_up_by.filter(pk=request.user.pk).exists(),
                 'user': m.user.get_full_name() or m.user.username,
@@ -390,9 +474,11 @@ def team_chat_poll(request):
                 'initials': _initials(m.user.get_full_name() or m.user.username),
                 'timestamp': timezone.localtime(m.timestamp).strftime('%d %b %Y, %H:%M'),
                 'is_me': m.user_id == request.user.id,
+                'deleted': m.is_deleted,
             }
             for m in new_msgs
-        ]
+        ],
+        'deleted_ids': _recent_deleted_ids(TeamMessage, Q()),
     })
 
 

@@ -223,9 +223,9 @@
       <div class="form-card" style="border-color:rgba(37,99,235,.3);background:rgba(37,99,235,.03);">
         <div class="section-title" style="color:#2563eb;">Documents</div>
         <div id="doc-list" style="margin-bottom:.75rem;min-height:20px;"></div>
-        <div style="border:2px dashed rgba(37,99,235,.3);border-radius:var(--rad);padding:.75rem;background:rgba(37,99,235,.03);">
+        <div id="doc-dropzone" style="border:2px dashed rgba(37,99,235,.3);border-radius:var(--rad);padding:.75rem;background:rgba(37,99,235,.03);">
           <div class="form-group" style="margin-bottom:.5rem;">
-            <label class="form-label">Files <span style="font-weight:400;color:var(--mut2);">(select one or several)</span></label>
+            <label class="form-label">Files <span style="font-weight:400;color:var(--mut2);">(select one or several, or drag &amp; drop here)</span></label>
             <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:.5rem .75rem;font-size:.85rem;color:var(--txt2);" for="doc-file">
               <span style="background:#2563eb;color:#fff;border-radius:4px;padding:3px 10px;font-size:.75rem;font-weight:600;flex-shrink:0;">Choose files</span>
               <span id="doc-file-name">No files chosen</span>
@@ -243,9 +243,9 @@
       <div class="form-card" style="border-color:rgba(234,88,12,.3);background:rgba(234,88,12,.03);">
         <div class="section-title" style="color:#ea580c;">Survey Photos</div>
         <div id="survey-photo-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:.5rem;margin-bottom:.75rem;"></div>
-        <div style="border:2px dashed rgba(234,88,12,.3);border-radius:var(--rad);padding:.75rem;background:rgba(234,88,12,.03);">
+        <div id="survey-dropzone" style="border:2px dashed rgba(234,88,12,.3);border-radius:var(--rad);padding:.75rem;background:rgba(234,88,12,.03);">
           <div class="form-group" style="margin-bottom:.5rem;">
-            <label class="form-label">Photos &amp; Videos <span style="font-weight:400;color:var(--mut2);">(select as many as you like)</span></label>
+            <label class="form-label">Photos &amp; Videos <span style="font-weight:400;color:var(--mut2);">(select as many as you like, or drag &amp; drop here)</span></label>
             <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:.5rem .75rem;font-size:.85rem;color:var(--txt2);" for="survey-photo-file">
               <span style="background:#ea580c;color:#fff;border-radius:4px;padding:3px 10px;font-size:.75rem;font-weight:600;flex-shrink:0;">Choose files</span>
               <span id="survey-photo-file-name">No files chosen</span>
@@ -760,9 +760,9 @@ let surveyPhotosData = [];
 
 function surveyThumbHtml(p, idx){
   const inner = p.is_video
-    ? `<video src="${p.url}" style="width:100%;height:100%;object-fit:cover;" muted></video>
+    ? `<video src="${p.url}" preload="none" style="width:100%;height:100%;object-fit:cover;" muted></video>
        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.6);pointer-events:none;">▶</div>`
-    : `<img src="${p.url}" style="width:100%;height:100%;object-fit:cover;">`;
+    : `<img src="${p.thumb || p.url}" loading="lazy" style="width:100%;height:100%;object-fit:cover;">`;
   return `
     <div style="position:relative;width:90px;height:90px;border-radius:var(--rad);overflow:hidden;border:1px solid var(--bdr);cursor:pointer;background:#000;" data-pk="${p.pk}" onclick="openSurveyPhoto(${idx})">
       ${inner}
@@ -841,24 +841,52 @@ async function uploadSurveyPhotos(pk, fileList){
   const nameEl = document.getElementById('survey-photo-file-name');
   const errEl = document.getElementById('survey-photo-error');
   if(errEl) errEl.style.display = 'none';
-  if(nameEl) nameEl.textContent = `Uploading ${files.length} file${files.length > 1 ? 's' : ''}…`;
 
-  const formData = new FormData();
-  files.forEach(f => formData.append('survey_photos', f));
-  formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-  try {
-    const r = await fetch(`/project/${pk}/survey-photos/`, { method: 'POST', body: formData });
-    const text = await r.text();
-    let d;
-    try { d = JSON.parse(text); } catch(e) { throw new Error('Server error: ' + text.slice(0,200)); }
-    if(d.error){ throw new Error(d.error); }
-    surveyPhotosData = surveyPhotosData.concat(d.photos);
-    renderSurveyGrid();
-  } catch(e) {
-    if(errEl){ errEl.textContent = `Upload failed: ${e.message}`; errEl.style.display = 'block'; }
+  // One file at a time: big photos are shrunk in the browser first, so the page doesn't freeze.
+  const failed = [];
+  for(let i = 0; i < files.length; i++){
+    if(nameEl) nameEl.textContent = `⏳ Resizing & uploading ${i+1} of ${files.length}…`;
+    try {
+      const small = await shrinkSurveyImage(files[i]);
+      const formData = new FormData();
+      formData.append('survey_photos', small, small.name);
+      formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+      const r = await fetch(`/project/${pk}/survey-photos/`, { method: 'POST', body: formData });
+      const text = await r.text();
+      let d;
+      try { d = JSON.parse(text); } catch(e) { throw new Error('Server error: ' + text.slice(0,200)); }
+      if(d.error){ throw new Error(d.error); }
+      surveyPhotosData = surveyPhotosData.concat(d.photos);
+      renderSurveyGrid();
+    } catch(e) {
+      failed.push(files[i].name);
+    }
+  }
+  if(failed.length && errEl){
+    errEl.textContent = `These files failed to upload: ${failed.join(', ')}`;
+    errEl.style.display = 'block';
   }
   if(nameEl) nameEl.textContent = 'No files chosen';
-  document.getElementById('survey-photo-file').value = '';
+  const inp = document.getElementById('survey-photo-file');
+  if(inp) inp.value = '';
+}
+
+// Shrinks a photo to max 2000px (JPEG 85%) in the browser. Videos, GIFs, SVGs and small photos go up unchanged.
+const SURVEY_MAX_PX = 2000;
+async function shrinkSurveyImage(file){
+  try{
+    if(!file.type.startsWith('image/') || file.type === 'image/gif' || file.type === 'image/svg+xml') return file;
+    const bmp = await createImageBitmap(file, {imageOrientation: 'from-image'});
+    const scale = Math.min(1, SURVEY_MAX_PX / Math.max(bmp.width, bmp.height));
+    if(scale === 1 && file.size < 1.5 * 1024 * 1024){ bmp.close(); return file; }
+    const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+    const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(bmp, 0, 0, w, h); bmp.close();
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.85));
+    canvas.width = canvas.height = 0;
+    if(!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', {type: 'image/jpeg'});
+  }catch(e){ return file; }
 }
 
 async function deleteSurveyPhoto(pk){
@@ -869,6 +897,33 @@ async function deleteSurveyPhoto(pk){
 }
 
 {% if project %}document.addEventListener('DOMContentLoaded', ()=>loadSurveyPhotos({{ project.pk }}));{% endif %}
+
+// ── Drag & drop onto the upload boxes ───────────────────────────────────────
+function setupDropZone(el, onFiles){
+  if(!el) return;
+  const hi = on => { el.style.outline = on ? '3px solid var(--acc)' : ''; el.style.outlineOffset = on ? '2px' : ''; };
+  ['dragenter','dragover'].forEach(ev => el.addEventListener(ev, e => { e.preventDefault(); hi(true); }));
+  ['dragleave','drop'].forEach(ev => el.addEventListener(ev, e => { e.preventDefault(); hi(false); }));
+  el.addEventListener('drop', e => {
+    const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+    if(files.length) onFiles(files);
+  });
+}
+// Stop a missed drop from navigating the browser away to the file
+['dragover','drop'].forEach(ev => window.addEventListener(ev, e => e.preventDefault()));
+
+{% if project %}
+document.addEventListener('DOMContentLoaded', () => {
+  setupDropZone(document.getElementById('doc-dropzone'), files => {
+    stagedDocFiles = stagedDocFiles.concat(files.map(f => ({file: f, name: f.name, type: 'other'})));
+    renderStagedDocs();
+  });
+  setupDropZone(document.getElementById('survey-dropzone'), files => {
+    const ok = files.filter(f => /^(image|video)\//.test(f.type));
+    if(ok.length) uploadSurveyPhotos({{ project.pk }}, ok);
+  });
+});
+{% endif %}
 
 // ── Postcode lookup (Postcodes.io — free, no API key) ───────────────────────
 async function lookupPostcode(){

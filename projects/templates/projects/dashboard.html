@@ -146,6 +146,10 @@ tbody tr:hover td{background:var(--surf3) !important;}
     <option value="{{ u.id }}" {% if assigned_filter == u.id|stringformat:'s' %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
     {% endfor %}
   </select>
+  <label style="display:inline-flex;align-items:center;gap:.4rem;font-size:.84rem;cursor:pointer;white-space:nowrap;" title="Your own setting. Searching, or choosing the Completed filter, always shows completed projects.">
+    <input type="checkbox" id="show-completed" {% if show_completed %}checked{% endif %} onchange="saveShowCompleted(this)" style="width:15px;height:15px;accent-color:var(--acc);">
+    Include completed projects
+  </label>
   <button type="submit" class="btn btn-ghost btn-sm">Search</button>
   {% if query or selected_status or tl or stat_filter or assigned_filter %}<a href="{% url 'dashboard' %}" class="btn btn-ghost btn-sm">Clear</a>{% endif %}
 </form>
@@ -349,6 +353,24 @@ tbody tr:hover td{background:var(--surf3) !important;}
 {% endblock %}
 
 {% block extra_js %}
+<script>
+async function saveShowCompleted(cb){
+  const want = cb.checked;
+  cb.disabled = true;
+  try{
+    const r = await fetch('{% url "dashboard_show_completed" %}', {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
+      body: JSON.stringify({show: want})
+    });
+    const d = await r.json();
+    if(!d.ok) throw new Error('save failed');
+    location.reload();
+  }catch(e){
+    cb.checked = !want; cb.disabled = false;
+    alert('Could not save that setting. Please try again.');
+  }
+}
+</script>
 <script>
 const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const CSRF='{{ csrf_token }}';

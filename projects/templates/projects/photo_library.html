@@ -27,6 +27,11 @@
   <div style="color:var(--mut2);">→</div>
 </a>
 
+<div style="margin-bottom:1rem;">
+  <a href="{% url 'photo_library_latest' %}" class="btn btn-ghost btn-sm">🕒 Latest uploads</a>
+  <span style="color:var(--mut);font-size:.8rem;margin-left:.6rem;">Folders sorted by project name A–Z</span>
+</div>
+
 <form class="lib-search" method="get">
   <input type="text" name="q" value="{{ query }}" placeholder="Search by project, customer or location…" onchange="this.form.submit()">
 </form>
@@ -36,7 +41,7 @@
   {% for f in folders %}
   <a href="{% url 'photo_library_project' f.project.pk %}" class="folder-card">
     <div class="folder-cover">
-      <img src="{% url 'report_photo_file' f.cover.pk %}" alt="{{ f.project.project_name }}">
+      <img src="{% url 'report_photo_thumb' f.cover.pk %}?s=500" loading="lazy" alt="{{ f.project.project_name }}">
       <span class="folder-count">{{ f.count }} photo{{ f.count|pluralize }}</span>
     </div>
     <div class="folder-body">

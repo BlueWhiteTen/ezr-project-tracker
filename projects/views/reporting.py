@@ -24,6 +24,38 @@ from django.contrib.auth.views import (
     PasswordResetConfirmView, PasswordResetCompleteView,
 )
 
+HOME_TILE_KEYS = ['dashboard', 'new_project', 'todo', 'reminders', 'messages',
+                  'my_projects', 'chat', 'whos_off', 'latest', 'photos']
+
+
+@login_required
+@require_POST
+def home_layout_save(request):
+    """Save, per user, the order of the Home boxes and which are hidden."""
+    try:
+        data = json.loads(request.body)
+        order = [k for k in data.get('order', []) if k in HOME_TILE_KEYS]
+        hidden = [k for k in data.get('hidden', []) if k in HOME_TILE_KEYS]
+    except Exception:
+        return JsonResponse({'ok': False}, status=400)
+    # De-duplicate while keeping order
+    order = list(dict.fromkeys(order))
+    hidden = list(dict.fromkeys(hidden))
+    profile, _ = StaffProfile.objects.get_or_create(user=request.user)
+    profile.home_layout = {'order': order, 'hidden': hidden}
+    profile.save(update_fields=['home_layout'])
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_POST
+def home_layout_reset(request):
+    profile, _ = StaffProfile.objects.get_or_create(user=request.user)
+    profile.home_layout = {}
+    profile.save(update_fields=['home_layout'])
+    return JsonResponse({'ok': True})
+
+
 @login_required
 def home(request):
     from datetime import timedelta
@@ -57,7 +89,7 @@ def home(request):
     photo_ids = list(ReportPhoto.objects.values_list('pk', flat=True))
     random.shuffle(photo_ids)
     slideshow_photos = list(
-        ReportPhoto.objects.filter(pk__in=photo_ids[:12]).select_related('report__project')
+        ReportPhoto.objects.filter(pk__in=photo_ids[:12]).defer('file_data').select_related('report__project')
     )
     random.shuffle(slideshow_photos)
 
@@ -67,7 +99,15 @@ def home(request):
 
     todo_items = TodoItem.objects.filter(user=request.user)
 
+    profile = StaffProfile.objects.filter(user=request.user).first()
+    layout = profile.home_layout if profile and isinstance(profile.home_layout, dict) else {}
+    home_layout = {
+        'order': [k for k in layout.get('order', []) if k in HOME_TILE_KEYS],
+        'hidden': [k for k in layout.get('hidden', []) if k in HOME_TILE_KEYS],
+    }
+
     return render(request, 'projects/home.html', {
+        'home_layout': home_layout,
         'my_reminders': my_reminders,
         'upcoming_reminders': upcoming_reminders,
         'leave_week': leave_week,

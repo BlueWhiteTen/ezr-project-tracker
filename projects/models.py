@@ -203,8 +203,10 @@ class Message(models.Model):
     text      = models.TextField(blank=True)
     photo_data = models.BinaryField(null=True, blank=True)
     photo_mime = models.CharField(max_length=100, blank=True)
+    file_name = models.CharField(max_length=200, blank=True)
     thumbs_up_by = models.ManyToManyField(User, related_name='thumbs_up_messages', blank=True)
     read      = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -269,7 +271,9 @@ class TeamMessage(models.Model):
     text      = models.TextField(blank=True)
     photo_data = models.BinaryField(null=True, blank=True)
     photo_mime = models.CharField(max_length=100, blank=True)
+    file_name = models.CharField(max_length=200, blank=True)
     thumbs_up_by = models.ManyToManyField(User, related_name='thumbs_up_team_messages', blank=True)
+    is_deleted = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -312,6 +316,8 @@ class StaffProfile(models.Model):
         ('ops_console', 'Ops Console'),
     ]
     theme = models.CharField(max_length=20, choices=THEME_CHOICES, default='default', help_text='Personal visual style — set on your own profile')
+    home_layout = models.JSONField(default=dict, blank=True, help_text='Home page: personal box order and hidden boxes')
+    show_completed = models.BooleanField(default=True, help_text='Dashboard: include completed projects in the list (each person chooses for themselves)')
 
     def __str__(self):
         return f"{self.user.get_full_name()} — {self.role}"
@@ -882,7 +888,19 @@ class AccessoryOverride(models.Model):
         unique_together = ('cost', 'accessory')
 
 
+class RealCostManager(models.Manager):
+    """Default manager for ProjectCost: hides the temporary working copies ("drafts")
+    the costing page edits, so every other screen only ever sees saved costings."""
+    def get_queryset(self):
+        return super().get_queryset().filter(draft_of__isnull=True)
+
+
 class ProjectCost(models.Model):
+    # Costing page edits happen on a throw-away copy; clicking Save copies it onto the real
+    # option. draft_of is set only on those copies.
+    draft_of    = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='drafts')
+    objects     = RealCostManager()
+    all_objects = models.Manager()
     project     = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='costs')
     label       = models.CharField(max_length=100, default='Option A')
     is_accepted = models.BooleanField(default=False)
@@ -949,6 +967,8 @@ class ProjectCostLine(models.Model):
     quantity   = models.DecimalField(max_digits=10, decimal_places=2, default=1)
     unit_cost  = models.DecimalField(max_digits=10, decimal_places=4, default=0)
     sort_order = models.PositiveIntegerField(default=0)
+    # Only set on lines of a draft copy: the id of the saved line it was copied from
+    source_line_id = models.IntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ['sort_order', 'id']

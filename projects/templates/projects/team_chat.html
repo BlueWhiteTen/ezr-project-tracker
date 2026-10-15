@@ -45,6 +45,13 @@
 .react-btn.reacted{background:var(--acc);border-color:var(--acc);color:#fff;}
 .react-btn.react-badge{cursor:default;background:var(--acc-bg);border-color:var(--acc-bdr);color:var(--acc);}
 .react-btn.react-badge:hover{background:var(--acc-bg);}
+.pdf-card{display:flex;align-items:center;gap:.4rem;padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:10px;background:var(--surf2);color:var(--txt);text-decoration:none;font-size:.8rem;max-width:240px;margin-bottom:.3rem;}
+.pdf-card:hover{border-color:var(--acc);}
+.pdf-card span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.team-me .pdf-card,.pdf-card.pdf-me{margin-left:auto;}
+.msg-deleted{display:inline-block;font-size:.82rem;font-style:italic;color:var(--mut);border:1px dashed var(--bdr);border-radius:12px;padding:.35rem .8rem;}
+.msg-del-btn{background:none;border:none;color:#dc2626;font-size:.7rem;font-weight:600;cursor:pointer;padding:1px 6px;font-family:var(--f);}
+.msg-del-btn:hover{color:#b91c1c;text-decoration:underline;}
 .chat-photo-btn{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:9px 12px;cursor:pointer;font-size:.95rem;flex:0 0 auto;}
 .chat-photo-preview{display:none;align-items:center;gap:.5rem;padding:.4rem 0;}
 .chat-photo-preview img{height:40px;border-radius:4px;object-fit:cover;}
@@ -73,16 +80,21 @@
           <span class="chat-msg-name {% if msg.user == request.user %}chat-msg-name-me{% endif %}">{{ msg.user.get_full_name|default:msg.user.username }}</span>
           <span class="chat-msg-time">{{ msg.timestamp|date:"d M Y, H:i" }}</span>
         </div>
-        {% if msg.photo_data %}<a href="{% url 'team_message_photo' msg.pk %}" target="_blank"><img src="{% url 'team_message_photo' msg.pk %}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;{% if msg.text %}margin-bottom:.4rem;{% endif %}"></a>{% endif %}
-        {% if msg.text %}<div class="chat-msg-text {% if msg.user == request.user %}chat-msg-text-me{% endif %}">{{ msg.text }}</div>{% endif %}
+        {% if msg.is_deleted %}
+        <div class="msg-deleted">🚫 This message was deleted</div>
+        {% else %}
+        {% if msg.photo_data and msg.photo_mime == 'application/pdf' %}<a class="m-del-hide pdf-card" href="{% url 'team_message_photo' msg.pk %}" target="_blank" title="Open PDF">📄 <span>{{ msg.file_name|default:'PDF' }}</span></a>{% elif msg.photo_data %}<a class="m-del-hide" href="{% url 'team_message_photo' msg.pk %}" target="_blank"><img src="{% url 'team_message_photo' msg.pk %}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;{% if msg.text %}margin-bottom:.4rem;{% endif %}"></a>{% endif %}
+        {% if msg.text %}<div class="m-del-hide chat-msg-text {% if msg.user == request.user %}chat-msg-text-me{% endif %}">{{ msg.text }}</div>{% endif %}
         {% if msg.user != request.user %}
-        <div class="chat-react-row">
+        <div class="chat-react-row m-del-hide">
           <button type="button" class="react-btn{% if request.user in msg.thumbs_up_by.all %} reacted{% endif %}" onclick="toggleReaction({{ msg.pk }}, this)" title="{% if request.user in msg.thumbs_up_by.all %}Remove thumbs up{% else %}Thumbs up{% endif %}">👍{% if msg.thumbs_up_by.count %} {{ msg.thumbs_up_by.count }}{% endif %}</button>
         </div>
-        {% elif msg.thumbs_up_by.count %}
-        <div class="chat-react-row">
-          <span class="react-btn react-badge" title="Liked by {% for u in msg.thumbs_up_by.all %}{{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}{% endfor %}">👍 {{ msg.thumbs_up_by.count }}</span>
+        {% else %}
+        <div class="chat-react-row m-del-hide">
+          {% if msg.thumbs_up_by.count %}<span class="react-btn react-badge" title="Liked by {% for u in msg.thumbs_up_by.all %}{{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}{% endfor %}">👍 {{ msg.thumbs_up_by.count }}</span>{% endif %}
+          <button type="button" class="msg-del-btn" onclick="deleteMsg({{ msg.pk }})" title="Delete this message for everyone">🗑 Delete</button>
         </div>
+        {% endif %}
         {% endif %}
       </div>
     </div>
@@ -104,8 +116,8 @@
     <div class="chat-input-wrap">
       <div class="mention-dd" id="mention-dd"></div>
       <div class="chat-input-row">
-        <input type="file" accept="image/*" id="chat-photo-input" style="display:none;" onchange="handlePhotoSelect()">
-        <button type="button" class="chat-photo-btn" onclick="document.getElementById('chat-photo-input').click()" title="Attach a photo">📷</button>
+        <input type="file" accept="image/*,application/pdf" id="chat-photo-input" style="display:none;" onchange="handlePhotoSelect()">
+        <button type="button" class="chat-photo-btn" onclick="document.getElementById('chat-photo-input').click()" title="Attach a photo or PDF">📎</button>
         <input class="chat-input" id="chat-input" placeholder="Message the team…" autocomplete="off">
         <button class="chat-send" onclick="sendTeamMsg()">Send</button>
       </div>
@@ -135,11 +147,17 @@ setTimeout(scrollToBottom, 400);
 
 let selectedTeamPhoto = null;
 
+function escapeHtmlPdf(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function setPreview(file, imgEl, spanEl){
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  if(isPdf){ imgEl.style.display = 'none'; imgEl.removeAttribute('src'); spanEl.textContent = '📄 ' + file.name; }
+  else { imgEl.style.display = ''; imgEl.src = URL.createObjectURL(file); spanEl.textContent = 'Photo attached'; }
+}
 function handlePhotoSelect(){
   const file = document.getElementById('chat-photo-input').files[0];
   if(!file) return;
   selectedTeamPhoto = file;
-  document.getElementById('chat-photo-preview-img').src = URL.createObjectURL(file);
+  setPreview(file, document.getElementById('chat-photo-preview-img'), document.querySelector('#chat-photo-preview span'));
   document.getElementById('chat-photo-preview').style.display = 'flex';
 }
 
@@ -151,17 +169,18 @@ function clearPhotoSelect(){
 
 function photoHtml(m){
   if(!m.has_photo) return '';
-  return `<a href="${m.photo_url}" target="_blank"><img src="${m.photo_url}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;${m.text ? 'margin-bottom:.4rem;' : ''}"></a>`;
+  if(m.is_pdf) return `<a class="m-del-hide pdf-card" href="${m.photo_url}" target="_blank" title="Open PDF">📄 <span>${escapeHtmlPdf(m.file_name || 'PDF')}</span></a>`;
+  return `<a class="m-del-hide" href="${m.photo_url}" target="_blank"><img src="${m.photo_url}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;${m.text ? 'margin-bottom:.4rem;' : ''}"></a>`;
 }
 
 function reactionRowHtml(m){
   const count = m.thumbs_up_count || 0;
   if(m.is_me){
     if(!count) return '';
-    return `<div class="chat-react-row"><span class="react-btn react-badge" title="Liked by others">👍 ${count}</span></div>`;
+    return `<div class="chat-react-row m-del-hide"><span class="react-btn react-badge" title="Liked by others">👍 ${count}</span></div>`;
   }
   const active = !!m.i_reacted;
-  return `<div class="chat-react-row"><button type="button" class="react-btn${active ? ' reacted' : ''}" onclick="toggleReaction(${m.id}, this)" title="${active ? 'Remove thumbs up' : 'Thumbs up'}">👍${count > 0 ? ' ' + count : ''}</button></div>`;
+  return `<div class="chat-react-row m-del-hide"><button type="button" class="react-btn${active ? ' reacted' : ''}" onclick="toggleReaction(${m.id}, this)" title="${active ? 'Remove thumbs up' : 'Thumbs up'}">👍${count > 0 ? ' ' + count : ''}</button></div>`;
 }
 
 async function toggleReaction(pk, btn){
@@ -196,7 +215,11 @@ async function sendTeamMsg(){
       body:JSON.stringify({text})
     });
   }
-  if(!r.ok){ inp.value = text; return; }
+  if(!r.ok){
+    inp.value = text;
+    try{ const e = await r.json(); if(e.error) alert(e.error); }catch(_){}
+    return;
+  }
   const d = await r.json();
   if(!d.id){ inp.value = text; return; }
 
@@ -206,6 +229,7 @@ async function sendTeamMsg(){
 
   const div = document.createElement('div');
   div.className = 'chat-msg chat-msg-me';
+  div.id = `msg-${d.id}`;
   div.innerHTML = `
     <div class="chat-msg-av" style="background:${ME_COLOUR};">${d.initials}</div>
     <div class="chat-msg-body" style="text-align:right;">
@@ -213,10 +237,29 @@ async function sendTeamMsg(){
         <span class="chat-msg-name chat-msg-name-me">${d.user}</span>
         <span class="chat-msg-time">${d.timestamp}</span>
       </div>
-      ${photoHtml(d)}${d.text ? `<div class="chat-msg-text chat-msg-text-me">${d.text}</div>` : ''}
+      ${photoHtml(d)}${d.text ? `<div class="m-del-hide chat-msg-text chat-msg-text-me">${d.text}</div>` : ''}
+      <div class="chat-react-row m-del-hide"><button type="button" class="msg-del-btn" onclick="deleteMsg(${d.id})" title="Delete this message for everyone">🗑 Delete</button></div>
     </div>`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
+}
+
+function markDeleted(id){
+  const el = document.getElementById(`msg-${id}`);
+  if(!el || el.dataset.deleted) return;
+  el.dataset.deleted = '1';
+  const hide = el.querySelectorAll('.m-del-hide');
+  if(!hide.length) return;
+  const ph = document.createElement('div');
+  ph.className = 'msg-deleted';
+  ph.textContent = '🚫 This message was deleted';
+  hide[0].parentNode.insertBefore(ph, hide[0]);
+  hide.forEach(x=>x.remove());
+}
+async function deleteMsg(pk){
+  if(!confirm('Delete this message for everyone? The text/photo will be erased for good.')) return;
+  const r = await fetch(`/chat/${pk}/delete/`, { method:'POST', headers:{'X-CSRFToken':CSRF} });
+  if(r.ok) markDeleted(pk);
 }
 
 // Live-poll for new team chat messages every few seconds, so messages from
@@ -227,6 +270,7 @@ async function pollTeamChat(){
     const r = await fetch(`/chat/poll/?after=${LAST_TEAM_MSG_ID}`);
     if(!r.ok) return;
     const d = await r.json();
+    (d.deleted_ids || []).forEach(markDeleted);
     if(!d.messages.length) return;
     const box = document.getElementById('chat-messages');
     const noMsg = box.querySelector('div[style*="text-align:center"]');
@@ -245,8 +289,7 @@ async function pollTeamChat(){
             <span class="chat-msg-name">${m.user}</span>
             <span class="chat-msg-time">${m.timestamp}</span>
           </div>
-          ${photoHtml(m)}${m.text ? `<div class="chat-msg-text">${m.text}</div>` : ''}
-          ${reactionRowHtml(m)}
+          ${m.deleted ? '<div class="msg-deleted">🚫 This message was deleted</div>' : `${photoHtml(m)}${m.text ? `<div class="m-del-hide chat-msg-text">${m.text}</div>` : ''}${reactionRowHtml(m)}`}
         </div>`;
       box.appendChild(div);
     }

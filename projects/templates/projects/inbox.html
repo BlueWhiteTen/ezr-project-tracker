@@ -47,6 +47,13 @@
 .react-btn.reacted{background:var(--acc);border-color:var(--acc);color:#fff;}
 .react-btn.react-badge{cursor:default;background:var(--acc-bg);border-color:var(--acc-bdr);color:var(--acc);}
 .react-btn.react-badge:hover{background:var(--acc-bg);}
+.pdf-card{display:flex;align-items:center;gap:.4rem;padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:10px;background:var(--surf2);color:var(--txt);text-decoration:none;font-size:.8rem;max-width:240px;margin-bottom:.3rem;}
+.pdf-card:hover{border-color:var(--acc);}
+.pdf-card span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.team-me .pdf-card,.pdf-card.pdf-me{margin-left:auto;}
+.msg-deleted{display:inline-block;font-size:.82rem;font-style:italic;color:var(--mut);border:1px dashed var(--bdr);border-radius:14px;padding:.4rem .85rem;}
+.msg-del-btn{background:none;border:none;color:#dc2626;font-size:.7rem;font-weight:600;cursor:pointer;padding:1px 6px;font-family:var(--f);}
+.msg-del-btn:hover{color:#b91c1c;text-decoration:underline;}
 .msg-photo-btn{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:8px 12px;cursor:pointer;font-size:.95rem;flex:0 0 auto;}
 .msg-photo-preview{display:none;align-items:center;gap:.5rem;padding:.4rem 1.1rem;background:var(--surf2);border-top:1px solid var(--bdr);}
 .msg-photo-preview img{height:40px;border-radius:4px;object-fit:cover;}
@@ -128,7 +135,7 @@
         <div class="convo-av" style="background:{{ c.user.pk|avatar_colour }};">{% with n=c.user.get_full_name|default:c.user.username %}{% with p=n.split %}{{ p.0|slice:":1"|upper }}{% if p|length > 1 %}{{ p|last|slice:":1"|upper }}{% endif %}{% endwith %}{% endwith %}</div>
         <div style="flex:1;min-width:0;">
           <div class="convo-name">{{ c.user.get_full_name|default:c.user.username }}</div>
-          {% if c.last_msg %}<div class="convo-preview">{% if c.last_msg.sender == request.user %}You: {% endif %}{{ c.last_msg.text }}</div>{% endif %}
+          {% if c.last_msg %}<div class="convo-preview">{% if c.last_msg.sender == request.user %}You: {% endif %}{% if c.last_msg.is_deleted %}<em>Message deleted</em>{% elif c.last_msg.text %}{{ c.last_msg.text }}{% else %}📷 Photo{% endif %}</div>{% endif %}
         </div>
         {% if c.unread %}<div class="convo-unread">{{ c.unread }}</div>{% endif %}
       </a>
@@ -148,20 +155,26 @@
     </div>
     <div class="chat-messages" id="chat-messages">
       {% for msg in messages_qs %}
-      <div style="display:flex;flex-direction:{% if msg.sender == request.user %}row-reverse{% else %}row{% endif %};align-items:flex-end;gap:.5rem;">
+      <div id="pm-{{ msg.pk }}" style="display:flex;flex-direction:{% if msg.sender == request.user %}row-reverse{% else %}row{% endif %};align-items:flex-end;gap:.5rem;">
         <div class="chat-av" style="width:28px;height:28px;font-size:.58rem;flex-shrink:0;margin-bottom:4px;background:{{ msg.sender.pk|avatar_colour }};">{% with n=msg.sender.get_full_name|default:msg.sender.username %}{% with p=n.split %}{{ p.0|slice:":1"|upper }}{% if p|length > 1 %}{{ p|last|slice:":1"|upper }}{% endif %}{% endwith %}{% endwith %}</div>
         <div style="min-width:0;max-width:65%;">
-          {% if msg.photo_data %}<a href="{% url 'message_photo' msg.pk %}" target="_blank"><img src="{% url 'message_photo' msg.pk %}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;{% if msg.text %}margin-bottom:.3rem;{% endif %}"></a>{% endif %}
-          {% if msg.text %}<div class="msg-bubble {% if msg.sender == request.user %}msg-me{% else %}msg-them{% endif %}">{{ msg.text }}</div>{% endif %}
+          {% if msg.is_deleted %}
+          <div class="msg-deleted">🚫 This message was deleted</div>
+          <div class="msg-meta {% if msg.sender == request.user %}msg-meta-me{% endif %}">{{ msg.timestamp|date:"d M Y, H:i" }}</div>
+          {% else %}
+          {% if msg.photo_data and msg.photo_mime == 'application/pdf' %}<a class="m-del-hide pdf-card{% if msg.sender == request.user %} pdf-me{% endif %}" href="{% url 'message_photo' msg.pk %}" target="_blank" title="Open PDF">📄 <span>{{ msg.file_name|default:'PDF' }}</span></a>{% elif msg.photo_data %}<a class="m-del-hide" href="{% url 'message_photo' msg.pk %}" target="_blank"><img src="{% url 'message_photo' msg.pk %}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;{% if msg.text %}margin-bottom:.3rem;{% endif %}"></a>{% endif %}
+          {% if msg.text %}<div class="m-del-hide msg-bubble {% if msg.sender == request.user %}msg-me{% else %}msg-them{% endif %}">{{ msg.text }}</div>{% endif %}
           <div class="msg-meta {% if msg.sender == request.user %}msg-meta-me{% endif %}">{{ msg.timestamp|date:"d M Y, H:i" }}</div>
           {% if msg.sender != request.user %}
-          <div class="msg-react-row">
+          <div class="msg-react-row m-del-hide">
             <button type="button" class="react-btn{% if request.user in msg.thumbs_up_by.all %} reacted{% endif %}" onclick="toggleReaction({{ msg.pk }}, this)" title="{% if request.user in msg.thumbs_up_by.all %}Remove thumbs up{% else %}Thumbs up{% endif %}">👍{% if msg.thumbs_up_by.count %} {{ msg.thumbs_up_by.count }}{% endif %}</button>
           </div>
-          {% elif msg.thumbs_up_by.count %}
-          <div class="msg-react-row">
-            <span class="react-btn react-badge" title="Liked by {{ msg.recipient.get_full_name|default:msg.recipient.username }}">👍 {{ msg.thumbs_up_by.count }}</span>
+          {% else %}
+          <div class="msg-react-row m-del-hide" style="text-align:right;">
+            {% if msg.thumbs_up_by.count %}<span class="react-btn react-badge" title="Liked by {{ msg.recipient.get_full_name|default:msg.recipient.username }}">👍 {{ msg.thumbs_up_by.count }}</span>{% endif %}
+            <button type="button" class="msg-del-btn" onclick="deleteMsg({{ msg.pk }})" title="Delete this message for everyone">🗑 Delete</button>
           </div>
+          {% endif %}
           {% endif %}
         </div>
       </div>
@@ -175,8 +188,8 @@
       <button type="button" onclick="clearPhotoSelect()">✕</button>
     </div>
     <div class="chat-input-row">
-      <input type="file" accept="image/*" id="msg-photo-input" style="display:none;" onchange="handlePhotoSelect()">
-      <button type="button" class="msg-photo-btn" onclick="document.getElementById('msg-photo-input').click()" title="Attach a photo">📷</button>
+      <input type="file" accept="image/*,application/pdf" id="msg-photo-input" style="display:none;" onchange="handlePhotoSelect()">
+      <button type="button" class="msg-photo-btn" onclick="document.getElementById('msg-photo-input').click()" title="Attach a photo or PDF">📎</button>
       <div class="chat-input-wrap">
         <input class="chat-input" id="chat-input" placeholder="Type a message… (# to tag a project)" autocomplete="off" style="width:100%;box-sizing:border-box;">
         <div class="mention-dd" id="mention-dd"></div>
@@ -230,11 +243,17 @@ const CSRF = '{{ csrf_token }}';
 
 let selectedMsgPhoto = null;
 
+function escapeHtmlPdf(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function setPreview(file, imgEl, spanEl){
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  if(isPdf){ imgEl.style.display = 'none'; imgEl.removeAttribute('src'); spanEl.textContent = '📄 ' + file.name; }
+  else { imgEl.style.display = ''; imgEl.src = URL.createObjectURL(file); spanEl.textContent = 'Photo attached'; }
+}
 function handlePhotoSelect(){
   const file = document.getElementById('msg-photo-input').files[0];
   if(!file) return;
   selectedMsgPhoto = file;
-  document.getElementById('msg-photo-preview-img').src = URL.createObjectURL(file);
+  setPreview(file, document.getElementById('msg-photo-preview-img'), document.querySelector('#msg-photo-preview span'));
   document.getElementById('msg-photo-preview').style.display = 'flex';
 }
 
@@ -246,17 +265,36 @@ function clearPhotoSelect(){
 
 function photoHtml(m){
   if(!m.has_photo) return '';
-  return `<a href="${m.photo_url}" target="_blank"><img src="${m.photo_url}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;${m.text ? 'margin-bottom:.3rem;' : ''}"></a>`;
+  if(m.is_pdf) return `<a class="m-del-hide pdf-card${m.is_me ? ' pdf-me' : ''}" href="${m.photo_url}" target="_blank" title="Open PDF">📄 <span>${escapeHtmlPdf(m.file_name || 'PDF')}</span></a>`;
+  return `<a class="m-del-hide" href="${m.photo_url}" target="_blank"><img src="${m.photo_url}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;${m.text ? 'margin-bottom:.3rem;' : ''}"></a>`;
 }
 
 function reactionRowHtml(m){
   const count = m.thumbs_up_count || 0;
   if(m.is_me){
     if(!count) return '';
-    return `<div class="msg-react-row"><span class="react-btn react-badge" title="Liked by ${m.sender || 'them'}">👍 ${count}</span></div>`;
+    return `<div class="msg-react-row m-del-hide"><span class="react-btn react-badge" title="Liked by ${m.sender || 'them'}">👍 ${count}</span></div>`;
   }
   const active = !!m.i_reacted;
-  return `<div class="msg-react-row"><button type="button" class="react-btn${active ? ' reacted' : ''}" onclick="toggleReaction(${m.id}, this)" title="${active ? 'Remove thumbs up' : 'Thumbs up'}">👍${count > 0 ? ' ' + count : ''}</button></div>`;
+  return `<div class="msg-react-row m-del-hide"><button type="button" class="react-btn${active ? ' reacted' : ''}" onclick="toggleReaction(${m.id}, this)" title="${active ? 'Remove thumbs up' : 'Thumbs up'}">👍${count > 0 ? ' ' + count : ''}</button></div>`;
+}
+
+function markDeleted(id){
+  const el = document.getElementById(`pm-${id}`);
+  if(!el || el.dataset.deleted) return;
+  el.dataset.deleted = '1';
+  const hide = el.querySelectorAll('.m-del-hide');
+  if(!hide.length) return;
+  const ph = document.createElement('div');
+  ph.className = 'msg-deleted';
+  ph.textContent = '🚫 This message was deleted';
+  hide[0].parentNode.insertBefore(ph, hide[0]);
+  hide.forEach(x=>x.remove());
+}
+async function deleteMsg(pk){
+  if(!confirm('Delete this message for everyone? The text/photo will be erased for good.')) return;
+  const r = await fetch(`/messages/${pk}/delete/`, { method:'POST', headers:{'X-CSRFToken':CSRF} });
+  if(r.ok) markDeleted(pk);
 }
 
 async function toggleReaction(pk, btn){
@@ -288,15 +326,16 @@ async function sendMsg(){
     });
   }
   const d = await r.json();
-  if(d.error) return;
+  if(d.error){ alert(d.error); return; }
   inp.value='';
   const box = document.getElementById('chat-messages');
   const div = document.createElement('div');
+  div.id = `pm-${d.id}`;
   div.style.cssText = 'display:flex;flex-direction:row-reverse;align-items:flex-end;gap:.5rem;';
   {% with n=request.user.get_full_name|default:request.user.username %}{% with p=n.split %}const myInitials = '{{ p.0|slice:":1"|upper }}{% if p|length > 1 %}{{ p|last|slice:":1"|upper }}{% endif %}'{% endwith %}{% endwith %};
   const AV_COLOURS = ['#d4700a','#2563eb','#16a34a','#9333ea','#dc2626','#0891b2','#ca8a04','#be185d'];
   const myColour = window.userColour ? window.userColour({{ request.user.pk }}) : AV_COLOURS[{{ request.user.pk }} % 8];
-  div.innerHTML = `<div class="chat-av" style="width:28px;height:28px;font-size:.58rem;flex-shrink:0;margin-bottom:4px;background:${myColour};">${myInitials}</div><div>${photoHtml(d)}${d.text ? `<div class="msg-bubble msg-me">${d.text}</div>` : ''}<div class="msg-meta msg-meta-me">${d.timestamp}</div></div>`;
+  div.innerHTML = `<div class="chat-av" style="width:28px;height:28px;font-size:.58rem;flex-shrink:0;margin-bottom:4px;background:${myColour};">${myInitials}</div><div>${photoHtml(d)}${d.text ? `<div class="m-del-hide msg-bubble msg-me">${d.text}</div>` : ''}<div class="msg-meta msg-meta-me">${d.timestamp}</div><div class="msg-react-row m-del-hide" style="text-align:right;"><button type="button" class="msg-del-btn" onclick="deleteMsg(${d.id})" title="Delete this message for everyone">🗑 Delete</button></div></div>`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
 }
@@ -366,6 +405,7 @@ async function pollConversation(){
     const r = await fetch(`/messages/${ACTIVE_USER_ID}/poll/?after=${LAST_MSG_ID}`);
     if(!r.ok) return;
     const d = await r.json();
+    (d.deleted_ids || []).forEach(markDeleted);
     if(!d.messages.length) return;
     const box = document.getElementById('chat-messages');
     for(const m of d.messages){
@@ -375,8 +415,9 @@ async function pollConversation(){
       const initials = parts.length > 1 ? (parts[0][0] + parts[parts.length-1][0]).toUpperCase() : parts[0][0].toUpperCase();
       const colour = window.userColour ? window.userColour({{ active_user.pk }}) : AV_COLOURS_POLL[{{ active_user.pk }} % 8];
       const div = document.createElement('div');
+      div.id = `pm-${m.id}`;
       div.style.cssText = 'display:flex;align-items:flex-end;gap:.5rem;';
-      div.innerHTML = `<div class="chat-av" style="width:28px;height:28px;font-size:.58rem;flex-shrink:0;margin-bottom:4px;background:${colour};">${initials}</div><div>${photoHtml(m)}${m.text ? `<div class="msg-bubble msg-them">${m.text}</div>` : ''}<div class="msg-meta">${m.timestamp}</div>${reactionRowHtml(m)}</div>`;
+      div.innerHTML = `<div class="chat-av" style="width:28px;height:28px;font-size:.58rem;flex-shrink:0;margin-bottom:4px;background:${colour};">${initials}</div><div>${m.deleted ? '<div class="msg-deleted">🚫 This message was deleted</div>' : `${photoHtml(m)}${m.text ? `<div class="m-del-hide msg-bubble msg-them">${m.text}</div>` : ''}`}<div class="msg-meta">${m.timestamp}</div>${m.deleted ? '' : reactionRowHtml(m)}</div>`;
       box.appendChild(div);
     }
     box.scrollTop = box.scrollHeight;

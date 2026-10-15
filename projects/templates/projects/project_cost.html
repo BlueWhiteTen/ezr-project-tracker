@@ -79,6 +79,12 @@
 /* Material price settings */
 .mat-setting{display:flex;align-items:center;gap:.6rem;padding:.4rem 0;}
 .mat-setting label{font-size:.82rem;color:var(--txt2);min-width:90px;}
+.draft-banner{display:none;align-items:center;gap:.8rem;flex-wrap:wrap;background:#fffbeb;border:1px solid #f59e0b;color:#92400e;border-radius:var(--rad);padding:.6rem .9rem;margin-bottom:1rem;font-size:.86rem;position:sticky;top:0;z-index:30;}
+.draft-banner.show{display:flex;}
+.draft-banner.saved{background:#f0fdf4;border-color:#16a34a;color:#166534;}
+.draft-banner .grow{flex:1;min-width:200px;}
+tr.repriced{background:rgba(245,158,11,.10);}
+.was-price{font-size:.7rem;color:#b45309;font-family:var(--fm);white-space:nowrap;}
 .mat-input{width:80px;padding:3px 7px;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--surf);color:var(--txt);font-size:.85rem;text-align:right;}
 {% endblock %}
 
@@ -116,15 +122,21 @@
     <button class="btn btn-primary" onclick="generatePickingList()" style="background:#0f766e;box-shadow:none;">📦 Generate Picking List</button>
     <button class="btn btn-ghost" onclick="refreshCostingPrices({{ cost.pk }})" title="Force this costing option's frame/shelf/trolley lines to today's prices">🔄 Refresh to Current Prices</button>
     <a href="{% url 'picking_list_view' project.pk %}" class="btn btn-ghost">→ Go to Picking List</a>
-    <button class="btn btn-primary" onclick="saveHeader(false)" style="background:#7c3aed;">Save</button>
+    <button class="btn btn-primary" id="save-btn" onclick="commitDraft()" style="background:#7c3aed;">Save</button>
   </div>
+</div>
+
+<div class="draft-banner" id="draft-banner" role="status">
+  <span class="grow" id="draft-banner-text"></span>
+  <button type="button" class="btn btn-primary btn-sm" id="banner-save" onclick="commitDraft()" style="background:#7c3aed;">Save now</button>
+  <button type="button" class="btn btn-ghost btn-sm" id="banner-discard" onclick="discardDraft()">Discard changes</button>
 </div>
 
 <!-- Option tabs -->
 <div style="display:flex;align-items:center;gap:0;margin-bottom:1rem;border-bottom:2px solid var(--bdr);">
   {% for c in all_costs %}
   <a href="{% url 'project_cost_option' project.pk c.pk %}"
-    style="padding:.55rem 1.1rem;font-size:.875rem;font-weight:{% if c.pk == cost.pk %}600{% else %}400{% endif %};color:{% if c.pk == cost.pk %}var(--acc){% else %}var(--mut){% endif %};text-decoration:none;border-bottom:{% if c.pk == cost.pk %}2px solid var(--acc){% else %}2px solid transparent{% endif %};margin-bottom:-2px;display:flex;align-items:center;gap:.4rem;white-space:nowrap;">
+    style="padding:.55rem 1.1rem;font-size:.875rem;font-weight:{% if c.pk == cur_pk %}600{% else %}400{% endif %};color:{% if c.pk == cur_pk %}var(--acc){% else %}var(--mut){% endif %};text-decoration:none;border-bottom:{% if c.pk == cur_pk %}2px solid var(--acc){% else %}2px solid transparent{% endif %};margin-bottom:-2px;display:flex;align-items:center;gap:.4rem;white-space:nowrap;">
     {% if c.is_accepted %}<span style="color:#16a34a;font-size:.8rem;">✓</span>{% endif %}
     <span class="tab-label-{{ c.pk }}">{{ c.label }}</span>
     {% for row in cost_comparison %}{% if row.pk == c.pk and row.flags %}<span title="{{ row.flags|join:' | ' }}" style="color:#d97706;font-size:.8rem;">⚠</span>{% endif %}{% endfor %}
@@ -149,9 +161,9 @@
   </thead>
   <tbody>
     {% for row in cost_comparison %}
-    <tr style="border-top:1px solid var(--bdr);{% if row.pk == cost.pk %}background:var(--bg);{% endif %}">
+    <tr style="border-top:1px solid var(--bdr);{% if row.pk == cur_pk %}background:var(--bg);{% endif %}">
       <td style="padding:.5rem .8rem;">
-        <a href="{% url 'project_cost_option' project.pk row.pk %}" style="color:var(--txt);text-decoration:none;font-weight:{% if row.pk == cost.pk %}600{% else %}400{% endif %};">{{ row.label }}</a>
+        <a href="{% url 'project_cost_option' project.pk row.pk %}" style="color:var(--txt);text-decoration:none;font-weight:{% if row.pk == cur_pk %}600{% else %}400{% endif %};">{{ row.label }}</a>
         {% if row.is_accepted %}<span style="color:#16a34a;font-size:.78rem;margin-left:.3rem;">✓ Accepted</span>{% endif %}
       </td>
       <td style="text-align:right;padding:.5rem .8rem;font-weight:600;">£{{ row.sell_price|floatformat:2 }}</td>
@@ -168,23 +180,23 @@
 
 <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:1rem;">
   <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.875rem;font-weight:500;">
-    <input type="checkbox" id="accepted-checkbox" {% if cost.is_accepted %}checked{% endif %} onchange="toggleAccepted()" style="width:16px;height:16px;accent-color:#16a34a;">
-    <span style="color:{% if cost.is_accepted %}#16a34a{% else %}var(--mut){% endif %};" id="accepted-label">
-      {% if cost.is_accepted %}✓ Approved option{% else %}Mark as approved option{% endif %}
+    <input type="checkbox" id="accepted-checkbox" {% if real_cost.is_accepted %}checked{% endif %} onchange="toggleAccepted()" style="width:16px;height:16px;accent-color:#16a34a;">
+    <span style="color:{% if real_cost.is_accepted %}#16a34a{% else %}var(--mut){% endif %};" id="accepted-label">
+      {% if real_cost.is_accepted %}✓ Approved option{% else %}Mark as approved option{% endif %}
     </span>
   </label>
-  {% if cost.accepted_online %}
+  {% if real_cost.accepted_online %}
   <div style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;color:#166534;background:#f0fdf4;border:1px solid rgba(22,101,52,.2);border-radius:6px;padding:.3rem .7rem;">
-    ✓ Accepted online by <strong>{{ cost.accepted_by_name }}</strong> on {{ cost.accepted_online_at|date:"d M Y, H:i" }}{% if cost.accepted_ip %} from {{ cost.accepted_ip }}{% endif %}
+    ✓ Accepted online by <strong>{{ real_cost.accepted_by_name }}</strong> on {{ real_cost.accepted_online_at|date:"d M Y, H:i" }}{% if real_cost.accepted_ip %} from {{ real_cost.accepted_ip }}{% endif %}
   </div>
   {% endif %}
   {% if all_costs|length > 1 %}
-  <form method="post" action="{% url 'cost_option_delete' project.pk cost.pk %}" onsubmit="return confirm('Delete {{ cost.label }}? This cannot be undone.');" style="display:inline;">
+  <form method="post" action="{% url 'cost_option_delete' project.pk real_cost.pk %}" onsubmit="return confirm('Delete {{ real_cost.label|escapejs }}? This cannot be undone.');" style="display:inline;">
     {% csrf_token %}
-    <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--red);font-size:.78rem;">🗑 Delete {{ cost.label }}</button>
+    <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--red);font-size:.78rem;">🗑 Delete {{ real_cost.label }}</button>
   </form>
   {% endif %}
-  <button class="btn btn-ghost btn-sm" style="font-size:.78rem;" onclick="renameOption({{ cost.pk }}, '{{ cost.label|escapejs }}')">✏ Rename</button>
+  <button class="btn btn-ghost btn-sm" style="font-size:.78rem;" onclick="renameOption({{ real_cost.pk }}, '{{ real_cost.label|escapejs }}')">✏ Rename</button>
 </div>
 
 <div class="cost-grid">
@@ -205,7 +217,7 @@
       </tr></thead>
       <tbody id="cost-tbody">
       {% for line in lines %}
-      <tr id="cl-{{ line.pk }}">
+      <tr id="cl-{{ line.pk }}"{% if line.was_price is not None %} class="repriced"{% endif %}>
         <td><span class="line-type lt-{{ line.line_type }}">{{ line.get_line_type_display }}</span></td>
         <td>{{ line.description }}</td>
         <td style="text-align:center;">
@@ -243,7 +255,7 @@
             </div>
           </div>
           {% else %}
-          <span id="uc-{{ line.pk }}" style="font-family:var(--fm);font-size:.82rem;color:var(--mut2);">£{{ line.unit_cost|floatformat:2 }}</span>
+          <span id="uc-{{ line.pk }}" style="font-family:var(--fm);font-size:.82rem;color:var(--mut2);">£{{ line.unit_cost|floatformat:2 }}</span>{% if line.was_price is not None %}<div class="was-price" title="Saved price - the new price is only stored when you click Save">was £{{ line.was_price|floatformat:2 }}</div>{% endif %}
           {% endif %}
         </td>
         <td style="text-align:right;font-weight:600;font-family:var(--fm);" id="total-{{ line.pk }}">
@@ -721,13 +733,88 @@
 <script>
 const CSRF = '{{ csrf_token }}';
 const PROJ_PK = {{ project.pk }};
-const COST_PK = {{ cost.pk }};
+const COST_PK = {{ cost.pk }};            // the working copy this page edits
+const REAL_COST_PK = {{ real_cost.pk }};   // the saved option (approve / rename / tabs)
+const PRICE_CHANGES = {{ price_changes }};
+
+// ── Unsaved-changes tracking ───────────────────────────────────────────────────
+// Everything on this page edits a working copy; the saved costing only changes on Save.
+let dirty = {{ has_unsaved|yesno:"true,false" }};
+let skipUnload = false;
+let bannerTimer = null;
+const _fetch = window.fetch.bind(window);
+const DIRTY_URL = /\/cost-line\/\d+\/(update|delete)\/|\/cost\/(add-line|wall-fixings|extras|accessory-toggle|accessory-override)\/|\/refresh-prices\//;
+window.fetch = function(url, opts){
+  if(opts && opts.method === 'POST' && DIRTY_URL.test(String(url))) markDirty();
+  return _fetch(url, opts);
+};
+function markDirty(){ dirty = true; renderBanner(); }
+function renderBanner(){
+  const b = document.getElementById('draft-banner');
+  if(!b) return;
+  clearTimeout(bannerTimer);
+  b.classList.remove('saved');
+  if(dirty){
+    let msg = '● You have unsaved changes. They are not stored until you click Save.';
+    if(PRICE_CHANGES > 0) msg += ` ${PRICE_CHANGES} price${PRICE_CHANGES>1?'s were':' was'} updated to today's prices (marked "was £…"). Leave without saving to keep the old price${PRICE_CHANGES>1?'s':''}.`;
+    document.getElementById('draft-banner-text').textContent = msg;
+    document.getElementById('banner-save').style.display = '';
+    document.getElementById('banner-discard').style.display = '';
+    b.classList.add('show');
+  } else {
+    b.classList.remove('show');
+  }
+}
+function flashSaved(){
+  const b = document.getElementById('draft-banner');
+  document.getElementById('draft-banner-text').textContent = '✓ Saved';
+  document.getElementById('banner-save').style.display = 'none';
+  document.getElementById('banner-discard').style.display = 'none';
+  b.classList.add('show', 'saved');
+  bannerTimer = setTimeout(() => { b.classList.remove('show', 'saved'); }, 2500);
+}
+function reloadDraft(){ skipUnload = true; location.href = location.pathname + '?draft=' + COST_PK; }
+function discardDraft(){
+  if(!confirm('Discard all unsaved changes on this page?')) return;
+  skipUnload = true; location.href = location.pathname;
+}
+window.addEventListener('beforeunload', e => {
+  if(dirty && !skipUnload){ e.preventDefault(); e.returnValue = ''; }
+});
+async function commitDraft(){
+  const btn = document.getElementById('save-btn');
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try{
+    await saveHeader(true);
+    const r = await _fetch(`/project/${PROJ_PK}/cost/${COST_PK}/commit/`, {method:'POST', headers:{'X-CSRFToken': CSRF}});
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error || 'Save failed');
+    dirty = false;
+    hdrBaseline = hdrSnapshot();
+    document.querySelectorAll('.was-price').forEach(el => el.remove());
+    document.querySelectorAll('tr.repriced').forEach(el => el.classList.remove('repriced'));
+    flashSaved();
+    return true;
+  }catch(e){
+    alert('Could not save the costing: ' + e.message);
+    return false;
+  }finally{
+    btn.disabled = false; btn.textContent = label;
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  renderBanner();
+  document.querySelectorAll('input[id^="qty-"]').forEach(i => { if(/^qty-\d+$/.test(i.id)) lineLast[i.id.slice(4) + ':quantity'] = parseFloat(i.value); });
+  document.querySelectorAll('input[id^="uc-input-"]').forEach(i => { lineLast[i.id.slice(9) + ':unit_cost'] = parseFloat(i.value); });
+});
+const lineLast = {};
 
 // ── Option tab management ──────────────────────────────────────────────────────
 async function toggleAccepted(){
   const cb = document.getElementById('accepted-checkbox');
   const label = document.getElementById('accepted-label');
-  const r = await fetch(`/project/${PROJ_PK}/cost/${COST_PK}/accept/`, {
+  const r = await fetch(`/project/${PROJ_PK}/cost/${REAL_COST_PK}/accept/`, {
     method: 'POST', headers: {'X-CSRFToken': CSRF}
   });
   const d = await r.json();
@@ -1052,7 +1139,7 @@ async function submitMulti(type){
     payload.rows=rows.map(r=>({length:r.length,quantity:r.quantity}));
   }
   await fetch(`/project/${PROJ_PK}/cost/add-line/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({...payload, cost_pk: COST_PK})});
-  location.reload();
+  reloadDraft();
 }
 
 function updateBeamWidths(sel){
@@ -1074,7 +1161,7 @@ function previewFramePrice(){
 // ── Single-line adds (stock, ns, hanging etc.) ────────────────────────────────
 async function postLine(data){
   await fetch(`/project/${PROJ_PK}/cost/add-line/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({...data, cost_pk: COST_PK})});
-  location.reload();
+  reloadDraft();
 }
 
 async function addStock(){
@@ -1180,15 +1267,20 @@ async function addSimpleExtra(key, label){
 }
 
 // ── Wall fixings ─────────────────────────────────────────────────────────────
+let _wallLast = parseInt(document.getElementById('wall-fixings-input')?.value) || 0;
 async function saveWallFixings(val){
+  if((parseInt(val)||0) === _wallLast) return;
   await fetch(`/project/${PROJ_PK}/cost/wall-fixings/`, {
     method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
     body: JSON.stringify({wall_fixings: parseInt(val)||0, cost_pk: COST_PK})
   });
-  location.reload();
+  reloadDraft();
 }
 
+let _extrasLast = (parseInt(document.getElementById('btb-input')?.value)||0) + ':' + (parseInt(document.getElementById('mob-base-input')?.value)||0);
 async function saveExtras(){
+  const _now = (parseInt(document.getElementById('btb-input').value)||0) + ':' + (parseInt(document.getElementById('mob-base-input').value)||0);
+  if(_now === _extrasLast) return;
   await fetch(`/project/${PROJ_PK}/cost/extras/`, {
     method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
     body: JSON.stringify({
@@ -1197,7 +1289,7 @@ async function saveExtras(){
       cost_pk: COST_PK,
     })
   });
-  location.reload();
+  reloadDraft();
 }
 
 // ── Accessories ──────────────────────────────────────────────────────────────
@@ -1256,9 +1348,11 @@ async function accCustomQty(accId, val){
 
 // ── Line update / delete ──────────────────────────────────────────────────────
 async function updateLine(pk, field, val){
+  const k = pk + ':' + field, nv = parseFloat(val);
+  if((k in lineLast) && lineLast[k] === nv) return;   // tabbed through without changing it
   const r=await fetch(`/cost-line/${pk}/update/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({[field]:val})});
   const d=await r.json();
-  if(d.ok){ document.getElementById(`total-${pk}`).textContent='£'+parseFloat(d.line_total).toFixed(2); recalcFromDOM(); }
+  if(d.ok){ lineLast[k] = nv; document.getElementById(`total-${pk}`).textContent='£'+parseFloat(d.line_total).toFixed(2); recalcFromDOM(); }
 }
 function stepValue(pk, field, direction=1){
   const inputId = field === 'quantity' ? `qty-${pk}` : `uc-input-${pk}`;
@@ -1372,22 +1466,28 @@ function recalcWith(buying){
 
 // ── Save / material prices ────────────────────────────────────────────────────
 async function saveAndPrint(){
-  await saveHeader(true);
+  if(!(await commitDraft())) return;
   window.open('{% url "project_cost_print" project.pk %}','_blank');
 }
+function hdrSnapshot(){
+  return JSON.stringify([
+    parseFloat(document.getElementById('markup-pct').value)||0,
+    parseFloat(document.getElementById('labour-val').value)||0,
+    parseFloat(document.getElementById('delivery-val').value)||0,
+    document.getElementById('cost-notes').value,
+  ]);
+}
+let hdrBaseline = hdrSnapshot();
 async function saveHeader(silent=false){
-  await fetch(`/project/${PROJ_PK}/cost/save/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({
+  const snap = hdrSnapshot();
+  if(snap !== hdrBaseline){ hdrBaseline = snap; markDirty(); }
+  await _fetch(`/project/${PROJ_PK}/cost/save/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({
     markup:document.getElementById('markup-pct').value,
     labour:document.getElementById('labour-val').value,
     delivery:document.getElementById('delivery-val').value,
     notes:document.getElementById('cost-notes').value,
     cost_pk:COST_PK,
   })});
-  if(!silent){
-    const btn=document.querySelector('.cost-hdr .btn-primary');
-    const orig=btn.textContent; btn.textContent='✓ Saved';
-    setTimeout(()=>btn.textContent=orig,1500);
-  }
 }
 
 // ── Product search (stock tab) ────────────────────────────────────────────────
@@ -1465,7 +1565,7 @@ let gplTemplatesUsed = [];
 async function refreshCostingPrices(costPk){
   const ok = confirm(
     "This will update Frame, Shelf, and Longspan line prices on this costing option to today's current prices.\n\n" +
-    "Any prices already sent to the customer may change. This can't be undone.\n\n" +
+    "The new prices are only stored when you click Save.\n\n" +
     "Continue?"
   );
   if(!ok) return;
@@ -1475,13 +1575,17 @@ async function refreshCostingPrices(costPk){
   });
   const d = await r.json();
   if(d.ok){
-    alert(`Updated ${d.updated} line(s) to current prices.`);
-    location.reload();
+    alert(`Updated ${d.updated} line(s) to current prices. Click Save to keep them.`);
+    reloadDraft();
   } else {
     alert(d.error || 'Failed to refresh prices.');
   }
 }
 async function generatePickingList(){
+  if(dirty){
+    if(!confirm('You have unsaved changes.\n\nThe picking list is built from the saved costing. Save your changes now and continue?')) return;
+    if(!(await commitDraft())) return;
+  }
   const modal = document.getElementById('gpl-modal');
   const overlay = document.getElementById('gpl-overlay');
   modal.style.display = 'flex';

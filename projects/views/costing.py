@@ -32,7 +32,7 @@ def project_cost_refresh_prices(request, pk, cost_pk):
     of project status — the deliberate escape hatch for an old costing that
     genuinely needs re-pricing (e.g. re-quoting a stale enquiry)."""
     project = get_object_or_404(Project, pk=pk)
-    cost = get_object_or_404(ProjectCost, pk=cost_pk, project=project)
+    cost = get_object_or_404(ProjectCost.all_objects, pk=cost_pk, project=project)
     from .price_list import ls_calc_frame_price, ls_calc_shelf_price, ls_calc_trolley_price
     mat = {m.name: float(m.price_per_sqft) for m in MaterialPrice.objects.all()}
     chipboard = mat.get('chipboard', 0.50)
@@ -90,10 +90,11 @@ def project_cost_refresh_prices(request, pk, cost_pk):
                 except (ValueError, TypeError):
                     pass
 
-    ProjectLog.objects.create(
-        project=project, user=request.user,
-        field='Costing prices refreshed', old_value='', new_value=f'{cost.label}: {updated} line(s)',
-    )
+    if not cost.draft_of_id:
+        ProjectLog.objects.create(
+            project=project, user=request.user,
+            field='Costing prices refreshed', old_value='', new_value=f'{cost.label}: {updated} line(s)',
+        )
     return JsonResponse({'ok': True, 'updated': updated})
 
 
@@ -103,12 +104,23 @@ def project_cost(request, pk, cost_pk=None):
     # Get or create the first cost option
     all_costs = list(project.costs.order_by('order', 'id'))
     if not all_costs:
-        cost = ProjectCost.objects.create(project=project, label='Option A', order=0)
-        all_costs = [cost]
+        real_cost = ProjectCost.objects.create(project=project, label='Option A', order=0)
+        all_costs = [real_cost]
     if cost_pk:
-        cost = get_object_or_404(ProjectCost, pk=cost_pk, project=project)
+        real_cost = get_object_or_404(ProjectCost, pk=cost_pk, project=project)
     else:
-        cost = all_costs[0]
+        real_cost = all_costs[0]
+
+    # The page edits a throw-away working copy (draft) of the option. Nothing reaches the
+    # saved costing until the user clicks Save, so leaving without saving brings back the
+    # original numbers next time. ?draft=<id> re-opens the same working copy after a reload.
+    _delete_stale_drafts()
+    cost = None
+    _dpk = request.GET.get('draft', '')
+    if _dpk.isdigit():
+        cost = ProjectCost.all_objects.filter(pk=int(_dpk), draft_of=real_cost).first()
+    if cost is None:
+        cost = _make_draft(real_cost, request.user)
     lines = cost.lines.select_related('product').all()
     mat = {m.name: float(m.price_per_sqft) for m in MaterialPrice.objects.all()}
     chipboard = mat.get('chipboard', 0.50)
@@ -170,7 +182,20 @@ def project_cost(request, pk, cost_pk=None):
                     line.size = f'{btype} x {w}'
                 line.save()
 
-    lines = cost.lines.select_related('product').all()
+    lines = list(cost.lines.select_related('product').all())
+
+    # Prices that differ from the SAVED costing (e.g. automatic repricing). They are shown
+    # here with a "was £x" tag but are only stored if the user clicks Save.
+    saved_prices = {l.pk: float(l.unit_cost) for l in real_cost.lines.all()}
+    price_changes = 0
+    for l in lines:
+        old = saved_prices.get(l.source_line_id) if l.source_line_id else None
+        l.was_price = None
+        if old is not None and abs(old - float(l.unit_cost)) > 0.00005:
+            l.was_price = old
+            price_changes += 1
+    has_unsaved = _draft_differs(real_cost, cost)
+
     buying_total = sum(l.line_total for l in lines)
 
     # Count total uprights from frame lines (must be before accessory calc)
@@ -271,23 +296,25 @@ def project_cost(request, pk, cost_pk=None):
     # drift from how price and margin are calculated anywhere else.
     cost_comparison = []
     for c in all_costs:
-        bd = _calc_cost_breakdown(c)
+        bd = _calc_cost_breakdown(cost if c.pk == real_cost.pk else c)
         cost_comparison.append({
             'pk': c.pk,
             'label': c.label,
             'sell_price': bd['sell_price'],
             'margin_pct': bd['margin_pct'],
             'is_accepted': c.is_accepted,
-            'flags': _calc_cost_flags(c, bd),
+            'flags': _calc_cost_flags(cost if c.pk == real_cost.pk else c, bd),
         })
-    current_flags = next((row['flags'] for row in cost_comparison if row['pk'] == cost.pk), [])
+    current_flags = next((row['flags'] for row in cost_comparison if row['pk'] == real_cost.pk), [])
 
     return render(request, 'projects/project_cost.html', {
         'project': project, 'cost': cost, 'lines': lines,
+        'real_cost': real_cost, 'cur_pk': real_cost.pk,
+        'price_changes': price_changes, 'has_unsaved': has_unsaved,
         'all_costs': all_costs,
         'cost_comparison': cost_comparison,
         'current_flags': current_flags,
-        'has_quote': hasattr(cost, 'quote') and cost.quote is not None,
+        'has_quote': hasattr(real_cost, 'quote') and real_cost.quote is not None,
         'picking_templates': PickingTemplate.objects.all().order_by('name'),
         'picking_ref': picking_ref_enriched,
         'accessories': acc_data,
@@ -322,6 +349,127 @@ def project_cost(request, pk, cost_pk=None):
 
 
 
+# ── Working copies ("drafts") of a costing option ────────────────────────────
+
+_COST_HEADER_FIELDS = ('markup', 'labour', 'delivery', 'notes', 'wall_fixings',
+                       'back_to_back_fixings', 'mobile_base_sets')
+
+
+def _delete_stale_drafts():
+    """Working copies nobody has touched for a week are abandoned page visits - tidy them away."""
+    cutoff = timezone.now() - timedelta(days=7)
+    ProjectCost.all_objects.filter(draft_of__isnull=False, updated_at__lt=cutoff).delete()
+
+
+def _make_draft(real, user):
+    """Create a working copy of a saved costing option (header, lines, accessories, overrides)."""
+    draft = ProjectCost.all_objects.create(
+        project=real.project, draft_of=real, label=real.label, order=real.order,
+        is_accepted=real.is_accepted, updated_by=user,
+        **{f: getattr(real, f) for f in _COST_HEADER_FIELDS},
+    )
+    draft.accessories.set(real.accessories.all())
+    AccessoryOverride.objects.bulk_create([
+        AccessoryOverride(cost=draft, accessory_id=o.accessory_id, override_qty=o.override_qty)
+        for o in real.acc_overrides.all()
+    ])
+    ProjectCostLine.objects.bulk_create([
+        ProjectCostLine(
+            cost=draft, source_line_id=l.pk, line_type=l.line_type, product_line=l.product_line,
+            description=l.description, size=l.size, melamine=l.melamine, no_deck=l.no_deck,
+            product_id=l.product_id, picking_template_id=l.picking_template_id,
+            quantity=l.quantity, unit_cost=l.unit_cost, sort_order=l.sort_order,
+        )
+        for l in real.lines.all()
+    ])
+    return draft
+
+
+def _line_sig(l):
+    return (l.line_type, l.product_line, l.description, l.size, bool(l.melamine), bool(l.no_deck),
+            l.product_id, l.picking_template_id, round(float(l.quantity), 2),
+            round(float(l.unit_cost), 4), l.sort_order)
+
+
+def _draft_differs(real, draft):
+    """True if the working copy holds anything that is not in the saved option."""
+    for f in _COST_HEADER_FIELDS:
+        a, b = getattr(real, f), getattr(draft, f)
+        if (round(float(a), 4) != round(float(b), 4)) if f in ('markup', 'labour', 'delivery') else (a != b):
+            return True
+    if set(real.accessories.values_list('id', flat=True)) != set(draft.accessories.values_list('id', flat=True)):
+        return True
+    ro = {o.accessory_id: o.override_qty for o in real.acc_overrides.all()}
+    do = {o.accessory_id: o.override_qty for o in draft.acc_overrides.all()}
+    if ro != do:
+        return True
+    real_lines = {l.pk: _line_sig(l) for l in real.lines.all()}
+    draft_lines = list(draft.lines.all())
+    if len(draft_lines) != len(real_lines):
+        return True
+    for dl in draft_lines:
+        if not dl.source_line_id or real_lines.get(dl.source_line_id) != _line_sig(dl):
+            return True
+    return False
+
+
+@login_required
+@require_POST
+def project_cost_commit(request, pk, cost_pk):
+    """Save: copy the working copy onto the real costing option. The working copy stays open
+    so the user can keep editing and saving."""
+    from django.db import transaction
+    project = get_object_or_404(Project, pk=pk)
+    draft = get_object_or_404(ProjectCost.all_objects, pk=cost_pk, project=project, draft_of__isnull=False)
+    with transaction.atomic():
+        real = ProjectCost.objects.select_for_update().filter(pk=draft.draft_of_id).first()
+        if real is None:
+            return JsonResponse({'ok': False, 'error': 'This costing option no longer exists.'}, status=404)
+        changed = _draft_differs(real, draft)
+
+        for f in _COST_HEADER_FIELDS:
+            setattr(real, f, getattr(draft, f))
+        real.updated_by = request.user
+        real.save()
+
+        real.accessories.set(draft.accessories.all())
+        AccessoryOverride.objects.filter(cost=real).delete()
+        AccessoryOverride.objects.bulk_create([
+            AccessoryOverride(cost=real, accessory_id=o.accessory_id, override_qty=o.override_qty)
+            for o in draft.acc_overrides.all()
+        ])
+
+        real_lines = {l.pk: l for l in real.lines.all()}
+        keep = set()
+        for dl in draft.lines.all():
+            fields = dict(
+                line_type=dl.line_type, product_line=dl.product_line, description=dl.description,
+                size=dl.size, melamine=dl.melamine, no_deck=dl.no_deck, product_id=dl.product_id,
+                picking_template_id=dl.picking_template_id, quantity=dl.quantity,
+                unit_cost=dl.unit_cost, sort_order=dl.sort_order,
+            )
+            rl = real_lines.get(dl.source_line_id) if dl.source_line_id else None
+            if rl is not None:
+                for k, v in fields.items():
+                    setattr(rl, k, v)
+                rl.save()
+            else:
+                rl = ProjectCostLine.objects.create(cost=real, **fields)
+                dl.source_line_id = rl.pk
+                dl.save(update_fields=['source_line_id'])
+            keep.add(rl.pk)
+        for lid, l in real_lines.items():
+            if lid not in keep:
+                l.delete()
+
+        if changed:
+            ProjectLog.objects.create(
+                project=project, user=request.user,
+                field='Costing saved', old_value='', new_value=real.label,
+            )
+    return JsonResponse({'ok': True, 'changed': changed})
+
+
 @login_required
 @require_POST
 def project_cost_save(request, pk):
@@ -329,7 +477,7 @@ def project_cost_save(request, pk):
     data = json.loads(request.body)
     cost_pk = data.get('cost_pk')
     if cost_pk:
-        cost = get_object_or_404(ProjectCost, pk=cost_pk, project=project)
+        cost = get_object_or_404(ProjectCost.all_objects, pk=cost_pk, project=project)
     else:
         cost = project.costs.filter(is_accepted=True).first() or project.costs.first()
         if not cost:
@@ -356,7 +504,7 @@ def cost_line_add(request, pk):
     except Exception:
         _cost_pk = None
     if _cost_pk:
-        cost = get_object_or_404(ProjectCost, pk=_cost_pk, project=project)
+        cost = get_object_or_404(ProjectCost.all_objects, pk=_cost_pk, project=project)
     else:
         cost = project.costs.filter(is_accepted=True).first() or project.costs.first()
         if not cost:
@@ -633,7 +781,7 @@ def project_cost_stock_reference(request, cost_pk):
     """Recompute the Stock Reference panel for a costing option — used to
     refresh it live after a change like toggling No Deck/Melamine, without
     needing a full page reload."""
-    cost = get_object_or_404(ProjectCost, pk=cost_pk)
+    cost = get_object_or_404(ProjectCost.all_objects, pk=cost_pk)
     lines = list(cost.lines.all())
     total_uprights = sum(int(float(l.quantity)) * 2 for l in lines if l.line_type == 'frame')
     overrides_map = {o.accessory_id: o.override_qty for o in AccessoryOverride.objects.filter(cost=cost)}
@@ -872,7 +1020,7 @@ def cost_accessory_toggle(request, pk):
     except Exception:
         _cost_pk = None
     if _cost_pk:
-        cost = get_object_or_404(ProjectCost, pk=_cost_pk, project=project)
+        cost = get_object_or_404(ProjectCost.all_objects, pk=_cost_pk, project=project)
     else:
         cost = project.costs.filter(is_accepted=True).first() or project.costs.first()
         if not cost:
@@ -911,7 +1059,7 @@ def cost_accessory_override(request, pk):
     except Exception:
         _cost_pk = None
     if _cost_pk:
-        cost = get_object_or_404(ProjectCost, pk=_cost_pk, project=project)
+        cost = get_object_or_404(ProjectCost.all_objects, pk=_cost_pk, project=project)
     else:
         cost = project.costs.filter(is_accepted=True).first() or project.costs.first()
         if not cost:
@@ -959,7 +1107,7 @@ def cost_extras_save(request, pk):
     except Exception:
         _cost_pk = None
     if _cost_pk:
-        cost = get_object_or_404(ProjectCost, pk=_cost_pk, project=project)
+        cost = get_object_or_404(ProjectCost.all_objects, pk=_cost_pk, project=project)
     else:
         cost = project.costs.filter(is_accepted=True).first() or project.costs.first()
         if not cost:
@@ -984,7 +1132,7 @@ def cost_wall_fixings_save(request, pk):
     except Exception:
         _cost_pk = None
     if _cost_pk:
-        cost = get_object_or_404(ProjectCost, pk=_cost_pk, project=project)
+        cost = get_object_or_404(ProjectCost.all_objects, pk=_cost_pk, project=project)
     else:
         cost = project.costs.filter(is_accepted=True).first() or project.costs.first()
         if not cost:

@@ -2,7 +2,23 @@
 {% load project_extras %}
 {% block title %}Home — Project Tracker{% endblock %}
 {% block extra_style %}
-.home-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;}
+.home-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;grid-auto-flow:row dense;}
+.home-grid.hg-pending{visibility:hidden;}
+.hg-item{position:relative;}
+.hg-handle,.hg-hide{position:absolute;top:.55rem;z-index:6;width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad,6px);color:var(--mut);font-size:.95rem;line-height:1;padding:0;font-family:inherit;opacity:.45;transition:opacity .12s;}
+.hg-handle{right:.55rem;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;}
+.hg-hide{right:2.2rem;cursor:pointer;display:none;color:#dc2626;}
+.hg-item:hover .hg-handle,.hg-item:hover .hg-hide,.hg-handle:focus-visible{opacity:1;}
+.hg-editing .hg-hide{display:flex;opacity:.9;}
+.hg-editing .hg-handle{opacity:1;}
+.hg-item.hg-dragging{opacity:.45;outline:2px dashed var(--acc);outline-offset:2px;}
+.hg-item.hg-dragging .hg-handle{cursor:grabbing;}
+.hg-item.hg-hidden{display:none;}
+.hg-bar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin:-.4rem 0 1rem;}
+.hg-tray{display:none;align-items:center;gap:.5rem;flex-wrap:wrap;margin:0 0 1rem;padding:.6rem .8rem;border:1px dashed var(--bdr);border-radius:var(--rad,8px);background:var(--surf2);font-size:.82rem;color:var(--mut);}
+.hg-editing-on .hg-tray{display:flex;}
+.hg-chip{background:var(--surf);border:1px solid var(--bdr);border-radius:99px;padding:2px 10px;font-size:.78rem;cursor:pointer;color:var(--txt);font-family:inherit;}
+.hg-chip:hover{border-color:var(--acc);color:var(--acc);}
 .home-tile{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow);padding:1.4rem;display:flex;flex-direction:column;min-height:260px;transition:box-shadow .15s,transform .15s;}
 .home-tile:hover{box-shadow:var(--shadow-md);}
 .home-tile-link{text-decoration:none;color:inherit;}
@@ -24,10 +40,20 @@
 {% block content %}
 <h1 style="font-size:1.6rem;font-weight:700;margin-bottom:1.2rem;">Welcome back{% if request.user.first_name %}, {{ request.user.first_name }}{% endif %}</h1>
 
-<div class="home-grid">
+<div class="hg-bar">
+  <button type="button" class="btn btn-secondary btn-sm" id="hg-customize" onclick="homeLayout.toggleEdit()">⚙ Customize layout</button>
+  <span style="font-size:.78rem;color:var(--mut);">Drag a box by its ⠿ handle to move it.</span>
+</div>
+<div class="hg-tray" id="hg-tray">
+  <span id="hg-tray-label">Hidden boxes:</span>
+  <span id="hg-tray-chips"></span>
+  <button type="button" class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="homeLayout.reset()">↺ Reset layout</button>
+</div>
+
+<div class="home-grid hg-pending" id="home-grid">
 
   <!-- Dashboard -->
-  <a href="{% url 'dashboard' %}" class="home-tile-link">
+  <a href="{% url 'dashboard' %}" class="home-tile-link hg-item" data-tile="dashboard" data-title="Dashboard">
     <div class="home-tile tile-dashboard tile-action" style="min-height:200px;">
       <div class="big-icon">📊</div>
       <div class="home-tile-title" style="margin-bottom:0;">Dashboard</div>
@@ -36,7 +62,7 @@
   </a>
 
   <!-- New Project -->
-  <a href="{% url 'project_create' %}" class="home-tile-link">
+  <a href="{% url 'project_create' %}" class="home-tile-link hg-item" data-tile="new_project" data-title="New Project">
     <div class="home-tile tile-new tile-action" style="min-height:200px;">
       <div class="big-icon">+</div>
       <div class="home-tile-title" style="margin-bottom:0;">New Project</div>
@@ -44,7 +70,7 @@
   </a>
 
   <!-- Personal To-Do List — double height -->
-  <div class="home-tile" style="grid-row:span 2;">
+  <div class="home-tile hg-item" data-tile="todo" data-title="To-Do List" style="grid-row:span 2;">
     <div class="home-tile-title">✅ Personal To-Do List
       <a href="{% url 'todo_widget' %}" target="_blank" style="margin-left:auto;font-size:.72rem;color:var(--acc);font-weight:400;text-decoration:none;white-space:nowrap;" title="Opens as its own page — install it as an app from there">📌 Open as App</a>
     </div>
@@ -67,7 +93,7 @@
   </div>
 
   <!-- My reminders -->
-  <div class="home-tile" style="max-height:520px;">
+  <div class="home-tile hg-item" data-tile="reminders" data-title="Reminders" style="max-height:520px;">
     <div class="home-tile-title">⏰ Reminders{% if my_reminders %}<span class="home-badge">{{ my_reminders|length }}</span>{% endif %}</div>
     {% if my_reminders %}
     <ul class="home-list" style="flex:1;overflow-y:auto;min-height:0;">
@@ -90,7 +116,7 @@
   </div>
 
   <!-- Messages -->
-  <a href="{% url 'inbox' %}" class="home-tile-link">
+  <a href="{% url 'inbox' %}" class="home-tile-link hg-item" data-tile="messages" data-title="Messages">
     <div class="home-tile">
       <div class="home-tile-title">💬 Messages{% if unread_messages %}<span class="home-badge">{{ unread_messages }}</span>{% endif %}</div>
       {% if unread_messages %}
@@ -104,7 +130,7 @@
   </a>
 
   <!-- Your assigned projects -->
-  <div class="home-tile" style="min-height:260px;max-height:260px;align-self:start;">
+  <div class="home-tile hg-item" data-tile="my_projects" data-title="Your Projects" style="min-height:260px;max-height:260px;align-self:start;">
     <div class="home-tile-title">📁 Your Projects</div>
     <ul class="home-list" style="overflow-y:auto;flex:1;">
       {% for p in my_projects %}
@@ -115,14 +141,14 @@
   </div>
 
   <!-- EZR Chat tile — double height -->
-  <div class="home-tile" style="grid-row:span 2;min-height:320px;">
+  <div class="home-tile hg-item" data-tile="chat" data-title="EZR Chat" style="grid-row:span 2;min-height:320px;">
     <div class="home-tile-title" style="margin-bottom:.6rem;">
       💬 EZR Chat
       <a href="{% url 'team_chat' %}" style="margin-left:auto;font-size:.75rem;color:var(--acc);font-weight:400;text-decoration:none;">View all →</a>
     </div>
     <div id="home-chat-messages" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;padding-bottom:.5rem;min-height:0;">
       {% for m in recent_team_messages %}
-      <div style="display:flex;align-items:flex-start;gap:.5rem;">
+      <div id="hc-{{ m.pk }}" style="display:flex;align-items:flex-start;gap:.5rem;">
         <div style="width:26px;height:26px;border-radius:50%;background:{{ m.user.pk|avatar_colour }};display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;color:#fff;flex-shrink:0;">
           {% with n=m.user.get_full_name|default:m.user.username %}{% with p=n.split %}{{ p.0|slice:":1"|upper }}{% if p|length > 1 %}{{ p|last|slice:":1"|upper }}{% endif %}{% endwith %}{% endwith %}
         </div>
@@ -131,7 +157,7 @@
             <strong style="color:var(--txt);">{{ m.user.get_full_name|default:m.user.username }}</strong>
             · {{ m.timestamp|date:"d M, H:i" }}
           </div>
-          <div style="font-size:.84rem;color:var(--txt2);word-break:break-word;">{{ m.text }}</div>
+          {% if m.is_deleted %}<div class="hc-text" style="font-size:.82rem;font-style:italic;color:var(--mut);">🚫 This message was deleted</div>{% else %}<div class="hc-text" style="font-size:.84rem;color:var(--txt2);word-break:break-word;">{{ m.text }}</div>{% endif %}
         </div>
       </div>
       {% empty %}
@@ -145,7 +171,7 @@
   </div>
 
   <!-- Who's off -->
-  <a href="{% url 'leave_overview' %}" class="home-tile-link">
+  <a href="{% url 'leave_overview' %}" class="home-tile-link hg-item" data-tile="whos_off" data-title="Who's Off">
     <div class="home-tile">
       <div class="home-tile-title">🌴 Who's Off (Next 7 Days)</div>
       <ul class="home-list">
@@ -160,7 +186,7 @@
   </a>
 
   <!-- Latest project updates -->
-  <div class="home-tile" style="overflow-y:auto;min-height:260px;max-height:260px;align-self:start;">
+  <div class="home-tile hg-item" data-tile="latest" data-title="Latest Updates" style="overflow-y:auto;min-height:260px;max-height:260px;align-self:start;">
     <div class="home-tile-title">🕓 Latest Updates</div>
     <ul class="home-list" style="flex:1;overflow-y:auto;">
       {% for p in latest_updates %}
@@ -171,12 +197,12 @@
   </div>
 
   <!-- Photo Library slideshow -->
-  <a href="{% url 'photo_library' %}" class="home-tile-link">
+  <a href="{% url 'photo_library' %}" class="home-tile-link hg-item" data-tile="photos" data-title="Photo Library">
     <div class="home-tile" style="padding:0;overflow:hidden;position:relative;min-height:260px;">
       {% if slideshow_photos %}
       <div id="slideshow" style="position:relative;width:100%;height:100%;min-height:260px;">
         {% for p in slideshow_photos %}
-        <img src="{% url 'report_photo_file' p.pk %}" class="slide-img {% if forloop.first %}active{% endif %}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:{% if forloop.first %}1{% else %}0{% endif %};transition:opacity 1s;">
+        <img src="{% url 'report_photo_thumb' p.pk %}?s=1200" class="slide-img {% if forloop.first %}active{% endif %}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:{% if forloop.first %}1{% else %}0{% endif %};transition:opacity 1s;">
         {% endfor %}
         <div style="position:absolute;bottom:0;left:0;right:0;padding:.8rem 1rem .6rem;background:linear-gradient(to top,rgba(0,0,0,.7),transparent);">
           <div style="color:#fff;font-weight:700;font-size:.95rem;">📷 Photo Library</div>
@@ -193,6 +219,119 @@
 </div>
 {% endblock %}
 {% block extra_js %}
+{{ home_layout|json_script:"home-layout-data" }}
+<script>
+// ── Home layout: drag to reorder, hide / restore boxes (saved per user) ──────
+const homeLayout = (function(){
+  const CSRF = '{{ csrf_token }}';
+  const grid = document.getElementById('home-grid');
+  let state = {order: [], hidden: []};
+  try{ state = JSON.parse(document.getElementById('home-layout-data').textContent) || state; }catch(e){}
+  const items = () => Array.from(grid.querySelectorAll(':scope > .hg-item'));
+  const byKey = k => grid.querySelector(`:scope > .hg-item[data-tile="${k}"]`);
+  let editing = false;
+
+  function applyOrder(){
+    // Saved order first; any box not mentioned keeps its default relative position at the end.
+    (state.order || []).forEach(k => { const el = byKey(k); if(el) grid.appendChild(el); });
+    const known = new Set(state.order || []);
+    items().filter(el => !known.has(el.dataset.tile)).forEach(el => grid.appendChild(el));
+    items().forEach(el => el.classList.toggle('hg-hidden', (state.hidden || []).includes(el.dataset.tile)));
+  }
+  function currentOrder(){ return items().map(el => el.dataset.tile); }
+
+  async function save(){
+    state.order = currentOrder();
+    try{
+      await fetch('/home/layout/', {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+        body: JSON.stringify({order: state.order, hidden: state.hidden})});
+    }catch(e){}
+  }
+
+  function renderTray(){
+    const chips = document.getElementById('hg-tray-chips');
+    chips.innerHTML = '';
+    const hid = state.hidden || [];
+    document.getElementById('hg-tray-label').textContent = hid.length ? 'Hidden boxes (click to bring back):' : 'No hidden boxes. Use the red ✕ on a box to hide it.';
+    hid.forEach(k => {
+      const el = byKey(k); if(!el) return;
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'hg-chip'; b.textContent = '+ ' + (el.dataset.title || k);
+      b.onclick = () => { state.hidden = state.hidden.filter(x => x !== k); applyOrder(); renderTray(); save(); };
+      chips.appendChild(b);
+    });
+  }
+
+  function addControls(){
+    items().forEach(el => {
+      const hide = document.createElement('button');
+      hide.type = 'button'; hide.className = 'hg-hide'; hide.title = 'Hide this box'; hide.textContent = '✕';
+      hide.addEventListener('click', e => {
+        e.preventDefault(); e.stopPropagation();
+        const k = el.dataset.tile;
+        if(!(state.hidden || []).includes(k)) state.hidden = [...(state.hidden || []), k];
+        applyOrder(); renderTray(); save();
+      });
+      const h = document.createElement('button');
+      h.type = 'button'; h.className = 'hg-handle'; h.title = 'Drag to move'; h.textContent = '⠿';
+      h.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
+      h.addEventListener('pointerdown', e => startDrag(e, el, h));
+      el.appendChild(hide); el.appendChild(h);
+    });
+  }
+
+  function startDrag(e, el, handle){
+    if(e.button !== undefined && e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    handle.setPointerCapture(e.pointerId);
+    el.classList.add('hg-dragging');
+    let ticking = false, lastX = e.clientX, lastY = e.clientY;
+    function step(){
+      ticking = false;
+      // auto-scroll near the viewport edges
+      if(lastY < 70) window.scrollBy(0, -18); else if(lastY > window.innerHeight - 70) window.scrollBy(0, 18);
+      const under = document.elementFromPoint(lastX, lastY);
+      const target = under && under.closest ? under.closest('.hg-item') : null;
+      if(!target || target === el || target.parentNode !== grid || target.classList.contains('hg-hidden')) return;
+      const all = items();
+      const before = all.indexOf(el) > all.indexOf(target);
+      grid.insertBefore(el, before ? target : target.nextSibling);
+    }
+    function move(ev){
+      lastX = ev.clientX; lastY = ev.clientY;
+      if(!ticking){ ticking = true; requestAnimationFrame(step); }
+    }
+    function end(){
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', end);
+      handle.removeEventListener('pointercancel', end);
+      el.classList.remove('hg-dragging');
+      save();
+    }
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', end);
+    handle.addEventListener('pointercancel', end);
+  }
+
+  function toggleEdit(){
+    editing = !editing;
+    grid.classList.toggle('hg-editing', editing);
+    document.body.classList.toggle('hg-editing-on', editing);
+    document.getElementById('hg-customize').textContent = editing ? '✓ Done' : '⚙ Customize layout';
+    if(editing) renderTray();
+  }
+
+  async function reset(){
+    if(!confirm('Put the Home page boxes back in the default order and show all of them?')) return;
+    try{ await fetch('/home/layout/reset/', {method:'POST', headers:{'X-CSRFToken':CSRF}}); }catch(e){}
+    location.reload();
+  }
+
+  try{ applyOrder(); addControls(); renderTray(); }
+  finally{ grid.classList.remove('hg-pending'); }
+  return {toggleEdit, reset};
+})();
+</script>
 <script>
 // ── Home EZR Chat ─────────────────────────────────────────────────────────────
 const homeChat = (function(){
@@ -209,8 +348,9 @@ const homeChat = (function(){
     const name = m.user || '';
     const initials = name.split(' ').filter(Boolean).map((w,i,a)=>i===0||i===a.length-1?w[0]:'').join('').toUpperCase().slice(0,2);
     const div = document.createElement('div');
+    if(m.id) div.id = `hc-${m.id}`;
     div.style.cssText = 'display:flex;align-items:flex-start;gap:.5rem;';
-    div.innerHTML = `<div style="width:26px;height:26px;border-radius:50%;background:${colour};display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;color:#fff;flex-shrink:0;">${initials}</div><div style="flex:1;min-width:0;"><div style="font-size:.75rem;color:var(--mut);margin-bottom:1px;"><strong style="color:var(--txt);">${name}</strong> · ${m.timestamp}</div><div style="font-size:.84rem;color:var(--txt2);word-break:break-word;">${m.text}</div></div>`;
+    div.innerHTML = `<div style="width:26px;height:26px;border-radius:50%;background:${colour};display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;color:#fff;flex-shrink:0;">${initials}</div><div style="flex:1;min-width:0;"><div style="font-size:.75rem;color:var(--mut);margin-bottom:1px;"><strong style="color:var(--txt);">${name}</strong> · ${m.timestamp}</div>${m.deleted ? '<div class="hc-text" style="font-size:.82rem;font-style:italic;color:var(--mut);">🚫 This message was deleted</div>' : `<div class="hc-text" style="font-size:.84rem;color:var(--txt2);word-break:break-word;">${m.text}</div>`}</div>`;
     if(box) box.appendChild(div);
   }
 
@@ -219,6 +359,14 @@ const homeChat = (function(){
       const r = await fetch(`/chat/poll/?after=${lastId}`);
       if(!r.ok) return;
       const d = await r.json();
+      (d.deleted_ids || []).forEach(id => {
+        const t = document.querySelector(`#hc-${id} .hc-text`);
+        if(t && !t.dataset.del){
+          t.dataset.del = '1';
+          t.style.cssText = 'font-size:.82rem;font-style:italic;color:var(--mut);';
+          t.textContent = '🚫 This message was deleted';
+        }
+      });
       if(d.messages && d.messages.length){
         // Remove empty state if present
         const empty = box && box.querySelector('.home-empty');
