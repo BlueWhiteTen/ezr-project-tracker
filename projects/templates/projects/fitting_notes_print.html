@@ -22,6 +22,16 @@
   .doc-meta{font-size:.75rem;color:#888;margin-top:2px;}
   .doc-codes{font-size:.72rem;color:#d4700a;font-weight:600;}
   .doc-open{font-size:.8rem;color:#d4700a;font-weight:600;text-decoration:none;white-space:nowrap;}
+  .card{background:#fff;border:1px solid #ddd;border-radius:8px;padding:1rem 1.1rem;margin-bottom:1rem;}
+  .card h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:.6rem;}
+  .tb{display:flex;gap:.3rem;margin-bottom:.4rem;flex-wrap:wrap;}
+  .tb button{min-width:36px;height:34px;border:1px solid #ccc;background:#fff;border-radius:6px;font-size:.9rem;cursor:pointer;}
+  #steps-ed{min-height:130px;border:1px solid #ccc;border-radius:8px;padding:.7rem .8rem;font-size:.95rem;line-height:1.5;background:#fff;}
+  #steps-ed ul,#steps-ed ol{margin-left:1.4rem;} #steps-ed:focus{outline:2px solid #d4700a;}
+  .btn-sm{padding:.35rem .7rem;font-size:.78rem;}
+  .btn-red{background:#fff;color:#b91c1c;border:1px solid #fca5a5;}
+  .muted{font-size:.78rem;color:#888;}
+  @media(max-width:700px){body{padding:.8rem;}.hdr{flex-direction:column;align-items:flex-start;gap:.4rem;}.doc-row{flex-wrap:wrap;}}
   .empty{text-align:center;padding:3rem;color:#888;background:#fff;border:1px solid #ddd;border-radius:8px;}
 </style>
 </head>
@@ -33,11 +43,44 @@
   </div>
   <div class="meta">
     {% if project.sales_order %}SO: {{ project.sales_order }}<br>{% endif %}
-    {{ notes|length }} drawing{{ notes|length|pluralize }}
+    {{ notes|length }} library note{{ notes|length|pluralize }}{% if job_files %} + {{ job_files|length }} added to this job{% endif %}
   </div>
 </div>
 
-{% if notes %}
+
+<div class="card">
+  <h2>Important installation steps <span class="muted" style="text-transform:none;letter-spacing:0;">— shown to the fitter under "Installation notes"</span></h2>
+  <div class="tb">
+    <button type="button" onclick="fmt('bold')" title="Bold"><b>B</b></button>
+    <button type="button" onclick="fmt('italic')" title="Italic"><i>I</i></button>
+    <button type="button" onclick="fmt('underline')" title="Underline"><u>U</u></button>
+    <button type="button" onclick="fmt('insertUnorderedList')" title="Bullet list">• List</button>
+    <button type="button" onclick="fmt('insertOrderedList')" title="Numbered list">1. List</button>
+    <button type="button" onclick="fmt('removeFormat')" title="Clear formatting">Clear</button>
+  </div>
+  <div id="steps-ed" contenteditable="true">{{ steps_html|safe }}</div>
+  <div style="margin-top:.5rem;display:flex;gap:.6rem;align-items:center;"><button class="btn btn-sm" onclick="saveSteps()">💾 Save steps</button><span id="steps-msg" class="muted"></span></div>
+</div>
+
+<div class="card">
+  <h2>Drawing &amp; RAMS from the project page</h2>
+  {% if drawing %}<div class="doc-row" style="margin-bottom:.4rem;"><span class="doc-icon">📐</span><div class="doc-info"><div class="doc-title">Latest drawing: {{ drawing.name }}</div><div class="doc-meta">{{ drawing.uploaded_at|date:"d M Y" }}</div></div><a class="doc-open" target="_blank" href="{% url 'document_download' drawing.pk %}">Open ↗</a></div>
+  {% else %}<div class="muted">No drawing uploaded on the project page yet.</div>{% endif %}
+  {% for r in rams %}<div class="doc-row" style="margin-bottom:.4rem;"><span class="doc-icon">🦺</span><div class="doc-info"><div class="doc-title">RAMS: {{ r.name }}</div></div><a class="doc-open" target="_blank" href="{% url 'document_download' r.pk %}">Open ↗</a></div>{% endfor %}
+  <div class="muted" style="margin-top:.4rem;">Manage these in the project's documents. The fitter link shows the latest drawing and any RAMS automatically.</div>
+</div>
+
+<div class="card">
+  <h2>Add a drawing to this job only</h2>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+    <input type="text" id="up-title" placeholder="Title (optional)" style="flex:1;min-width:160px;padding:.45rem .6rem;border:1px solid #ccc;border-radius:6px;">
+    <input type="file" id="up-file" accept="application/pdf,image/*" style="max-width:100%;">
+    <button class="btn btn-sm" onclick="uploadFile()">⬆ Upload</button>
+  </div>
+  <div id="up-msg" class="muted" style="margin-top:.4rem;">PDF or photo, up to 15MB. It shows on this job's page and for the fitter. It does not go into the shared library.</div>
+</div>
+
+{% if notes or job_files %}
 <div class="toolbar">
   <button class="btn" onclick="printSelected()">🖨 Print All (selected)</button>
   <button class="btn btn-ghost" onclick="toggleAll(true)">Select all</button>
@@ -53,16 +96,41 @@
       <div class="doc-title">{{ n.title }}</div>
       <div class="doc-meta">{{ n.file_original_name }} · <span class="doc-codes">{% for p in n.products.all %}{{ p.code }}{% if not forloop.last %}, {% endif %}{% endfor %}</span></div>
     </div>
-    <a href="{% url 'fitting_note_download' n.pk %}" target="_blank" class="doc-open">Open separately ↗</a>
+    <a href="{% url 'fitting_note_download' n.pk %}" target="_blank" class="doc-open">Open ↗</a>
+    <button class="btn btn-sm btn-red" onclick="hideNote({{ n.pk }})" title="Hide for this job only; it stays in the library">Remove from this job</button>
+  </div>
+  {% endfor %}
+  {% for f in job_files %}
+  <div class="doc-row" style="border-color:#d4700a;">
+    <input type="checkbox" class="note-cb" value="f{{ f.pk }}" checked>
+    <span class="doc-icon">{% if f.is_pdf %}📄{% else %}🖼{% endif %}</span>
+    <div class="doc-info"><div class="doc-title">{{ f.title }}</div><div class="doc-meta">Added to this job only · {{ f.uploaded_at|date:"d M Y" }}</div></div>
+    <a href="{% url 'fitting_file_download' f.pk %}" target="_blank" class="doc-open">Open ↗</a>
+    <button class="btn btn-sm btn-red" onclick="delFile({{ f.pk }})">Delete</button>
   </div>
   {% endfor %}
 </div>
 {% else %}
-<div class="empty">No fitting notes match the components in this picking list.<br>Link drawings to products in the Fitting Notes library.</div>
+<div class="empty">No fitting notes match the components in this picking list.<br>Link drawings to products in the Fitting Notes library, or add one above.</div>
+{% endif %}
+
+{% if hidden_notes %}
+<div class="card" style="margin-top:1rem;"><h2>Removed from this job</h2>
+  {% for n in hidden_notes %}<div class="doc-row" style="margin-bottom:.4rem;opacity:.75;"><span class="doc-icon">🚫</span><div class="doc-info"><div class="doc-title">{{ n.title }}</div></div><button class="btn btn-sm btn-ghost" onclick="unhideNote({{ n.pk }})">Put back</button></div>{% endfor %}
+</div>
 {% endif %}
 
 <script>
-const PL_PK = {{ pl.pk }};
+const PL_PK = {{ pl.pk }}, PROJ = {{ project.pk }}, CSRF = '{{ csrf_token }}';
+function post(url, body, isForm){ return fetch(url,{method:'POST',headers:isForm?{'X-CSRFToken':CSRF}:{'X-CSRFToken':CSRF,'Content-Type':'application/json'},body:isForm?body:JSON.stringify(body||{})}).then(r=>r.json()); }
+function fmt(cmd){ document.getElementById('steps-ed').focus(); document.execCommand(cmd,false,null); }
+function saveSteps(){ const m=document.getElementById('steps-msg'); m.textContent='Saving…'; post(`/project/${PROJ}/fitting-steps/`,{html:document.getElementById('steps-ed').innerHTML}).then(d=>{ if(d.ok){ document.getElementById('steps-ed').innerHTML=d.html; m.textContent='Saved ✓'; } else m.textContent='Could not save'; }).catch(()=>m.textContent='Could not save'); }
+function hideNote(id){ if(confirm('Remove this drawing from this job? It stays in the library for other jobs.')) post(`/project/${PROJ}/fitting-notes/${id}/hide/`).then(()=>location.reload()); }
+function unhideNote(id){ post(`/project/${PROJ}/fitting-notes/${id}/unhide/`).then(()=>location.reload()); }
+function delFile(id){ if(confirm('Delete this file from this job?')) post(`/project/${PROJ}/fitting-files/${id}/delete/`).then(()=>location.reload()); }
+function uploadFile(){ const f=document.getElementById('up-file').files[0], m=document.getElementById('up-msg'); if(!f){ m.textContent='Choose a file first.'; return; }
+  const fd=new FormData(); fd.append('file',f); fd.append('title',document.getElementById('up-title').value); m.textContent='Uploading…';
+  post(`/project/${PROJ}/fitting-files/`,fd,true).then(d=>{ if(d.ok) location.reload(); else m.textContent=d.error||'Upload failed'; }).catch(()=>m.textContent='Upload failed'); }
 function toggleAll(state){
   document.querySelectorAll('.note-cb').forEach(cb=>cb.checked=state);
 }

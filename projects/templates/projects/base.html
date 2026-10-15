@@ -333,6 +333,7 @@ select.form-input{cursor:pointer;}
   .page-wrap,.container{max-width:100%;}
   h1{overflow-wrap:anywhere;}
   img,video,canvas{max-width:100%;}
+  #fb-fab:not(.fb-home){display:none !important;}
   #fb-fab{padding:.45rem .7rem !important;font-size:.72rem !important;bottom:.7rem !important;right:.7rem !important;opacity:.92;}
 }
 @media (max-width: 480px){
@@ -681,7 +682,7 @@ function toggleMobileMenu(){
 #fb-actions a{font-size:.78rem;color:var(--mut);margin-right:auto;}
 @media print{#fb-fab{display:none;}}
 </style>
-<button id="fb-fab" type="button" onclick="openFeedback()" title="Send an idea, report a problem or ask a question">💡 Feedback</button>
+{% if request.resolver_match.url_name != 'inbox' and request.resolver_match.url_name != 'team_chat' %}<button id="fb-fab" class="{% if request.resolver_match.url_name == 'home' %}fb-home{% endif %}" type="button" onclick="openFeedback()" title="Send an idea, report a problem or ask a question">💡 Feedback</button>{% endif %}
 <div id="fb-modal" onclick="if(event.target===this)closeFeedback()">
   <div id="fb-box">
     <h3>💡 Send feedback</h3>

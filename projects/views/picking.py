@@ -933,16 +933,13 @@ def picking_fitting_notes(request, pk):
     """Show all fitting notes matching the stock items in this picking list, for printing."""
     pl = get_object_or_404(PickingList, pk=pk)
     project = pl.project
-    product_ids = set(
-        pl.items.filter(item_type='stock', product__isnull=False).values_list('product_id', flat=True)
-    )
-    template_ids = set(pl.templates_used.values_list('pk', flat=True))
-    from django.db.models import Q
-    notes = FittingNote.objects.filter(
-        Q(products__in=product_ids) | Q(templates__in=template_ids)
-    ).distinct().prefetch_related('products')
+    from ..fitting import job_notes, latest_drawing, rams_docs
+    notes, hidden = job_notes(project, pl)
     return render(request, 'projects/fitting_notes_print.html', {
-        'pl': pl, 'project': project, 'notes': notes,
+        'pl': pl, 'project': project, 'notes': notes, 'hidden_notes': hidden,
+        'job_files': project.fitting_files.all(),
+        'drawing': latest_drawing(project), 'rams': rams_docs(project),
+        'steps_html': project.install_steps,
     })
 
 
@@ -960,17 +957,25 @@ def picking_fitting_notes_pdf(request, pk):
     # ids come as comma-separated query param ?ids=1,2,3
     ids_param = request.GET.get('ids', '')
     if ids_param:
-        sel_ids = [int(i) for i in ids_param.split(',') if i.strip().isdigit()]
-        notes = FittingNote.objects.filter(pk__in=sel_ids).prefetch_related('products')
-        # preserve order of sel_ids
-        notes = sorted(notes, key=lambda n: sel_ids.index(n.pk))
+        tokens = [i.strip() for i in ids_param.split(',') if i.strip()]
+        sel_ids = [int(i) for i in tokens if i.isdigit()]
+        file_ids = [int(i[1:]) for i in tokens if i[:1] == 'f' and i[1:].isdigit()]
+        found = {n.pk: n for n in FittingNote.objects.filter(pk__in=sel_ids)}
+        files = {f.pk: f for f in pl.project.fitting_files.filter(pk__in=file_ids)}
+        notes = []
+        for t in tokens:
+            if t.isdigit() and int(t) in found:
+                notes.append(found[int(t)])
+            elif t[:1] == 'f' and t[1:].isdigit() and int(t[1:]) in files:
+                notes.append(files[int(t[1:])])
     else:
         product_ids = set(pl.items.filter(item_type='stock', product__isnull=False).values_list('product_id', flat=True))
         template_ids = set(pl.templates_used.values_list('pk', flat=True))
         from django.db.models import Q
         notes = FittingNote.objects.filter(
             Q(products__in=product_ids) | Q(templates__in=template_ids)
-        ).distinct().prefetch_related('products')
+        ).distinct().exclude(pk__in=pl.project.hidden_fitting_notes.values_list('note_id', flat=True)).prefetch_related('products')
+        notes = list(notes) + list(pl.project.fitting_files.all())
 
     writer = PdfWriter()
     for n in notes:

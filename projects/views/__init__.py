@@ -114,4 +114,6 @@ from .price_list import (
 
 from .pwa import service_worker, offline
 from .fitter import (fitter_link_info, fitter_link_create, fitter_link_revoke, fitter_clear_flag, fitter_page,
-                     fitter_photo_upload, fitter_photo_thumb, fitter_photo_delete, fitter_submit)
+                     fitter_photo_upload, fitter_photo_thumb, fitter_photo_delete, fitter_submit, fitter_file)
+from .fitting_job import (fitting_steps_save, fitting_note_hide, fitting_note_unhide, fitting_file_upload,
+                          fitting_file_delete, fitting_file_download)

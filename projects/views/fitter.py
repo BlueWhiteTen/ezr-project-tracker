@@ -124,11 +124,18 @@ def fitter_page(request, token):
     if report:
         photos = list(ReportPhoto.objects.filter(report=report, fitter_link=link).order_by('uploaded_at').values_list('pk', flat=True))
     maps_q = ', '.join(addr)
+    from ..fitting import job_notes, latest_drawing, rams_docs
+    notes, _hidden = job_notes(project)
+    drawing = latest_drawing(project)
     return render(request, 'projects/fitter_page.html', {
         'link': link, 'project': project, 'ref': _ref(project), 'addr': addr, 'maps_q': maps_q,
         'inst': inst, 'tasks': (report.job_tasks if report and report.job_tasks else project.description),
         'contact': project.addr_fao, 'phone': project.addr_phone,
         'photo_ids': photos,
+        'steps_html': project.install_steps,
+        'drawing': drawing, 'rams': rams_docs(project),
+        'fit_notes': notes, 'job_files': list(project.fitting_files.all()),
+        'has_notes': bool(project.install_steps or drawing or notes or project.fitting_files.exists() or rams_docs(project)),
     })
 
 
@@ -331,3 +338,40 @@ def fitter_submit(request, token):
     for u in recipients.values():
         Notification.objects.create(user=u, type='tag', text=text[:250], link=reverse('project_edit', kwargs={'pk': project.pk}))
     return JsonResponse({'ok': True, 'signed': bool(sig), 'photos': len(photos), 'has_pdf': bool(sub.document_id)})
+
+
+def fitter_file(request, token, kind, pk):
+    """Serve a drawing / fitting note / RAMS to the fitter. Only files that belong to this job's
+    Installation notes are reachable; ?dl=1 forces a download instead of opening in the browser."""
+    link = _get_link(token)
+    if not link or not link.is_active:
+        return HttpResponse(status=404)
+    project = link.project
+    from ..fitting import job_notes
+    obj = None
+    if kind == 'doc':
+        obj = project.documents.filter(pk=pk, doc_type__in=['drawing', 'rams']).first()
+        data = bytes(obj.file_data) if obj and obj.file_data else None
+        if obj and not data and obj.file:
+            data = obj.file.open().read()
+        mime, name = (obj.file_mime if obj else ''), (obj.file_original_name or obj.name if obj else '')
+    elif kind == 'note':
+        notes, _ = job_notes(project)
+        obj = next((n for n in notes if n.pk == pk), None)
+        data = bytes(obj.file_data) if obj and obj.file_data else None
+        mime, name = (obj.file_mime if obj else ''), (obj.file_original_name or obj.title if obj else '')
+    elif kind == 'pfile':
+        obj = project.fitting_files.filter(pk=pk).first()
+        data = bytes(obj.file_data) if obj and obj.file_data else None
+        mime, name = (obj.file_mime if obj else ''), (obj.file_original_name or obj.title if obj else '')
+    else:
+        return HttpResponse(status=404)
+    if not obj or not data:
+        return HttpResponse(status=404)
+    name = re.sub(r'[^\w.\- ()]+', '', name or 'file')
+    if not mime or mime == 'application/octet-stream':
+        mime = 'application/pdf' if data[:4] == b'%PDF' else 'image/jpeg'
+    resp = HttpResponse(data, content_type=mime)
+    resp['Content-Disposition'] = ('attachment' if request.GET.get('dl') else 'inline') + f'; filename="{name}"'
+    resp['Cache-Control'] = 'private, max-age=600'
+    return resp

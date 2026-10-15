@@ -49,6 +49,7 @@ class Project(models.Model):
     location       = models.CharField(max_length=300, blank=True)
     description    = models.CharField(max_length=300, blank=True)
     status         = models.CharField(max_length=30, choices=STATUS_CHOICES, default='enquiry')
+    install_steps  = models.TextField(blank=True, help_text='Important installation steps (basic HTML from the editor) shown on the Fitting Notes page and to the fitter')
     no_customer_signature = models.BooleanField(default=False, help_text='Fitter finished the job without a customer sign-off (flag stays until cleared)')
     lost_reason    = models.TextField(blank=True, help_text='Why this didn\'t proceed — captured when marked Cancelled')
     is_blocked     = models.BooleanField(default=False, help_text='Flagged as stalled/at risk')
@@ -1449,3 +1450,30 @@ class FitterSubmission(models.Model):
 
     class Meta:
         ordering = ['-submitted_at']
+
+
+class ProjectFittingFile(models.Model):
+    """A drawing/file added to ONE job's Fitting Notes page (not part of the shared library)."""
+    project   = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='fitting_files')
+    title     = models.CharField(max_length=200)
+    file_data = models.BinaryField(null=True, blank=True)
+    file_mime = models.CharField(max_length=100, blank=True)
+    file_original_name = models.CharField(max_length=200, blank=True)
+    uploaded_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['uploaded_at']
+
+    @property
+    def is_pdf(self):
+        return (self.file_mime or '').lower() == 'application/pdf' or (self.file_original_name or '').lower().endswith('.pdf')
+
+
+class ProjectHiddenFittingNote(models.Model):
+    """A library fitting note switched off for one job (it stays in the library for other jobs)."""
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='hidden_fitting_notes')
+    note    = models.ForeignKey('FittingNote', on_delete=models.CASCADE, related_name='hidden_on')
+
+    class Meta:
+        unique_together = [['project', 'note']]

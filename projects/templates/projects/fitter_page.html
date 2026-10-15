@@ -42,14 +42,39 @@ textarea{min-height:90px;resize:vertical;}
 .foot{position:fixed;left:0;right:0;bottom:0;background:#fffe;backdrop-filter:blur(6px);padding:10px 14px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--bdr);display:flex;gap:10px;z-index:6;}
 .foot .btn{padding:14px;} .foot .back{flex:0 0 28%;}
 .step{display:none;} .step.on{display:block;}
+.menu{display:block;width:100%;text-align:left;background:#fff;border:2px solid var(--bdr);border-radius:16px;padding:18px 16px;margin-bottom:12px;font-family:inherit;color:var(--txt);cursor:pointer;}
+.menu b{display:block;font-size:1.15rem;margin-bottom:3px;} .menu span{color:var(--mut);font-size:.88rem;}
+.menu:active{border-color:var(--acc);background:var(--acc-bg);}
+.steptxt{line-height:1.5;font-size:1rem;} .steptxt ul,.steptxt ol{padding-left:22px;margin:6px 0;}
+.frow{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #f0ebe3;} .frow:last-child{border:none;}
+.frow .fn{flex:1;min-width:0;font-weight:600;font-size:.95rem;word-break:break-word;} .frow .fn small{display:block;font-weight:400;color:var(--mut);font-size:.75rem;}
+.frow a{flex:0 0 auto;padding:9px 13px;border-radius:10px;border:2px solid var(--acc);color:var(--acc);font-weight:700;text-decoration:none;font-size:.88rem;} .frow a.dl{background:var(--acc);color:#fff;}
 .done{text-align:center;padding:30px 10px;} .tick{width:90px;height:90px;border-radius:50%;background:#dcf5e5;color:var(--green);font-size:3rem;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
 </style></head><body>
 <div class="top"><div class="brand"><i>EZR</i> SHELVING</div><div class="job">Install report{% if ref %} · Ref {{ ref }}{% endif %}</div></div>
 <div class="pad">
-<div class="steps" id="steps"><i class="on"></i><i></i><i></i></div>
+<div class="steps" id="steps" style="display:none"><i class="on"></i><i></i><i></i></div>
 <div id="err" class="err" style="display:none"></div>
 
-<div class="step on" id="s1">
+<div class="step on" id="s0">
+  <div class="card" style="background:transparent;border:none;padding:0 2px;margin-bottom:10px;"><div style="font-size:1.1rem;font-weight:800;">{{ project.project_name }}</div><div class="small" style="margin-top:2px;">What would you like to do?</div></div>
+  <button class="menu" type="button" onclick="go('n')"><b>📐 Installation notes</b><span>Drawings, fitting notes and important steps for this job</span></button>
+  <button class="menu" type="button" onclick="go(1)"><b>✍ Satisfaction note</b><span>Add photos, answer the checks and get the customer's signature</span></button>
+</div>
+
+<div class="step" id="sn">
+  <div class="card"><h3>{{ project.project_name }}</h3><div class="small" style="margin:0;">Installation notes</div></div>
+  {% if not has_notes %}<div class="card" style="text-align:center;color:var(--mut);">No installation notes have been added for this job yet.</div>{% endif %}
+  {% if steps_html %}<div class="card"><h3>Important installation steps</h3><div class="steptxt">{{ steps_html|safe }}</div></div>{% endif %}
+  {% if drawing or rams or fit_notes or job_files %}<div class="card"><h3>Drawings &amp; documents</h3>
+    {% if drawing %}<div class="frow"><div class="fn">📐 {{ drawing.name }}<small>Drawing</small></div><a href="{% url 'fitter_file' link.token 'doc' drawing.pk %}" target="_blank" rel="noopener">View</a><a class="dl" href="{% url 'fitter_file' link.token 'doc' drawing.pk %}?dl=1">Download</a></div>{% endif %}
+    {% for d in rams %}<div class="frow"><div class="fn">🦺 {{ d.name }}<small>RAMS</small></div><a href="{% url 'fitter_file' link.token 'doc' d.pk %}" target="_blank" rel="noopener">View</a><a class="dl" href="{% url 'fitter_file' link.token 'doc' d.pk %}?dl=1">Download</a></div>{% endfor %}
+    {% for n in fit_notes %}<div class="frow"><div class="fn">📄 {{ n.title }}<small>Fitting note</small></div><a href="{% url 'fitter_file' link.token 'note' n.pk %}" target="_blank" rel="noopener">View</a><a class="dl" href="{% url 'fitter_file' link.token 'note' n.pk %}?dl=1">Download</a></div>{% endfor %}
+    {% for f in job_files %}<div class="frow"><div class="fn">📎 {{ f.title }}<small>Added for this job</small></div><a href="{% url 'fitter_file' link.token 'pfile' f.pk %}" target="_blank" rel="noopener">View</a><a class="dl" href="{% url 'fitter_file' link.token 'pfile' f.pk %}?dl=1">Download</a></div>{% endfor %}
+  </div>{% endif %}
+</div>
+
+<div class="step" id="s1">
   <div class="card"><h3>The job</h3>
     <div class="kv"><span>Project</span><b>{{ project.project_name }}</b></div>
     {% if addr %}<div class="kv"><span>Address</span><b>{% for a in addr %}{{ a }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</b></div>{% endif %}
@@ -95,18 +120,22 @@ textarea{min-height:90px;resize:vertical;}
   <button class="btn ghost" style="margin-top:22px;" onclick="location.reload()">Start another report</button></div></div>
 </div>
 
-<div class="foot" id="foot"><button class="btn ghost back" id="back" type="button" onclick="go(cur-1)" style="display:none;">← Back</button><button class="btn" id="next" type="button" onclick="next()">Next →</button></div>
+<div class="foot" id="foot" style="display:none"><button class="btn ghost back" id="back" type="button" onclick="back()" style="display:none;">← Back</button><button class="btn" id="next" type="button" onclick="next()">Next →</button></div>
 
 <script>
-var TOKEN='{{ link.token }}', cur=1, pending=0, photos={{ photo_ids|length }};
+var TOKEN='{{ link.token }}', cur=0, pending=0, photos={{ photo_ids|length }};
 var $=function(i){return document.getElementById(i)};
 function showErr(m){var e=$('err');e.textContent=m||'';e.style.display=m?'block':'none';if(m)window.scrollTo({top:0,behavior:'smooth'});}
-function go(n){cur=n;showErr('');for(var i=1;i<=4;i++)$('s'+i).classList.toggle('on',i===n);
+function go(n){cur=n;showErr('');var ids=[0,'n',1,2,3,4];ids.forEach(function(i){$('s'+i).classList.toggle('on',i===n);});
+  var wiz=(n>=1&&n<=3);
   var bars=$('steps').children;for(var j=0;j<3;j++)bars[j].classList.toggle('on',j<Math.min(n,3));
-  $('steps').style.display=n===4?'none':'flex';$('foot').style.display=n===4?'none':'flex';
-  $('back').style.display=n>1?'flex':'none';
+  $('steps').style.display=wiz?'flex':'none';
+  $('foot').style.display=(wiz||n==='n')?'flex':'none';
+  $('back').style.display=(n>1||n==='n'||n===1)?'flex':'none';
+  $('next').style.display=n==='n'?'none':'flex';$('back').style.flex=n==='n'?'1':'';
   $('next').textContent=n===3?'Submit report ✓':'Next →';$('next').classList.toggle('green',n===3);
   if(n===3)setTimeout(sizeSig,50);window.scrollTo(0,0);}
+function back(){if(cur===1||cur==='n')go(0);else go(cur-1);}
 function next(){
   if(cur===1){go(2);return;}
   if(cur===2){
