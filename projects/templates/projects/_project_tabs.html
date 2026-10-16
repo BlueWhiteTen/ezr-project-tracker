@@ -37,7 +37,7 @@
     <span class="ph-gap"></span>
     <a class="ph-tab ph-tab2 {% if active == 'docs' %}on{% endif %}" href="{% url 'project_files_page' project.pk %}">📄 Documents</a>
     <a class="ph-tab ph-tab2 {% if active == 'survey' %}on{% endif %}" href="{% url 'project_survey_page' project.pk %}">📷 Survey photos</a>
-    <a class="ph-tab ph-tab2 {% if active == 'post' %}on{% endif %}" href="{% url 'install_report' project.pk %}">📋 Post-installation</a>
+    <a class="ph-tab ph-tab2 {% if active == 'post' %}on{% endif %}" href="{% url 'install_report' project.pk %}">📋 Installation info</a>
   </div>
 </div>
 <script>(function(){var t=document.querySelector('.ph-tab.on');if(t&&t.scrollIntoView){var w=t.parentNode;w.scrollLeft=Math.max(0,t.offsetLeft-w.clientWidth/2+t.offsetWidth/2);}})();</script>

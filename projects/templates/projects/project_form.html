@@ -272,11 +272,10 @@
         </div>
       </div>
 
-      <div class="form-card">
-        <div class="section-title">RAMS</div>
-        <div class="chk-row" style="margin-bottom:.8rem;">{{ form.rams_required }}<label for="{{ form.rams_required.id_for_label }}">RAMS required</label></div>
-        <div class="chk-row">{{ form.rams_sent }}<label for="{{ form.rams_sent.id_for_label }}">RAMS sent</label></div>
-      </div>
+      {% if project %}{# RAMS now lives on the Installation info page; keep its values so Save Changes doesn't clear them #}
+      {% if project.rams_required %}<input type="hidden" name="rams_required" value="on">{% endif %}
+      {% if project.rams_sent %}<input type="hidden" name="rams_sent" value="on">{% endif %}
+      {% endif %}
 
       {% if project and features.purchase_orders %}
       <div class="form-card">

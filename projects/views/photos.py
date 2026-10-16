@@ -48,6 +48,10 @@ def install_report(request, pk):
         rv = request.POST.get('return_visit_required', '')
         report.return_visit_required = True if rv == 'yes' else (False if rv == 'no' else None)
         report.save()
+        if request.POST.get('rams_present'):
+            project.rams_required = 'rams_required' in request.POST
+            project.rams_sent = 'rams_sent' in request.POST
+            project.save(update_fields=['rams_required', 'rams_sent'])
 
         # Handle photo uploads
         for photo in request.FILES.getlist('photos'):

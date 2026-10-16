@@ -65,6 +65,7 @@ def project_documents(request, pk):
             'id': d.pk,
             'name': d.name,
             'doc_type': d.get_doc_type_display(),
+            'type': d.doc_type,
             'url': f'/document/{d.pk}/download/',
             'uploaded_by': (d.uploaded_by.get_full_name() or d.uploaded_by.username) if d.uploaded_by else '',
             'uploaded_at': timezone.localtime(d.uploaded_at).strftime('%d %b %Y, %H:%M'),
