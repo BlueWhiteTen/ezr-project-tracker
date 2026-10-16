@@ -214,6 +214,7 @@ urlpatterns = [
     path('project/<int:pk>/cost/<int:cost_pk>/quote/', views.customer_quote,        name='customer_quote_option'),
     path('project/<int:pk>/cost/<int:cost_pk>/quote/refresh-price/', views.quote_refresh_price, name='quote_refresh_price_option'),
     path('project/<int:pk>/presence/',      views.project_presence,     name='project_presence'),
+    path('project/<int:pk>/presence/leave/', views.project_presence_leave, name='project_presence_leave'),
     path('project/<int:pk>/cost/print/',    views.project_cost_print,   name='project_cost_print'),
     path('project/<int:pk>/cost/save/',     views.project_cost_save,    name='project_cost_save'),
     path('project/<int:pk>/cost/add-line/', views.cost_line_add,        name='cost_line_add'),

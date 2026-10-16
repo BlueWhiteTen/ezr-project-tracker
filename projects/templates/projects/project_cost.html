@@ -90,11 +90,8 @@ tr.repriced{background:rgba(245,158,11,.10);}
 
 {% block content %}
 <div class="cost-page">
-<div class="cost-hdr">
-  <div style="display:flex;align-items:center;gap:1rem;">
-    <a href="{% url 'project_edit' project.pk %}" class="btn btn-ghost btn-sm">← {{ project.project_name }}</a>
-    <h1 style="font-size:1.4rem;font-weight:600;letter-spacing:-.02em;">Costing</h1>
-  </div>
+{% include "projects/_project_tabs.html" with active="cost" %}
+<div class="cost-hdr" style="justify-content:flex-start;">
   <div style="display:flex;gap:.6rem;">
     <button class="btn btn-ghost" onclick="saveAndPrint()">🖨 Print</button>
     <div style="position:relative;display:inline-block;" id="doc-dd">

@@ -67,27 +67,16 @@
 {% endblock %}
 
 {% block content %}
+{% if project %}{% include "projects/_project_tabs.html" with active="main" %}{% endif %}
 <div class="form-header">
-  <h1 class="form-title">{{ action }} Project{% if project %}: {{ project.project_name }}{% endif %}</h1>
-  {% if project and project.project_number %}
-  <div style="margin:-.4rem 0 .6rem;font-size:.85rem;color:var(--mut);">
-    {% if project.is_order %}Order No.{% else %}Enquiry No.{% endif %}:
-    <span style="{% if project.is_order %}font-weight:700;color:var(--txt);{% else %}font-weight:400;{% endif %}font-family:var(--fm);">{{ project.project_number }}</span>
-  </div>
-  {% endif %}
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;">
-    <div style="display:flex;gap:.5rem;align-items:center;">
-      {% if project %}
-      <a href="{% url 'project_cost' project.pk %}" class="btn btn-primary" style="background:#7c3aed;box-shadow:none;">💰 Costing</a>
-      <a href="{% url 'picking_list_view' project.pk %}" class="btn btn-primary" style="background:#2563eb;box-shadow:none;">📦 Picking List</a>
-      {% endif %}
-    </div>
+  {% if not project %}<h1 class="form-title">{{ action }} Project</h1>{% endif %}
+  <div style="display:flex;align-items:center;justify-content:{% if project %}flex-end{% else %}space-between{% endif %};gap:.5rem;flex-wrap:wrap;">
     <div style="display:flex;gap:.5rem;align-items:center;">
       {% if project %}
       <button type="submit" form="project-form" class="btn btn-primary" style="box-shadow:none;">💾 Save Changes</button>
       <button class="btn btn-ghost" onclick="duplicateProject()" title="Duplicate this project">⧉ Duplicate</button>
       {% endif %}
-      <a href="{% url 'dashboard' %}" class="btn btn-ghost">← Back</a>
+      {% if not project %}<a href="{% url 'dashboard' %}" class="btn btn-ghost">← Back</a>{% endif %}
     </div>
   </div>
 </div>

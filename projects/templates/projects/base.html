@@ -641,13 +641,15 @@ function toggleMobileMenu(){
   const banner = document.getElementById('presence-banner');
   const bannerText = document.getElementById('presence-banner-text');
 
+  function hideBanner(){ banner.style.display = 'none'; }
   async function heartbeat(){
+    if(document.hidden) return;            // a hidden tab is not "viewing"
     try {
       const r = await fetch(`/project/${PROJECT_PK}/presence/`, {
         method: 'POST',
         headers: {'X-CSRFToken': CSRF},
       });
-      if(!r.ok) return;
+      if(!r.ok){ hideBanner(); return; }    // never leave a stale warning on screen
       const d = await r.json();
       if(d.others && d.others.length){
         const names = d.others.map(o => o.name).join(', ');
@@ -655,13 +657,21 @@ function toggleMobileMenu(){
         bannerText.textContent = `${names} ${plural ? 'are' : 'is'} also viewing this project — coordinate before saving changes.`;
         banner.style.display = 'flex';
       } else {
-        banner.style.display = 'none';
+        hideBanner();
       }
-    } catch(e) { /* network blip — ignore */ }
+    } catch(e) { hideBanner(); }
+  }
+  function leave(){
+    try {
+      const fd = new FormData(); fd.append('csrfmiddlewaretoken', CSRF);
+      navigator.sendBeacon(`/project/${PROJECT_PK}/presence/leave/`, fd);
+    } catch(e) {}
   }
 
   heartbeat();
   setInterval(heartbeat, 15000);
+  document.addEventListener('visibilitychange', function(){ if(document.hidden) leave(); else heartbeat(); });
+  window.addEventListener('pagehide', leave);
 })();
 </script>
 {% endif %}

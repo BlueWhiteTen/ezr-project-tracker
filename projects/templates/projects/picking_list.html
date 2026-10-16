@@ -62,13 +62,10 @@
 
 {% block content %}
 <div class="pl-page">
+{% include "projects/_project_tabs.html" with active="pick" %}
 <div style="display:grid;grid-template-columns:1fr 300px;gap:1.2rem;align-items:start;">
 <div><!-- left: picking list -->
-<div class="pl-header">
-  <div style="display:flex;align-items:center;gap:1rem;">
-    <a href="{% url 'project_edit' project.pk %}" class="btn btn-ghost btn-sm">← {{ project.project_name }}</a>
-    <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">Picking List</h1>
-  </div>
+<div class="pl-header" style="justify-content:flex-end;">
   <div style="display:flex;align-items:center;gap:.6rem;">
     {% if pl.allocated %}
     <span style="font-size:.8rem;color:#16a34a;font-weight:600;background:#f0fdf4;border:1px solid #bbf7d0;padding:4px 10px;border-radius:6px;">🔒 Stock allocated — list locked</span>

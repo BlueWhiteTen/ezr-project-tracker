@@ -386,7 +386,7 @@ def project_add_comment(request, pk):
 @require_POST
 def project_presence(request, pk):
     """Heartbeat endpoint — upserts the user's presence and returns who else
-    is currently active in this project (seen within the last 90 seconds)."""
+    is currently active in this project (seen within the last 35 seconds)."""
     project = get_object_or_404(Project, pk=pk)
     # Upsert this user's presence record (auto_now on last_seen handles timestamp)
     ProjectPresence.objects.update_or_create(
@@ -397,8 +397,8 @@ def project_presence(request, pk):
     presence, _ = ProjectPresence.objects.get_or_create(project=project, user=request.user)
     ProjectPresence.objects.filter(pk=presence.pk).update(last_seen=timezone.now())
 
-    # Return who else is active (seen within 90 seconds, excluding self)
-    cutoff = timezone.now() - timedelta(seconds=90)
+    # Return who else is active (heartbeat every 15s; 35s allows one missed beat)
+    cutoff = timezone.now() - timedelta(seconds=35)
     others = ProjectPresence.objects.filter(
         project=project, last_seen__gte=cutoff
     ).exclude(user=request.user).select_related('user')
@@ -411,6 +411,14 @@ def project_presence(request, pk):
     })
 
 
+
+
+@login_required
+@require_POST
+def project_presence_leave(request, pk):
+    """Called (via sendBeacon) when someone leaves/hides the project page, so others stop seeing them at once."""
+    ProjectPresence.objects.filter(project_id=pk, user=request.user).delete()
+    return JsonResponse({'ok': True})
 
 
 @login_required
