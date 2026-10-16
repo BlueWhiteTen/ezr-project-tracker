@@ -1,0 +1,128 @@
+{% extends 'projects/base.html' %}
+{% block title %}Fitting Notes — Project Tracker{% endblock %}
+{% block extra_style %}
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.3rem;flex-wrap:wrap;gap:1rem;}
+.note-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;}
+.note-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.1rem;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:.6rem;}
+.note-title{font-weight:600;font-size:.95rem;color:var(--txt);}
+.note-codes{display:flex;flex-wrap:wrap;gap:.3rem;}
+.code-chip{background:var(--acc-bg);color:var(--acc);font-size:.7rem;font-weight:600;padding:2px 7px;border-radius:99px;font-family:var(--fm);}
+.note-actions{display:flex;gap:.5rem;margin-top:auto;}
+.nc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s;}
+.nc-overlay.open{opacity:1;pointer-events:all;}
+.nc-modal{position:fixed;top:5vh;left:50%;transform:translate(-50%,0);width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);z-index:201;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity .2s;}
+.nc-modal.open{opacity:1;pointer-events:all;}
+.nc-head{padding:1rem 1.3rem;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;background:var(--surf2);border-radius:var(--rad-lg) var(--rad-lg) 0 0;}
+.nc-body{padding:1.3rem;}
+.nc-foot{padding:.85rem 1.3rem;border-top:1px solid var(--bdr);display:flex;gap:.5rem;justify-content:flex-end;}
+.prod-pick{max-height:200px;overflow-y:auto;border:1px solid var(--bdr);border-radius:var(--rad);padding:.5rem;}
+.prod-pick label{display:flex;align-items:center;gap:.5rem;padding:3px 4px;font-size:.82rem;cursor:pointer;border-radius:4px;}
+.prod-pick label:hover{background:var(--surf2);}
+{% endblock %}
+{% block content %}
+<div class="page-hdr">
+  <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">Fitting Notes</h1>
+  <button class="btn btn-primary" onclick="openUpload()">+ Upload Fitting Notes</button>
+</div>
+
+{% if notes %}
+<div class="note-grid">
+  {% for n in notes %}
+  <div class="note-card" id="note-{{ n.pk }}">
+    <input class="note-title-edit" value="{{ n.title }}" data-pk="{{ n.pk }}" onchange="saveNoteField(this,'title')" style="font-weight:600;font-size:.95rem;color:var(--txt);width:100%;border:1px solid transparent;border-radius:5px;padding:3px 5px;background:transparent;" onfocus="this.style.borderColor='var(--bdr)';this.style.background='var(--surf2)';" onblur="this.style.borderColor='transparent';this.style.background='transparent';">
+    <div style="font-size:.72rem;color:var(--mut);">{{ n.file_original_name }}{% if n.is_pdf %} · PDF{% else %} · Image{% endif %}</div>
+    <div class="note-codes">
+      {% for p in n.products.all %}<span class="code-chip">{{ p.code }}</span>{% empty %}<span style="font-size:.72rem;color:var(--mut);">No products linked</span>{% endfor %}
+    </div>
+    {% if n.templates.all %}<div class="note-codes" style="margin-top:.2rem;">{% for t in n.templates.all %}<span class="code-chip" style="background:var(--blue-bg);color:var(--blue);font-family:var(--f);">🗂 {{ t.name }}</span>{% endfor %}</div>{% endif %}
+    <textarea class="note-desc-edit" data-pk="{{ n.pk }}" onchange="saveNoteField(this,'notes')" placeholder="Add a description…" rows="2" style="font-size:.8rem;color:var(--txt2);width:100%;border:1px solid var(--bdr);border-radius:5px;padding:5px 6px;background:var(--surf2);resize:vertical;font-family:var(--f);">{{ n.notes }}</textarea>
+    <div class="note-actions">
+      <a href="{% url 'fitting_note_download' n.pk %}" target="_blank" class="btn btn-ghost btn-sm">View</a>
+      <button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="deleteNote({{ n.pk }})">Delete</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div style="text-align:center;padding:3rem;color:var(--mut);background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);">
+  No fitting notes yet — click + Upload Fitting Notes to add a drawing and connect it to a product.
+</div>
+{% endif %}
+
+<div class="nc-overlay" id="up-overlay" onclick="closeUpload()"></div>
+<div class="nc-modal" id="up-modal">
+  <div class="nc-head"><span style="font-weight:600;">Upload Fitting Notes</span><button onclick="closeUpload()" style="background:none;border:1px solid var(--bdr);border-radius:var(--rad);color:var(--mut);cursor:pointer;padding:3px 9px;">✕</button></div>
+  <div class="nc-body">
+    <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="up-title" placeholder="e.g. SM Foot fitting instructions"></div>
+    <div class="form-group"><label class="form-label">File (PDF or JPG)</label><input class="form-input" id="up-file" type="file" accept=".pdf,.jpg,.jpeg,.png"></div>
+    <div class="form-group">
+      <label class="form-label">Connect to product(s)</label>
+      <input class="form-input" id="up-search" placeholder="Filter products…" oninput="filterProds(this.value)" style="margin-bottom:.4rem;">
+      <div class="prod-pick" id="up-prods">
+        {% for p in products %}
+        <label data-code="{{ p.code|lower }}" data-desc="{{ p.description|lower }}"><input type="checkbox" value="{{ p.pk }}"> <span style="font-family:var(--fm);color:var(--acc);">{{ p.code }}</span> <span style="color:var(--mut);">{{ p.description|truncatechars:40 }}</span></label>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Connect to template(s) — drawing prints when the template is used</label>
+      <div class="prod-pick" id="up-tmpls" style="max-height:130px;">
+        {% for t in templates %}
+        <label><input type="checkbox" value="{{ t.pk }}"> <span style="color:var(--txt);">{{ t.name }}</span></label>
+        {% empty %}<span style="font-size:.75rem;color:var(--mut);">No templates yet.</span>{% endfor %}
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:0;"><label class="form-label">Notes (optional)</label><textarea class="form-input" id="up-notes" rows="2"></textarea></div>
+    <div id="up-error" style="color:var(--red);font-size:.82rem;display:none;margin-top:.5rem;"></div>
+  </div>
+  <div class="nc-foot">
+    <button onclick="closeUpload()" class="btn btn-ghost btn-sm">Cancel</button>
+    <button onclick="submitUpload()" class="btn btn-primary btn-sm">Upload</button>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+function openUpload(){ document.getElementById('up-overlay').classList.add('open'); document.getElementById('up-modal').classList.add('open'); }
+function closeUpload(){ document.getElementById('up-overlay').classList.remove('open'); document.getElementById('up-modal').classList.remove('open'); }
+function filterProds(q){
+  q = q.toLowerCase().trim();
+  document.querySelectorAll('#up-prods label').forEach(l=>{
+    const match = !q || l.dataset.code.includes(q) || l.dataset.desc.includes(q);
+    l.style.display = match ? 'flex' : 'none';
+  });
+}
+async function submitUpload(){
+  const err = document.getElementById('up-error');
+  const file = document.getElementById('up-file').files[0];
+  if(!file){ err.textContent='Please choose a file'; err.style.display='block'; return; }
+  const fd = new FormData();
+  fd.append('title', document.getElementById('up-title').value.trim());
+  fd.append('file', file);
+  fd.append('notes', document.getElementById('up-notes').value.trim());
+  document.querySelectorAll('#up-prods input:checked').forEach(cb=>fd.append('product_ids', cb.value));
+  document.querySelectorAll('#up-tmpls input:checked').forEach(cb=>fd.append('template_ids', cb.value));
+  const r = await fetch('/fitting-notes/upload/',{method:'POST',headers:{'X-CSRFToken':CSRF},body:fd});
+  const d = await r.json();
+  if(d.error){ err.textContent=d.error; err.style.display='block'; return; }
+  location.reload();
+}
+async function saveNoteField(el, field){
+  const val = el.value;
+  el.style.outline = '2px solid #d4700a';
+  const body = {}; body[field] = val;
+  const r = await fetch(`/fitting-notes/${el.dataset.pk}/update/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify(body)});
+  if((await r.json()).ok){ el.style.outline='2px solid #16a34a'; setTimeout(()=>el.style.outline='',1000); }
+  else { el.style.outline='2px solid #dc2626'; }
+}
+
+async function deleteNote(pk){
+  if(!confirm('Delete this fitting note?')) return;
+  const r = await fetch(`/fitting-notes/${pk}/delete/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+  const d = await r.json();
+  if(d.ok) document.getElementById(`note-${pk}`).remove();
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeUpload();});
+</script>
+{% endblock %}

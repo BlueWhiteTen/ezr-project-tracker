@@ -1,0 +1,75 @@
+{% extends 'projects/base.html' %}
+{% block title %}Quote Photos — Project Tracker{% endblock %}
+{% block extra_style %}
+.qp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem;}
+.qp-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);}
+.qp-card img{width:100%;height:160px;object-fit:cover;display:block;background:var(--surf3);}
+.qp-body{padding:.8rem .9rem;}
+.qp-desc{width:100%;border:1px solid var(--bdr);border-radius:6px;padding:5px 8px;font-size:.82rem;background:var(--surf2);color:var(--txt);}
+.qp-actions{display:flex;justify-content:space-between;align-items:center;margin-top:.5rem;}
+.upload-box{background:var(--surf);border:2px dashed var(--bdr2);border-radius:var(--rad-lg);padding:1.4rem;margin-bottom:1.4rem;max-width:600px;}
+.fld{margin-bottom:.7rem;}
+.fld label{display:block;font-size:.78rem;color:var(--mut);margin-bottom:.25rem;font-weight:600;}
+.fld > input{width:100%;border:1px solid var(--bdr);border-radius:var(--rad);padding:.5rem .7rem;font-family:var(--f);font-size:.85rem;background:var(--surf2);color:var(--txt);}
+{% endblock %}
+{% block content %}
+<h1 style="font-size:1.5rem;font-weight:700;margin-bottom:.4rem;">📷 Quote Photos</h1>
+<p style="color:var(--mut);font-size:.9rem;margin-bottom:1.4rem;">A library of photos you can add to any quote. Upload here, then use "Add from library" on a quote.</p>
+
+<div class="upload-box">
+  <div style="font-weight:700;margin-bottom:.8rem;">Upload a photo</div>
+  <div class="fld"><label>Description (optional)</label><input id="up-title" placeholder="e.g. Blue Trimline with chipboard"></div>
+  <div class="fld"><label>Photo</label><input id="up-file" type="file" accept="image/*"></div>
+  <button class="btn btn-primary" onclick="uploadPhoto()" id="up-btn">Upload</button>
+</div>
+
+<div class="qp-grid" id="qp-grid">
+  {% for p in photos %}
+  <div class="qp-card" id="qp-{{ p.pk }}">
+    <img src="{% url 'quote_photo_file' p.pk %}" alt="{{ p.title }}" onclick="enlarge(this.src)" style="cursor:zoom-in;">
+    <div class="qp-body">
+      <input class="qp-desc" value="{{ p.title }}" data-pk="{{ p.pk }}" onchange="saveDesc(this)" placeholder="description…">
+      <div class="qp-actions">
+        <span style="font-size:.72rem;color:var(--mut);">auto-saves</span>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="delPhoto({{ p.pk }})">Delete</button>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <p style="color:var(--mut);">No photos yet. Upload your first above.</p>
+  {% endfor %}
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const CSRF='{{ csrf_token }}';
+async function uploadPhoto(){
+  const f=document.getElementById('up-file').files[0];
+  if(!f){alert('Choose a photo');return;}
+  const fd=new FormData();
+  fd.append('file',f);
+  fd.append('title',document.getElementById('up-title').value);
+  const btn=document.getElementById('up-btn'); btn.textContent='Uploading…'; btn.disabled=true;
+  const r=await fetch('{% url "quote_photo_upload" %}',{method:'POST',headers:{'X-CSRFToken':CSRF},body:fd});
+  const d=await r.json();
+  if(d.ok) location.reload(); else {alert(d.error||'Failed');btn.textContent='Upload';btn.disabled=false;}
+}
+async function saveDesc(inp){
+  inp.style.borderColor='#d4700a';
+  const r=await fetch(`/quote-photos/${inp.dataset.pk}/update/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({title:inp.value})});
+  if((await r.json()).ok){inp.style.borderColor='#16a34a';setTimeout(()=>inp.style.borderColor='',1200);}
+}
+async function delPhoto(pk){
+  if(!confirm('Delete this photo?'))return;
+  const r=await fetch(`/quote-photos/${pk}/delete/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+  if((await r.json()).ok) document.getElementById(`qp-${pk}`).remove();
+}
+function enlarge(src){
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:2rem;';
+  ov.onclick=()=>ov.remove();
+  ov.innerHTML=`<img src="${src}" style="max-width:95%;max-height:95%;object-fit:contain;border-radius:8px;">`;
+  document.body.appendChild(ov);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends 'projects/base.html' %}
+{% block title %}Picking Templates{% endblock %}
+{% block extra_style %}
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.3rem;flex-wrap:wrap;gap:1rem;}
+.tmpl-list{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);}
+.tmpl-row{display:flex;align-items:center;gap:1rem;padding:.85rem 1.2rem;border-bottom:.5px solid var(--bdr);transition:background .12s;}
+.tmpl-row:last-child{border-bottom:none;}
+.tmpl-row:hover{background:var(--surf2);}
+.tmpl-name{font-weight:600;font-size:.9rem;flex:1;}
+.tmpl-customer{font-size:.82rem;color:var(--mut);}
+.tmpl-count{font-size:.75rem;color:var(--mut2);background:var(--surf2);border:1px solid var(--bdr);border-radius:99px;padding:2px 9px;}
+/* Modal */
+.nc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s;}
+.nc-overlay.open{opacity:1;pointer-events:all;}
+.nc-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-58%);width:500px;max-width:95vw;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);z-index:201;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
+.nc-modal.open{opacity:1;pointer-events:all;transform:translate(-50%,-50%);}
+.nc-head{padding:1rem 1.3rem;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;background:var(--surf2);border-radius:var(--rad-lg) var(--rad-lg) 0 0;}
+.nc-body{padding:1.3rem;}
+.nc-foot{padding:.85rem 1.3rem;border-top:1px solid var(--bdr);display:flex;gap:.5rem;justify-content:flex-end;}
+{% endblock %}
+{% block content %}
+<div class="page-hdr">
+  <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">Picking Templates</h1>
+  <div style="display:flex;gap:.6rem;">
+    <label class="btn btn-ghost btn-sm" style="cursor:pointer;" for="import-tmpl-file">⬆ Import from Excel</label>
+    <input type="file" id="import-tmpl-file" accept=".xlsx" style="display:none;" onchange="showImportModal(this)">
+    <button class="btn btn-primary" onclick="openNew()">+ New Template</button>
+  </div>
+</div>
+<div id="import-msg" style="display:none;padding:.65rem 1rem;border-radius:var(--rad);font-size:.85rem;margin-bottom:1rem;"></div>
+
+<div class="tmpl-list">
+  {% for t in templates %}
+  <div class="tmpl-row">
+    <div style="flex:1;">
+      <div class="tmpl-name">{{ t.name }}</div>
+      {% if t.customer %}<div class="tmpl-customer">{{ t.customer }}</div>{% endif %}
+    </div>
+    <span class="tmpl-count">{{ t.items.count }} items</span>
+    <a href="{% url 'template_detail' t.pk %}" class="btn btn-ghost btn-sm">Edit</a>
+  </div>
+  {% empty %}
+  <div style="text-align:center;padding:3rem;color:var(--mut);">No templates yet — create one or import from Excel</div>
+  {% endfor %}
+</div>
+
+<!-- New template modal -->
+<div class="nc-overlay" id="nc-overlay" onclick="closeNew()"></div>
+<div class="nc-modal" id="nc-modal">
+  <div class="nc-head"><span style="font-weight:600;">New Template</span><button onclick="closeNew()" style="background:none;border:1px solid var(--bdr);border-radius:var(--rad);color:var(--mut);cursor:pointer;padding:3px 9px;">✕</button></div>
+  <div class="nc-body">
+    <div class="form-group"><label class="form-label">Template Name *</label><input class="form-input" id="nc-name" placeholder="e.g. Trolley Mountain Warehouse"></div>
+    <div class="form-group" style="margin-bottom:0;"><label class="form-label">Customer (optional)</label><input class="form-input" id="nc-customer" placeholder="e.g. Mountain Warehouse"></div>
+    <div id="nc-error" style="color:var(--red);font-size:.82rem;margin-top:.5rem;display:none;"></div>
+  </div>
+  <div class="nc-foot">
+    <button onclick="closeNew()" class="btn btn-ghost btn-sm">Cancel</button>
+    <button onclick="submitNew()" class="btn btn-primary btn-sm">Create</button>
+  </div>
+</div>
+
+<!-- Import modal -->
+<div class="nc-overlay" id="imp-overlay" onclick="closeImport()"></div>
+<div class="nc-modal" id="imp-modal">
+  <div class="nc-head"><span style="font-weight:600;">Import from Excel</span><button onclick="closeImport()" style="background:none;border:1px solid var(--bdr);border-radius:var(--rad);color:var(--mut);cursor:pointer;padding:3px 9px;">✕</button></div>
+  <div class="nc-body">
+    <div class="form-group"><label class="form-label">Template Name *</label><input class="form-input" id="imp-name" placeholder="e.g. Mountain Warehouse Full Kit"></div>
+    <div class="form-group" style="margin-bottom:0;"><label class="form-label">Customer (optional)</label><input class="form-input" id="imp-customer" placeholder="e.g. Mountain Warehouse"></div>
+    <div id="imp-file-name" style="font-size:.82rem;color:var(--mut);margin-top:.75rem;"></div>
+    <div id="imp-error" style="color:var(--red);font-size:.82rem;margin-top:.5rem;display:none;"></div>
+  </div>
+  <div class="nc-foot">
+    <button onclick="closeImport()" class="btn btn-ghost btn-sm">Cancel</button>
+    <button onclick="submitImport()" class="btn btn-primary btn-sm">Import</button>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+let importFile = null;
+
+function openNew(){ document.getElementById('nc-overlay').classList.add('open'); document.getElementById('nc-modal').classList.add('open'); setTimeout(()=>document.getElementById('nc-name').focus(),100); }
+function closeNew(){ document.getElementById('nc-overlay').classList.remove('open'); document.getElementById('nc-modal').classList.remove('open'); }
+async function submitNew(){
+  const name = document.getElementById('nc-name').value.trim();
+  const err = document.getElementById('nc-error');
+  if(!name){err.textContent='Name required';err.style.display='block';return;}
+  const r = await fetch('/templates/create/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({name,customer:document.getElementById('nc-customer').value.trim()})});
+  const d = await r.json();
+  if(d.error){err.textContent=d.error;err.style.display='block';return;}
+  window.location=`/templates/${d.id}/`;
+}
+
+function showImportModal(inp){
+  importFile = inp.files[0];
+  if(!importFile) return;
+  document.getElementById('imp-file-name').textContent = '📎 ' + importFile.name;
+  document.getElementById('imp-name').value = importFile.name.replace('.xlsx','').replace(/_/g,' ');
+  document.getElementById('imp-overlay').classList.add('open');
+  document.getElementById('imp-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('imp-name').select(),100);
+}
+function closeImport(){ document.getElementById('imp-overlay').classList.remove('open'); document.getElementById('imp-modal').classList.remove('open'); }
+async function submitImport(){
+  if(!importFile) return;
+  const name = document.getElementById('imp-name').value.trim();
+  const err = document.getElementById('imp-error');
+  if(!name){err.textContent='Name required';err.style.display='block';return;}
+  const fd = new FormData();
+  fd.append('file', importFile);
+  fd.append('name', name);
+  fd.append('customer', document.getElementById('imp-customer').value.trim());
+  const btn = document.querySelector('#imp-modal .btn-primary');
+  btn.textContent='Importing…';btn.disabled=true;
+  const r = await fetch('/templates/import/',{method:'POST',headers:{'X-CSRFToken':CSRF},body:fd});
+  const d = await r.json();
+  if(d.error){err.textContent=d.error;err.style.display='block';btn.textContent='Import';btn.disabled=false;return;}
+  window.location=`/templates/${d.id}/`;
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeNew();closeImport();}});
+</script>
+{% endblock %}

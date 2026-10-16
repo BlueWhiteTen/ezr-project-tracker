@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>To-Do List</title>
+<link rel="manifest" href="{% static 'todo-manifest.json' %}">
+<link rel="icon" href="{% static 'icon-192.png' %}">
+<meta name="theme-color" content="#d4700a">
+<style>
+  :root{--bg:#faf9f7;--surf:#fff;--surf2:#faf9f7;--bdr:#eee9e2;--acc:#d4700a;--acc-bg:#fff4eb;--acc-bdr:#f5c89a;--red:#dc2626;--txt:#1a1a1a;--mut:#9a948c;--mut2:#b5afa6;--f:'Manrope',system-ui,sans-serif;--rad:10px;--rad-lg:16px;--shadow:0 1px 3px rgba(0,0,0,.06);}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:var(--f);background:var(--bg);color:var(--txt);height:100vh;height:100dvh;height:var(--real-vh, 100dvh);display:flex;flex-direction:column;}
+  .header{padding:1rem 1.2rem .8rem;flex-shrink:0;}
+  .header h1{font-size:1.1rem;font-weight:700;margin:0;display:flex;align-items:center;gap:.5rem;}
+  .list-wrap{flex:1;overflow-y:auto;padding:0 1.2rem;}
+  ul{list-style:none;margin:0;padding:0;}
+  li{display:flex;align-items:flex-start;gap:.6rem;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:.6rem .7rem;margin-bottom:.5rem;box-shadow:var(--shadow);}
+  li input[type=checkbox]{margin-top:.2rem;width:16px;height:16px;accent-color:var(--acc);cursor:pointer;flex-shrink:0;}
+  li span{flex:1;font-size:.92rem;line-height:1.4;word-break:break-word;}
+  li button{flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:1rem;padding:2px 4px;line-height:1;}
+  li button:hover{color:var(--red);}
+  li button[title="Edit"]:hover{color:var(--acc);}
+.todo-meta{font-size:.7rem;color:var(--mut);margin-top:1px;cursor:pointer;line-height:1.35;}
+  .todo-meta:hover{color:var(--acc);}
+  .todo-meta b{font-weight:700;}
+  .todo-meta[data-level="overdue"]{color:#dc2626;}
+  .todo-meta[data-level="today"],.todo-meta[data-level="soon"]{color:#c2570c;}
+  .todo-meta[data-level="overdue"] b,.todo-meta[data-level="today"] b{text-transform:uppercase;letter-spacing:.02em;}
+  .todo-meta[data-level="done"]{opacity:.6;}
+  .add-row input[type=date]{flex:0 0 auto;width:auto;font-size:.8rem;padding:.4rem .4rem;}
+  .empty{color:var(--mut);font-size:.88rem;padding:1rem 0;text-align:center;}
+  .add-row{display:flex;gap:.5rem;padding:.8rem 1.2rem 1.1rem;flex-shrink:0;background:var(--bg);border-top:1px solid var(--bdr);}
+  .add-row input{flex:1;border:1px solid var(--bdr);border-radius:var(--rad);padding:.55rem .7rem;font-size:.92rem;font-family:var(--f);outline:none;}
+  .add-row input:focus{border-color:var(--acc);}
+  .add-row button{background:var(--acc);color:#fff;border:none;border-radius:var(--rad);padding:.55rem 1rem;font-size:.88rem;font-weight:600;cursor:pointer;font-family:var(--f);}
+</style>
+</head>
+<body>
+  <div class="header" style="display:flex;align-items:center;justify-content:space-between;">
+    <h1>✅ To-Do List</h1>
+    <button id="install-btn" onclick="installApp()" style="display:none;background:var(--acc);color:#fff;border:none;border-radius:var(--rad);padding:.4rem .8rem;font-size:.8rem;font-weight:600;cursor:pointer;font-family:var(--f);">📌 Install App</button>
+  </div>
+  <div class="list-wrap">
+    <ul id="todo-list">
+      {% for t in todo_items %}
+      <li id="todo-row-{{ t.pk }}" data-text="{{ t.text }}">
+        <input type="checkbox" class="todo-check" data-pk="{{ t.pk }}" {% if t.is_done %}checked{% endif %}>
+        <div class="todo-body" style="flex:1;min-width:0;">
+          <span class="todo-text" style="{% if t.is_done %}text-decoration:line-through;color:var(--mut2);{% endif %}">{{ t.text }}</span>
+          {% with di=t.due_info %}<div class="todo-meta" data-level="{{ di.level }}" data-due="{{ t.due_date|date:'Y-m-d' }}" onclick="pickDue({{ t.pk }})" title="Tap to set or change the do-by date">Added {{ t.created_at|date:"j M" }}{% if t.due_date %} · Do by {{ t.due_date|date:"D j M" }}{% if di.label %} · <b>{{ di.label }}</b>{% endif %}{% else %} · <u style="text-decoration:underline dotted;">+ do-by date</u>{% endif %}</div>{% endwith %}
+        </div>
+        <button onclick="editTodo({{ t.pk }})" title="Edit" style="color:var(--mut);">✎</button>
+        <button onclick="deleteTodo({{ t.pk }})" title="Delete">✕</button>
+      </li>
+      {% empty %}
+      <div class="empty" id="todo-empty">Nothing on your list yet.</div>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="add-row">
+    <input type="text" id="todo-input" placeholder="Add a to-do…" onkeydown="if(event.key==='Enter'){addTodo();}">
+    <input type="date" id="todo-due" title="Do by (optional)">
+    <button onclick="addTodo()">+ Add</button>
+  </div>
+
+<script>
+function setRealVh(){
+  document.documentElement.style.setProperty('--real-vh', window.innerHeight + 'px');
+}
+setRealVh();
+window.addEventListener('resize', setRealVh);
+window.addEventListener('orientationchange', setRealVh);
+
+const CSRF = '{{ csrf_token }}';
+
+function metaHtml(d){
+  let h = 'Added ' + d.added;
+  if(d.due){ h += ' · Do by ' + d.due_text + (d.label ? ' · <b>' + d.label + '</b>' : ''); }
+  else { h += ' · <u style="text-decoration:underline dotted;">+ do-by date</u>'; }
+  return h;
+}
+function applyMeta(row, d){
+  const m = row.querySelector('.todo-meta');
+  if(!m) return;
+  m.dataset.level = d.level || 'none';
+  m.dataset.due = d.due || '';
+  m.innerHTML = metaHtml(d);
+}
+function pickDue(pk){
+  const row = document.getElementById(`todo-row-${pk}`);
+  if(!row) return;
+  const old = row.querySelector('.todo-due-input');
+  if(old) old.remove();
+  const inp = document.createElement('input');
+  inp.type = 'date'; inp.className = 'todo-due-input';
+  inp.value = row.querySelector('.todo-meta').dataset.due || '';
+  inp.style.cssText = 'font-size:.78rem;margin-top:3px;border:1px solid var(--acc);border-radius:6px;padding:2px 4px;font-family:inherit;';
+  const clear = document.createElement('button');
+  clear.type = 'button'; clear.textContent = 'Clear'; clear.title = 'Remove the do-by date';
+  clear.style.cssText = 'font-size:.7rem;margin-left:4px;';
+  const wrap = document.createElement('div'); wrap.className = 'todo-due-input'; wrap.append(inp, clear);
+  row.querySelector('.todo-meta').after(wrap);
+  const save = async (val) => {
+    const r = await fetch(`/todo/${pk}/due/`, {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify({due: val})});
+    const d = await r.json();
+    if(d.ok) applyMeta(row, d);
+    wrap.remove();
+  };
+  inp.addEventListener('change', () => save(inp.value));
+  clear.addEventListener('click', () => save(''));
+  inp.addEventListener('keydown', e => { if(e.key === 'Escape') wrap.remove(); });
+  inp.focus();
+  try{ inp.showPicker && inp.showPicker(); }catch(e){}
+}
+
+
+async function addTodo(){
+  const input = document.getElementById('todo-input');
+  const text = input.value.trim();
+  if(!text) return;
+  const r = await fetch('/todo/add/', {
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify({text, due: (document.getElementById('todo-due') || {}).value || null})
+  });
+  const d = await r.json();
+  if(d.ok){
+    const dueEl = document.getElementById('todo-due'); if(dueEl) dueEl.value = '';
+    const empty = document.getElementById('todo-empty');
+    if(empty) empty.remove();
+    const list = document.getElementById('todo-list');
+    const li = document.createElement('li');
+    li.id = `todo-row-${d.id}`;
+    li.dataset.text = text;
+    li.innerHTML = `
+      <input type="checkbox" class="todo-check" data-pk="${d.id}">
+      <div class="todo-body" style="flex:1;min-width:0;"><span class="todo-text"></span><div class="todo-meta" onclick="pickDue(${d.id})" title="Tap to set or change the do-by date"></div></div>
+      <button onclick="editTodo(${d.id})" title="Edit" style="color:var(--mut);">✎</button>
+      <button onclick="deleteTodo(${d.id})" title="Delete">✕</button>`;
+    li.querySelector('.todo-text').textContent = text;
+    applyMeta(li, d);
+    li.querySelector('.todo-check').addEventListener('change', (e) => toggleTodo(d.id, e.target));
+    list.appendChild(li);
+    input.value = '';
+    input.focus();
+  }
+}
+
+function editTodo(pk){
+  const row = document.getElementById(`todo-row-${pk}`);
+  if(!row || row.querySelector('.todo-edit-input')) return;
+  const span = row.querySelector('.todo-text');
+  const currentText = row.dataset.text || span.textContent;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'todo-edit-input';
+  input.value = currentText;
+  input.style.cssText = 'flex:1;font-size:.9rem;padding:.3rem .5rem;border:1px solid var(--acc);border-radius:6px;font-family:var(--f);';
+  span.replaceWith(input);
+  input.focus();
+  input.select();
+
+  let saved = false;
+  const save = async () => {
+    if(saved) return;
+    saved = true;
+    input.removeEventListener('blur', onBlur);
+    const newText = input.value.trim();
+    if(!newText || newText === currentText){
+      input.replaceWith(span);
+      return;
+    }
+    const r = await fetch(`/todo/${pk}/edit/`, {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify({text: newText})
+    });
+    const d = await r.json();
+    if(d.ok){
+      span.textContent = d.text;
+      row.dataset.text = d.text;
+    }
+    input.replaceWith(span);
+  };
+  const onBlur = () => save();
+  input.addEventListener('keydown', e => {
+    if(e.key === 'Enter'){ e.preventDefault(); save(); }
+    if(e.key === 'Escape'){ saved = true; input.removeEventListener('blur', onBlur); input.replaceWith(span); }
+  });
+  input.addEventListener('blur', onBlur);
+}
+
+async function toggleTodo(pk, checkbox){
+  const r = await fetch(`/todo/${pk}/toggle/`, {method:'POST', headers:{'X-CSRFToken':CSRF}});
+  const d = await r.json();
+  if(d.ok){
+    const row = document.getElementById(`todo-row-${pk}`);
+    const span = row.querySelector('.todo-text');
+    span.style.textDecoration = d.is_done ? 'line-through' : 'none';
+    span.style.color = d.is_done ? 'var(--mut2)' : '';
+    applyMeta(row, d);
+  }
+}
+
+async function deleteTodo(pk){
+  const r = await fetch(`/todo/${pk}/delete/`, {method:'POST', headers:{'X-CSRFToken':CSRF}});
+  const d = await r.json();
+  if(d.ok){
+    document.getElementById(`todo-row-${pk}`)?.remove();
+    const list = document.getElementById('todo-list');
+    if(list && !list.querySelector('.todo-check')){
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.id = 'todo-empty';
+      empty.textContent = 'Nothing on your list yet.';
+      list.appendChild(empty);
+    }
+  }
+}
+
+document.querySelectorAll('.todo-check').forEach(cb => {
+  cb.addEventListener('change', () => toggleTodo(cb.dataset.pk, cb));
+});
+
+// Only shows the Install button when the browser actually offers to
+// install this page as an app — Chrome/Edge support this; browsers
+// that don't (Safari, Firefox) simply never fire this event, so the
+// button correctly stays hidden rather than showing something that
+// wouldn't work if clicked.
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  document.getElementById('install-btn').style.display = 'inline-block';
+});
+async function installApp(){
+  if(!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  document.getElementById('install-btn').style.display = 'none';
+}
+window.addEventListener('appinstalled', () => {
+  document.getElementById('install-btn').style.display = 'none';
+});
+</script>
+</body>
+</html>

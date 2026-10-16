@@ -1,0 +1,63 @@
+{% extends 'projects/base.html' %}
+{% block title %}{{ customer.name }} — History{% endblock %}
+{% block extra_style %}
+.ch-header{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.5rem;margin-bottom:1.2rem;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;box-shadow:var(--shadow);}
+.ch-stat{text-align:center;padding:.5rem 1.2rem;}
+.ch-stat-val{font-size:1.6rem;font-weight:700;font-family:var(--fm);color:var(--acc);}
+.ch-stat-lbl{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-top:2px;}
+.ch-table{width:100%;border-collapse:collapse;}
+.ch-table th{text-align:left;padding:.55rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);border-bottom:2px solid var(--bdr);}
+.ch-table td{padding:.6rem .85rem;font-size:.875rem;border-bottom:.5px solid var(--bdr);vertical-align:middle;}
+.ch-table tr:hover td{background:var(--surf2);}
+{% endblock %}
+{% block content %}
+<div style="max-width:1100px;">
+<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem;">
+  <a href="{% url 'customer_list' %}" class="btn btn-ghost btn-sm">← Customers</a>
+  <h1 style="font-size:1.4rem;font-weight:600;">{{ customer.name }}</h1>
+</div>
+
+<div class="ch-header">
+  <div>
+    <div style="font-size:1.1rem;font-weight:600;">{{ customer.name }}</div>
+    {% if customer.contact_name %}<div style="color:var(--txt2);font-size:.88rem;margin-top:.25rem;">{{ customer.contact_name }}</div>{% endif %}
+    {% if customer.email %}<div style="font-size:.85rem;margin-top:.2rem;"><a href="mailto:{{ customer.email }}" style="color:var(--acc);">{{ customer.email }}</a></div>{% endif %}
+    {% if customer.phone %}<div style="font-size:.85rem;color:var(--mut2);">{{ customer.phone }}</div>{% endif %}
+    {% if customer.important_notes %}<div style="margin-top:.6rem;background:#fef3c7;border:1px solid #fcd34d;border-radius:var(--rad);padding:.5rem .75rem;font-size:.82rem;color:#92400e;">⚠ {{ customer.important_notes }}</div>{% endif %}
+  </div>
+  <div style="display:flex;gap:.5rem;">
+    <div class="ch-stat"><div class="ch-stat-val">{{ total_projects }}</div><div class="ch-stat-lbl">Projects</div></div>
+    {% if total_value %}<div class="ch-stat" style="border-left:1px solid var(--bdr);"><div class="ch-stat-val">£{{ total_value|floatformat:0 }}</div><div class="ch-stat-lbl">Total Value</div></div>{% endif %}
+  </div>
+</div>
+
+<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow);overflow:hidden;">
+  <div style="padding:.85rem 1.2rem;border-bottom:1px solid var(--bdr);background:var(--surf2);font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);">Project History</div>
+  <div style="overflow-x:auto;">
+  <table class="ch-table">
+    <thead><tr>
+      <th>SO</th><th>Location</th><th>Status</th>
+      <th>Delivery</th><th>Installation</th>
+      <th>Assigned</th><th>Created</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for p in projects %}
+    <tr>
+      <td><a href="{% url 'project_edit' p.pk %}" style="font-weight:600;color:var(--acc);">{{ p.sales_order|default:"—" }}</a></td>
+      <td>{{ p.location|default:"—" }}</td>
+      <td><span class="status-badge status-{{ p.status }}">{{ p.get_status_display }}</span></td>
+      <td style="font-size:.82rem;color:var(--txt2);">{% if p.delivery_date %}{{ p.delivery_date|date:"d M Y" }}{% else %}—{% endif %}</td>
+      <td style="font-size:.82rem;color:var(--txt2);">{% if p.installation_date %}{{ p.installation_date|date:"d M Y" }}{% elif p.installation_month %}{{ p.installation_month }}{% else %}—{% endif %}</td>
+      <td style="font-size:.82rem;">{% if p.assigned_to %}{{ p.assigned_to.get_full_name|default:p.assigned_to.username }}{% else %}—{% endif %}</td>
+      <td style="font-size:.78rem;color:var(--mut);">{{ p.created_at|date:"d M Y" }}</td>
+      <td><a href="{% url 'project_edit' p.pk %}" class="btn btn-ghost btn-sm">Open</a></td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="8" style="text-align:center;color:var(--mut);padding:2rem;">No projects found for this customer</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+</div>
+{% endblock %}

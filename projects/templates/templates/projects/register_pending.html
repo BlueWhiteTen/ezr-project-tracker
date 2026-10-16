@@ -1,0 +1,31 @@
+{% extends 'projects/base.html' %}
+{% block title %}Registration Pending — Project Tracker{% endblock %}
+{% block extra_style %}
+.auth-page{min-height:calc(100vh - 56px);display:flex;align-items:center;justify-content:center;margin-top:-1.8rem;}
+.auth-card{width:100%;max-width:460px;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:2.5rem 2rem;box-shadow:var(--shadow-md);text-align:center;}
+.pending-icon{font-size:3rem;margin-bottom:1rem;}
+.auth-title{font-size:1.4rem;font-weight:600;color:var(--txt);margin-bottom:.5rem;letter-spacing:-.02em;}
+.auth-sub{font-size:.9rem;color:var(--mut);line-height:1.6;margin-bottom:1.5rem;}
+.auth-sub strong{color:var(--txt);}
+.steps{background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--rad);padding:1rem 1.2rem;text-align:left;margin-bottom:1.5rem;}
+.step{display:flex;align-items:flex-start;gap:.75rem;font-size:.875rem;color:var(--txt2);margin-bottom:.6rem;}
+.step:last-child{margin-bottom:0;}
+.step-num{width:22px;height:22px;border-radius:50%;background:#d4700a;color:#fff;font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="pending-icon">⏳</div>
+    <h1 class="auth-title">Account pending approval</h1>
+    <p class="auth-sub">
+      Thanks <strong>{{ user.first_name }}</strong>! Your account has been created but needs to be approved before you can log in.
+    </p>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div>Your account request has been submitted for <strong>{{ user.email }}</strong></div></div>
+      <div class="step"><div class="step-num">2</div><div>A manager will review and activate your account</div></div>
+      <div class="step"><div class="step-num">3</div><div>Once approved, you can log in with your email and password</div></div>
+    </div>
+    <a href="{% url 'login' %}" class="btn btn-primary" style="width:100%;justify-content:center;">Back to login</a>
+  </div>
+</div>
+{% endblock %}
