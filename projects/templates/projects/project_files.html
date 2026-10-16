@@ -1,0 +1,187 @@
+{% extends 'projects/base.html' %}
+{% block title %}Documents — {{ project.project_name }}{% endblock %}
+{% block extra_style %}
+.form-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.6rem;margin-bottom:1.2rem;box-shadow:var(--shadow);}
+.section-title{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid var(--bdr);}
+.page-narrow{max-width:760px;}
+{% endblock %}
+{% block content %}
+{% include "projects/_project_tabs.html" with active="docs" %}
+<div class="page-narrow">
+<div class="form-card" style="border-color:rgba(37,99,235,.3);background:rgba(37,99,235,.03);">
+        <div class="section-title" style="color:#2563eb;">Documents</div>
+        <div id="doc-list" style="margin-bottom:.75rem;min-height:20px;"></div>
+        <div id="doc-dropzone" style="border:2px dashed rgba(37,99,235,.3);border-radius:var(--rad);padding:.75rem;background:rgba(37,99,235,.03);">
+          <div class="form-group" style="margin-bottom:.5rem;">
+            <label class="form-label">Files <span style="font-weight:400;color:var(--mut2);">(select one or several, or drag &amp; drop here)</span></label>
+            <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:.5rem .75rem;font-size:.85rem;color:var(--txt2);" for="doc-file">
+              <span style="background:#2563eb;color:#fff;border-radius:4px;padding:3px 10px;font-size:.75rem;font-weight:600;flex-shrink:0;">Choose files</span>
+              <span id="doc-file-name">No files chosen</span>
+            </label>
+            <input type="file" id="doc-file" multiple style="display:none;" onchange="docFilesChanged(this)">
+          </div>
+
+          <div id="doc-staged-list" style="display:none;margin-bottom:.6rem;"></div>
+
+          <button type="button" class="btn btn-primary" id="doc-upload-btn" onclick="uploadDoc({{ project.pk }})" style="width:100%;justify-content:center;background:#2563eb;" disabled>Upload Document</button>
+          <div id="doc-error" style="color:var(--red);font-size:.78rem;margin-top:.4rem;display:none;"></div>
+        </div>
+      </div>
+</div>
+<script>
+// ── Drag & drop onto the upload boxes ───────────────────────────────────────
+function setupDropZone(el, onFiles){
+  if(!el) return;
+  const hi = on => { el.style.outline = on ? '3px solid var(--acc)' : ''; el.style.outlineOffset = on ? '2px' : ''; };
+  ['dragenter','dragover'].forEach(ev => el.addEventListener(ev, e => { e.preventDefault(); hi(true); }));
+  ['dragleave','drop'].forEach(ev => el.addEventListener(ev, e => { e.preventDefault(); hi(false); }));
+  el.addEventListener('drop', e => {
+    const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+    if(files.length) onFiles(files);
+  });
+}
+// Stop a missed drop from navigating the browser away to the file
+['dragover','drop'].forEach(ev => window.addEventListener(ev, e => e.preventDefault()));
+
+// ── Document upload ──────────────────────────────────────────────────────────
+let stagedDocFiles = [];  // held here since a real FileList can't be edited in place
+
+function docFilesChanged(input){
+  stagedDocFiles = Array.from(input.files).map(f => ({file: f, name: f.name, type: 'other'}));
+  renderStagedDocs();
+}
+
+function renderStagedDocs(){
+  const label = document.getElementById('doc-file-name');
+  const stagedBox = document.getElementById('doc-staged-list');
+  const uploadBtn = document.getElementById('doc-upload-btn');
+
+  if(!stagedDocFiles.length){
+    if(label) label.textContent = 'No files chosen';
+    stagedBox.style.display = 'none';
+    stagedBox.innerHTML = '';
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = 'Upload Document';
+    return;
+  }
+
+  if(label) label.textContent = `${stagedDocFiles.length} file${stagedDocFiles.length > 1 ? 's' : ''} chosen`;
+  uploadBtn.disabled = false;
+  uploadBtn.textContent = stagedDocFiles.length > 1 ? `Upload ${stagedDocFiles.length} Documents` : 'Upload Document';
+
+  stagedBox.style.display = 'block';
+  const docTypeOptions = [['drawing','Drawing'],['quote','Quote'],['contract','Contract'],['rams','RAMS'],['survey','Survey'],['photo','Photo'],['other','Other']];
+  stagedBox.innerHTML = stagedDocFiles.map((sf, i) => `
+    <div style="display:flex;align-items:center;gap:.5rem;padding:.35rem 0;border-bottom:.5px solid var(--bdr);">
+      <span style="font-size:.7rem;color:var(--mut);flex-shrink:0;width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${sf.file.name}">${sf.file.name}</span>
+      <input type="text" class="form-input doc-staged-name" data-idx="${i}" value="${sf.name.replace(/"/g,'&quot;')}" style="flex:1;font-size:.82rem;padding:.3rem .5rem;">
+      <select class="form-input doc-staged-type" data-idx="${i}" style="width:100px;flex-shrink:0;font-size:.82rem;padding:.3rem .4rem;">
+        ${docTypeOptions.map(([val, lbl]) => `<option value="${val}" ${sf.type === val ? 'selected' : ''}>${lbl}</option>`).join('')}
+      </select>
+      <button type="button" onclick="removeStagedDoc(${i})" title="Remove" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.85rem;padding:2px 6px;flex-shrink:0;">✕</button>
+    </div>
+  `).join('');
+
+  stagedBox.querySelectorAll('.doc-staged-name').forEach(inp => {
+    inp.addEventListener('input', () => { stagedDocFiles[parseInt(inp.dataset.idx)].name = inp.value; });
+  });
+  stagedBox.querySelectorAll('.doc-staged-type').forEach(sel => {
+    sel.addEventListener('change', () => { stagedDocFiles[parseInt(sel.dataset.idx)].type = sel.value; });
+  });
+}
+
+function removeStagedDoc(idx){
+  stagedDocFiles.splice(idx, 1);
+  renderStagedDocs();
+}
+
+async function uploadDoc(pk){
+  if(!stagedDocFiles.length){ alert('Please choose at least one file first.'); return; }
+  const btn = document.getElementById('doc-upload-btn');
+  const errEl = document.getElementById('doc-error');
+  if(errEl) errEl.style.display = 'none';
+  btn.disabled = true;
+
+  const list = document.getElementById('doc-list');
+  for(let i = 0; i < stagedDocFiles.length; i++){
+    const sf = stagedDocFiles[i];
+    btn.textContent = `Uploading ${i+1} of ${stagedDocFiles.length}…`;
+    const formData = new FormData();
+    formData.append('file', sf.file);
+    formData.append('name', sf.name || sf.file.name);
+    formData.append('doc_type', sf.type || 'other');
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    try {
+      const r = await fetch(`/project/${pk}/documents/`, { method: 'POST', body: formData });
+      const text = await r.text();
+      let d;
+      try { d = JSON.parse(text); } catch(e) { throw new Error('Server error: ' + text.slice(0,200)); }
+      if(d.error){ throw new Error(d.error); }
+      if(list){
+        const row = document.createElement('div');
+        row.style.cssText='display:flex;align-items:center;gap:.6rem;padding:.4rem 0;border-bottom:.5px solid var(--bdr);font-size:.85rem;';
+        row.innerHTML = `<span style="font-family:var(--fm);font-size:.7rem;background:var(--acc-bg);color:var(--acc);padding:1px 6px;border-radius:3px;flex-shrink:0;">${d.ext}</span>
+          <span style="font-size:.72rem;color:var(--mut);flex-shrink:0;min-width:50px;">${d.doc_type}</span>
+          <a href="${d.url}" target="_blank" style="flex:1;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}</a>
+          <span style="font-size:.72rem;color:var(--mut);flex-shrink:0;">${d.uploaded_by}</span>
+          <button onclick="deleteDoc(${d.id}, this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;padding:2px 6px;flex-shrink:0;">✕</button>`;
+        list.appendChild(row);
+      }
+    } catch(e) {
+      if(errEl){ errEl.textContent = `"${sf.name}" failed to upload: ${e.message}`; errEl.style.display='block'; }
+    }
+  }
+
+  stagedDocFiles = [];
+  document.getElementById('doc-file').value = '';
+  renderStagedDocs();
+  btn.disabled = false;
+}
+
+// Load existing docs on page open
+async function loadDocs(pk){
+  const list = document.getElementById('doc-list');
+  if(!list) return;
+  try {
+    const r = await fetch(`/project/${pk}/documents/`);
+    const docs = await r.json();
+    list.innerHTML = '';
+    docs.forEach(d => {
+      const row = document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:.6rem;padding:.4rem 0;border-bottom:.5px solid var(--bdr);font-size:.85rem;';
+      row.dataset.docId = d.id;
+      row.innerHTML = `<span style="font-family:var(--fm);font-size:.7rem;background:var(--acc-bg);color:var(--acc);padding:1px 6px;border-radius:3px;flex-shrink:0;">${d.ext}</span>
+        <span style="font-size:.72rem;color:var(--mut);flex-shrink:0;min-width:50px;">${d.doc_type}</span>
+        <a href="${d.url}" target="_blank" style="flex:1;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}</a>
+        <span style="font-size:.72rem;color:var(--mut);flex-shrink:0;">${d.uploaded_by}</span>
+        <button onclick="deleteDoc(${d.id}, this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;padding:2px 6px;flex-shrink:0;">✕</button>`;
+      list.appendChild(row);
+    });
+  } catch(e) { console.log('Could not load docs', e); }
+}
+{% if project %}document.addEventListener('DOMContentLoaded', ()=>loadDocs({{ project.pk }}));{% endif %}
+
+// ── Document delete ──────────────────────────────────────────────────────────
+async function deleteDoc(id, btn){
+  if(!confirm('Delete this document?')) return;
+  const r = await fetch(`/document/${id}/delete/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+  });
+  const d = await r.json();
+  if(d.ok){
+    // Remove the row from the DOM
+    btn.closest('div').remove();
+  } else {
+    alert('Could not delete document.');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setupDropZone(document.getElementById('doc-dropzone'), files => {
+    stagedDocFiles = stagedDocFiles.concat(files.map(f => ({file: f, name: f.name, type: 'other'})));
+    renderStagedDocs();
+  });
+});
+</script>
+{% endblock %}

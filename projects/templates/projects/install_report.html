@@ -18,10 +18,7 @@
 {% endblock %}
 
 {% block content %}
-<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.4rem;flex-wrap:wrap;">
-  <a href="{% url 'project_edit' project.pk %}" class="btn btn-ghost btn-sm">← {{ project.project_name }}</a>
-  <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em;">Installation Report</h1>
-</div>
+{% include "projects/_project_tabs.html" with active="post" %}
 
 <div style="font-size:.85rem;color:var(--mut);margin-bottom:1.2rem;">
   {{ project.customer }}{% if project.location %} · {{ project.location }}{% endif %}

@@ -25,6 +25,11 @@ from django.contrib.auth.views import (
     PasswordResetConfirmView, PasswordResetCompleteView,
 )
 
+# Stock allocation is switched off on the website for now. Set to True to bring back the
+# "Allocate Stock" button, the stock-shortage warning and the red short-item markers.
+SHOW_STOCK_ALLOCATION = False
+
+
 @login_required
 def picking_list_view(request, project_pk):
     project = get_object_or_404(Project, pk=project_pk)
@@ -68,6 +73,7 @@ def picking_list_view(request, project_pk):
         'project': project, 'pl': pl, 'items': items,
         'templates': templates, 'customer_notes': customer_notes,
         'any_shortage': any_shortage, 'project_pk': project.pk,
+        'show_stock_allocation': SHOW_STOCK_ALLOCATION,
         'stock_weights': stock_weights,
     })
 

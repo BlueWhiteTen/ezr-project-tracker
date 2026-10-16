@@ -118,7 +118,6 @@ tr.repriced{background:rgba(245,158,11,.10);}
     </script>
     <button class="btn btn-primary" onclick="generatePickingList()" style="background:#0f766e;box-shadow:none;">📦 Generate Picking List</button>
     <button class="btn btn-ghost" onclick="refreshCostingPrices({{ cost.pk }})" title="Force this costing option's frame/shelf/trolley lines to today's prices">🔄 Refresh to Current Prices</button>
-    <a href="{% url 'picking_list_view' project.pk %}" class="btn btn-ghost">→ Go to Picking List</a>
     <button class="btn btn-primary" id="save-btn" onclick="commitDraft()" style="background:#7c3aed;">Save</button>
   </div>
 </div>

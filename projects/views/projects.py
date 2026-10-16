@@ -414,6 +414,18 @@ def project_presence(request, pk):
 
 
 @login_required
+def project_files_page(request, pk):
+    project = get_object_or_404(Project, pk=pk)
+    return render(request, 'projects/project_files.html', {'project': project, 'project_pk': project.pk})
+
+
+@login_required
+def project_survey_page(request, pk):
+    project = get_object_or_404(Project, pk=pk)
+    return render(request, 'projects/project_survey.html', {'project': project, 'project_pk': project.pk})
+
+
+@login_required
 @require_POST
 def project_presence_leave(request, pk):
     """Called (via sendBeacon) when someone leaves/hides the project page, so others stop seeing them at once."""

@@ -71,14 +71,14 @@
     <span style="font-size:.8rem;color:#16a34a;font-weight:600;background:#f0fdf4;border:1px solid #bbf7d0;padding:4px 10px;border-radius:6px;">🔒 Stock allocated — list locked</span>
     <button class="btn btn-ghost btn-sm" onclick="deallocateStock()">Release Stock</button>
     {% else %}
-    <button class="btn btn-primary btn-sm" onclick="allocateStock()">Allocate Stock</button>
+    {% if show_stock_allocation %}<button class="btn btn-primary btn-sm" onclick="allocateStock()">Allocate Stock</button>{% endif %}
     {% endif %}
     <a href="{% url 'picking_fitting_notes' pl.pk %}" target="_blank" class="btn btn-ghost btn-sm">📐 Fitting Notes</a>
     <a href="{% url 'picking_list_print' project.pk %}" target="_blank" class="btn btn-ghost btn-sm">🖨 Print</a>
   </div>
 </div>
 
-{% if any_shortage %}
+{% if show_stock_allocation and any_shortage %}
 <div style="background:rgba(220,38,38,.1);border:1px solid var(--red);border-radius:var(--rad);padding:.75rem 1.1rem;margin-bottom:1.2rem;display:flex;align-items:center;gap:.6rem;color:var(--red);font-size:.88rem;font-weight:600;">
   ⚠ Stock shortage — one or more items don't have enough free stock. Short items are marked with ⚠ in the list below.
 </div>
@@ -154,7 +154,7 @@
       {% else %}
       <tr {% if item.picked %}class="picked"{% endif %} id="row-{{ item.pk }}" data-item-pk="{{ item.pk }}" data-product-pk="{{ item.product.pk }}" data-qty="{{ item.quantity }}" data-code="{{ item.product.code|upper }}" data-desc="{% if item.ns_description %}{{ item.ns_description }}{% elif item.product %}{{ item.product.description }}{% endif %}">
         <td><input type="checkbox" class="form-checkbox" {% if item.picked %}checked{% endif %} onchange="togglePicked({{ item.pk }}, this.checked)"></td>
-        <td><span class="code">{{ item.product.code }}</span>{% if item.is_short %} <span title="Stock short by {{ item.short_by }}" style="color:var(--red);font-weight:700;cursor:help;">⚠</span>{% endif %}</td>
+        <td><span class="code">{{ item.product.code }}</span>{% if show_stock_allocation and item.is_short %} <span title="Stock short by {{ item.short_by }}" style="color:var(--red);font-weight:700;cursor:help;">⚠</span>{% endif %}</td>
         <td style="font-size:.95rem;">{% if item.ns_description %}{{ item.ns_description }}{% elif item.product %}{{ item.product.description }}{% endif %}</td>
         <td class="qty-cell">
           {% if item.item_type != 'message' %}
