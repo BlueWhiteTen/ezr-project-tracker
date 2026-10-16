@@ -48,13 +48,13 @@
 <h1 style="font-size:1.6rem;font-weight:700;margin-bottom:1.2rem;">Welcome back{% if request.user.first_name %}, {{ request.user.first_name }}{% endif %}</h1>
 
 <div class="hg-bar">
-  <button type="button" class="btn btn-secondary btn-sm" id="hg-customize" onclick="homeLayout.toggleEdit()">⚙ Customize layout</button>
   <span style="font-size:.78rem;color:var(--mut);">Drag a box by its ⠿ handle to move it.</span>
+  <button type="button" class="btn btn-ghost btn-sm" id="hg-customize" style="margin-left:auto;" onclick="homeLayout.toggleEdit()">⚙ Customize layout</button>
 </div>
 <div class="hg-tray" id="hg-tray">
   <span id="hg-tray-label">Hidden boxes:</span>
   <span id="hg-tray-chips"></span>
-  <button type="button" class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="homeLayout.reset()">↺ Reset layout</button>
+  <button type="button" class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="homeLayout.reset()">↺ Reset layout</button>
 </div>
 
 <div class="home-grid hg-pending" id="home-grid">

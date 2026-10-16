@@ -139,6 +139,12 @@ a{color:inherit;text-decoration:none;}
 /* Font roles (each theme sets its own fonts):
    --fh headings, --f body/tabs/buttons/labels, --fm codes & numbers only. */
 button,input,select,textarea{font-family:inherit;}
+/* Scroll bars follow the theme (light and dark) */
+*{scrollbar-width:thin;scrollbar-color:var(--mut2) var(--surf2);}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:var(--surf2);}
+::-webkit-scrollbar-thumb{background:var(--mut2);border-radius:var(--rad);border:2px solid var(--surf2);}
+::-webkit-scrollbar-thumb:hover{background:var(--mut);}
 h1,h2,h3,.page-title,.ph-top h1{font-family:var(--fh,var(--f));}
 [data-style="site_signage"] body,[data-style="ledger"] body{font-variant-numeric:tabular-nums;}
 [data-style="site_signage"] .ph-tab,[data-style="site_signage"] .ph-tab2{text-transform:uppercase;letter-spacing:.03em;}
