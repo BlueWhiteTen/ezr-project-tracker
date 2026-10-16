@@ -24,7 +24,7 @@
    Dark mode isn't available on these yet, so they always render in their one
    light form — these rules are placed after [data-theme="dark"] above so they
    win the cascade even if dark mode was left on from a previous session. */
-[data-style="works_order"],[data-style="works_order"][data-theme="dark"]{
+[data-style="works_order"]{
   --bg:#F5F6F4;--surf:#FFFFFF;--surf2:#EEF0F0;--surf3:#E6E9E9;--bdr:#D7DBDC;--bdr2:#C3C8C9;
   --acc:#D4700A;--acc-dark:#B35C00;--acc-light:#E8934A;--acc-bg:#FCEADA;--acc-bdr:#F2C089;
   --blue:#185fa5;--blue-light:#378add;--blue-bg:#e6f1fb;--blue-bdr:#b5d4f4;
@@ -33,12 +33,21 @@
   --f:'IBM Plex Sans',system-ui,sans-serif;--fm:'IBM Plex Mono',monospace;
   --rad:4px;--rad-lg:6px;--shadow:0 1px 2px rgba(0,0,0,.05);--shadow-md:0 3px 10px rgba(0,0,0,.08);
 }
+[data-style="works_order"][data-theme="dark"]{
+  --bg:#14171A;--surf:#1C2024;--surf2:#22272B;--surf3:#2A3035;--bdr:#363D43;--bdr2:#48525B;
+  --acc:#F0903A;--acc-dark:#D4700A;--acc-light:#F5B070;--acc-bg:rgba(240,144,58,.14);--acc-bdr:rgba(240,144,58,.35);
+  --blue:#6FA8DC;--blue-light:#6FA8DC;--blue-bg:rgba(111,168,220,.14);--blue-bdr:rgba(111,168,220,.35);
+  --grn:#4CBF85;--grn-bg:rgba(76,191,133,.14);--amb:#DBA845;--amb-bg:rgba(219,168,69,.14);--red:#EF7A6F;--red-bg:rgba(239,122,111,.14);
+  --txt:#ECEFF0;--txt2:#C9CFD2;--mut:#9AA3A8;--mut2:#7C868D;
+  --shadow:0 1px 2px rgba(0,0,0,.4);--shadow-md:0 4px 12px rgba(0,0,0,.5);
+}
+[data-style="works_order"][data-theme="dark"] .btn-primary,[data-style="works_order"][data-theme="dark"] #fb-fab{color:#14171A;}
 [data-style="works_order"] .btn{border-radius:4px;}
 [data-style="works_order"] body{background-image:
   repeating-linear-gradient(0deg, rgba(0,0,0,.022) 0 1px, transparent 1px 32px),
   repeating-linear-gradient(90deg, rgba(0,0,0,.022) 0 1px, transparent 1px 32px);}
 
-[data-style="site_signage"],[data-style="site_signage"][data-theme="dark"]{
+[data-style="site_signage"]{
   --bg:#FAFAF8;--surf:#FFFFFF;--surf2:#F0F0EC;--surf3:#E7E8E5;--bdr:#15171A;--bdr2:#15171A;
   --acc:#D4700A;--acc-dark:#A85800;--acc-light:#E8934A;--acc-bg:#FBE7D3;--acc-bdr:#EFAF6D;
   --blue:#185fa5;--blue-light:#378add;--blue-bg:#e6f1fb;--blue-bdr:#b5d4f4;
@@ -47,6 +56,15 @@
   --f:'Work Sans',system-ui,sans-serif;--fm:'Work Sans',system-ui,sans-serif;--fh:'Barlow Condensed',sans-serif;
   --rad:0px;--rad-lg:0px;--shadow:none;--shadow-md:none;
 }
+[data-style="site_signage"][data-theme="dark"]{
+  --bg:#0F1113;--surf:#171A1D;--surf2:#1E2225;--surf3:#262B2F;--bdr:#B9BDC1;--bdr2:#B9BDC1;
+  --acc:#F28A1E;--acc-dark:#D4700A;--acc-light:#F7B06A;--acc-bg:rgba(242,138,30,.14);--acc-bdr:rgba(242,138,30,.4);
+  --blue:#6FA8DC;--blue-light:#6FA8DC;--blue-bg:rgba(111,168,220,.14);--blue-bdr:rgba(111,168,220,.35);
+  --grn:#4CC38A;--grn-bg:rgba(76,195,138,.14);--amb:#E0AC3F;--amb-bg:rgba(224,172,63,.14);--red:#F2796E;--red-bg:rgba(242,121,110,.14);
+  --txt:#F4F5F3;--txt2:#CDD0D3;--mut:#A4A9AE;--mut2:#80868B;
+  --shadow:none;--shadow-md:0 4px 12px rgba(0,0,0,.5);
+}
+[data-style="site_signage"][data-theme="dark"] .btn-primary,[data-style="site_signage"][data-theme="dark"] #fb-fab{color:#0F1113;}
 [data-style="site_signage"] .btn{border-radius:0;border:2px solid var(--bdr);font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
 [data-style="site_signage"] h1,[data-style="site_signage"] h2,[data-style="site_signage"] .page-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.01em;}
 [data-style="site_signage"] .card,[data-style="site_signage"] .stock-table-wrap{border-width:2px;}
@@ -69,7 +87,7 @@
 [data-style="site_signage"] .badge-delivered{background:#1E7B4D;}
 [data-style="site_signage"] .so-tag{font-weight:500;font-size:.72rem;color:#fff;background:#D4700A;padding:.2rem .55rem;border:2px solid #15171A;border-radius:0;}
 
-[data-style="ledger"],[data-style="ledger"][data-theme="dark"]{
+[data-style="ledger"]{
   --bg:#F6F3EC;--surf:#FFFFFF;--surf2:#F0EBE0;--surf3:#E9E2D3;--bdr:#E4DDCE;--bdr2:#D3C9B4;
   --acc:#2F5233;--acc-dark:#22401F;--acc-light:#4C7350;--acc-bg:#E4EDE3;--acc-bdr:#C3D6C3;
   --blue:#185fa5;--blue-light:#378add;--blue-bg:#e6f1fb;--blue-bdr:#b5d4f4;
@@ -78,6 +96,15 @@
   --f:'Karla',system-ui,sans-serif;--fm:'Karla',system-ui,sans-serif;--fh:'Fraunces',serif;
   --rad:6px;--rad-lg:8px;--shadow:0 1px 2px rgba(36,31,26,.05);--shadow-md:0 3px 10px rgba(36,31,26,.08);
 }
+[data-style="ledger"][data-theme="dark"]{
+  --bg:#191712;--surf:#221F18;--surf2:#2A261E;--surf3:#332E24;--bdr:#40392C;--bdr2:#544B39;
+  --acc:#8FC096;--acc-dark:#6FA578;--acc-light:#B3D6B8;--acc-bg:rgba(143,192,150,.14);--acc-bdr:rgba(143,192,150,.35);
+  --blue:#7FB0D6;--blue-light:#7FB0D6;--blue-bg:rgba(111,168,220,.14);--blue-bdr:rgba(111,168,220,.35);
+  --grn:#8FC096;--grn-bg:rgba(143,192,150,.14);--amb:#D9A95A;--amb-bg:rgba(217,169,90,.14);--red:#E48A7D;--red-bg:rgba(228,138,125,.14);
+  --txt:#F0EBDF;--txt2:#D2CABA;--mut:#A59C8A;--mut2:#867D6C;
+  --shadow:0 1px 2px rgba(0,0,0,.4);--shadow-md:0 4px 12px rgba(0,0,0,.5);
+}
+[data-style="ledger"][data-theme="dark"] .btn-primary,[data-style="ledger"][data-theme="dark"] #fb-fab{color:#14210F;}
 [data-style="ledger"] h1,[data-style="ledger"] .page-title{font-family:'Fraunces',serif;font-weight:600;}
 
 /* ── Ops Console — industrial ledger/spec-sheet style. Unlike the other three
@@ -433,7 +460,7 @@ select.form-input{cursor:pointer;}
 document.addEventListener('DOMContentLoaded', function(){
   var b = document.getElementById('theme-btn');
   if(!b) return;
-  var darkCapableStyles = ['default', 'ops_console'];
+  var darkCapableStyles = ['default', 'ops_console', 'works_order', 'site_signage', 'ledger'];
   if(document.documentElement.dataset.style && darkCapableStyles.indexOf(document.documentElement.dataset.style) === -1){
     b.textContent = 'Dark mode not available yet';
     b.style.opacity = '.6';
@@ -446,7 +473,7 @@ document.addEventListener('DOMContentLoaded', function(){
 function toggleTheme(){
   var h = document.documentElement;
   var b = document.getElementById('theme-btn');
-  var darkCapableStyles = ['default', 'ops_console'];
+  var darkCapableStyles = ['default', 'ops_console', 'works_order', 'site_signage', 'ledger'];
   if(h.dataset.style && darkCapableStyles.indexOf(h.dataset.style) === -1){
     if(b) b.textContent = 'Dark mode not available yet';
     return;
