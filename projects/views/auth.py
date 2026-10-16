@@ -23,13 +23,26 @@ from django.contrib.auth.views import (
     PasswordResetConfirmView, PasswordResetCompleteView,
 )
 
+LOGIN_MAX_FAILS = 10
+LOGIN_LOCK_SECONDS = 15 * 60
+
+
+def _login_key(identifier, request):
+    from .utils import _client_ip
+    return 'loginfail:%s:%s' % (identifier.lower()[:100], _client_ip(request))
+
+
 def login_view(request):
+    from django.core.cache import cache
     if request.user.is_authenticated:
         return redirect('dashboard')
     error = None
     if request.method == 'POST':
         identifier = request.POST.get('identifier', '').strip()
         password   = request.POST.get('password', '')
+        lkey = _login_key(identifier, request)
+        if cache.get(lkey, 0) >= LOGIN_MAX_FAILS:
+            return render(request, 'projects/login.html', {'error': 'Too many failed attempts. Please wait 15 minutes and try again.'})
         user = None
         u = User.objects.filter(email__iexact=identifier).first()
         if u:
@@ -40,9 +53,15 @@ def login_view(request):
                     user = authenticate(request, username=u.username, password=password)
                     break
         if user:
+            cache.delete(lkey)
             login(request, user)
             return redirect('dashboard')
         else:
+            try:
+                cache.add(lkey, 0, LOGIN_LOCK_SECONDS)
+                cache.incr(lkey)
+            except Exception:
+                pass
             # Check if account exists but is inactive (pending approval)
             try:
                 u = User.objects.get(email=identifier)

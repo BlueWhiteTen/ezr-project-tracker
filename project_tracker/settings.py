@@ -157,3 +157,11 @@ EMAIL_TIMEOUT = 10  # seconds — fail fast with a clear error instead of the pa
 # not just the Resend account's own address (that restriction only applies
 # to the onboarding@resend.dev sandbox address, used before verification).
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', RESEND_FROM_EMAIL if RESEND_API_KEY else 'EZR Project Tracker <noreply@ezrshelving.com>')
+
+
+# Shared across gunicorn workers (login attempt limiter). Falls back harmlessly if unwritable.
+import tempfile as _tf
+CACHES = {'default': {
+    'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+    'LOCATION': os.path.join(_tf.gettempdir(), 'ezr_django_cache'),
+}}
