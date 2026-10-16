@@ -1,0 +1,213 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Satisfaction Note — {{ project.customer }}</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#1a1a1a; background:#f0f0f0; }
+.page { max-width:760px; margin:0 auto; background:#fff; padding:.6cm 1.2cm; }
+
+/* Header */
+.hdr { display:flex; justify-content:space-between; align-items:center; border-bottom:2.5pt solid #1a1a1a; padding-bottom:5pt; margin-bottom:6pt; }
+.hdr-left { display:flex; align-items:center; gap:10pt; }
+.hdr-co { font-size:15pt; font-weight:700; }
+.hdr-title { font-size:13pt; font-weight:700; color:#D4700A; text-align:right; }
+
+/* Field rows */
+.row { display:grid; gap:0; border-left:1pt solid #bbb; border-right:1pt solid #bbb; border-top:1pt solid #bbb; }
+.row:last-of-type, .row + .section-gap { border-bottom:1pt solid #bbb; }
+.row-2col { grid-template-columns:1fr 1fr; }
+.row-1col { grid-template-columns:1fr; }
+.cell { padding:3pt 7pt; border-right:1pt solid #bbb; }
+.cell:last-child { border-right:none; }
+.cell-label { font-size:7.5pt; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#888; margin-bottom:2pt; }
+.cell-value { font-size:11pt; font-weight:600; min-height:14pt; }
+.cell-blank { min-height:8pt; }
+.cell-tall { min-height:24pt; }
+.cell-xtall { min-height:36pt; }
+
+/* Section bars */
+.sec { background:#e8e8e8; border:1pt solid #bbb; border-top:none; padding:3pt 7pt; font-size:7.5pt; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+.sec-note { font-size:7.5pt; color:#888; font-style:italic; font-weight:400; text-transform:none; letter-spacing:0; margin-left:8pt; }
+
+/* Schedule content */
+.sched-content { border:1pt solid #bbb; border-top:none; padding:4pt 7pt; min-height:40pt; font-size:9.5pt; line-height:1.5; white-space:pre-wrap; }
+
+/* Inline yes/no row */
+.yn-row { border:1pt solid #bbb; border-top:none; padding:3pt 7pt; display:flex; align-items:center; gap:0; font-size:9.5pt; }
+.yn-label { font-weight:700; min-width:90pt; font-size:9.5pt; }
+.yn-box { display:inline-flex; align-items:center; justify-content:center; width:13pt; height:13pt; border:1pt solid #555; font-size:9pt; margin-right:4pt; flex-shrink:0; }
+.yn-option { display:flex; align-items:center; margin-right:14pt; }
+.yn-reason { font-size:9pt; color:#555; flex:1; }
+
+/* Comments box */
+.comments-box { border:1pt solid #bbb; border-top:none; padding:3pt 7pt; min-height:28pt; }
+.comments-label { font-size:8pt; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#888; margin-bottom:3pt; }
+
+/* Statement */
+.statement { border:1pt solid #bbb; border-top:none; padding:4pt 7pt; font-size:8pt; line-height:1.5; color:#333; background:#fafafa; }
+
+/* Signature grid */
+.sig-grid { border:1pt solid #bbb; border-top:none; display:grid; grid-template-columns:1fr 1fr; }
+.sig-cell { padding:14pt 7pt 4pt; border-right:1pt solid #bbb; }
+.sig-cell:last-child { border-right:none; }
+.sig-line-text { font-size:9pt; color:#666; padding-top:3pt; }
+
+/* Gap between sections */
+.gap { height:4pt; }
+
+.no-print { background:#f9fafb; border-bottom:1pt solid #e5e7eb; padding:.6rem 1.5cm; display:flex; gap:.6rem; align-items:center; }
+.no-print button { padding:6px 16px; border:none; border-radius:4px; cursor:pointer; font-size:.85rem; font-weight:600; }
+@media print {
+  .no-print { display:none !important; }
+  body { background:#fff; }
+  .page { padding:.4cm 1cm; }
+  @page { margin:0.4cm; size:A4 portrait; }
+}
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <button onclick="window.print()" style="background:#1a1a1a;color:#fff;">🖨 Print / Save PDF</button>
+  <a href="{% url 'install_report' project.pk %}" style="font-size:.82rem;color:#888;text-decoration:none;">← Back to installation report</a>
+</div>
+
+<div class="page">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div class="hdr-left">
+      <img src="{% static 'logo.png' %}" alt="EZR" style="height:38pt;">
+      <div class="hdr-co">EZR Shelving</div>
+    </div>
+    <div class="hdr-title">CLIENT / JOB SATISFACTION NOTE</div>
+  </div>
+
+  <!-- CLIENT / SITE ADDRESS -->
+  <div class="row row-2col">
+    <div class="cell">
+      <div class="cell-label">Client:</div>
+      <div class="cell-value">{{ project.customer }}</div>
+    </div>
+    <div class="cell">
+      <div class="cell-label">Site Address:</div>
+      <div class="cell-value" style="font-size:10pt;">
+        {{ site_address|linebreaksbr }}
+      </div>
+    </div>
+  </div>
+
+  <!-- SITE CONTACT / CONTACT NUMBER -->
+  <div class="row row-2col" style="border-top:none;">
+    <div class="cell">
+      <div class="cell-label">Site Contact:</div>
+      <div class="cell-value">{{ site_contact|default:"&nbsp;" }}</div>
+      <div class="cell-blank"></div>
+    </div>
+    <div class="cell">
+      <div class="cell-label">Contact Number:</div>
+      <div class="cell-value">{{ contact_number|default:"&nbsp;" }}</div>
+      <div class="cell-blank"></div>
+    </div>
+  </div>
+
+  <!-- JOB NUMBER / INSTALLATION DATE -->
+  <div class="row row-2col" style="border-top:none;">
+    <div class="cell">
+      <div class="cell-label">Job Number:</div>
+      <div class="cell-value">{{ project.sales_order|default:"" }}</div>
+    </div>
+    <div class="cell">
+      <div class="cell-label">Installation Date:</div>
+      <div class="cell-value">{{ inst_date|default:"&nbsp;" }}</div>
+    </div>
+  </div>
+
+  <!-- FITTING CREW -->
+  <div class="row row-2col" style="border-top:none;">
+    <div class="cell">
+      <div class="cell-label">Fitting Crew:</div>
+      <div class="cell-value">{{ fitting_crew|default:"&nbsp;" }}</div>
+      <div class="cell-blank"></div>
+    </div>
+    <div class="cell">
+      <div class="cell-label">Mobile:</div>
+      <div class="cell-value">{{ fitting_crew_phone|default:"&nbsp;" }}</div>
+      <div class="cell-blank"></div>
+    </div>
+  </div>
+
+  <div class="gap"></div>
+
+  <!-- SCHEDULE OF WORKS -->
+  <div class="sec">Schedule of Works: <span class="sec-note">Please note any alterations to original schedule.</span></div>
+  <div class="sched-content">{{ job_tasks }}</div>
+
+  <!-- SITE CLEARED -->
+  <div class="yn-row">
+    <span class="yn-label">Site cleared:</span>
+    <span class="yn-option"><span class="yn-box">{% if sub and sub.site_clear %}✓{% endif %}</span> YES</span>
+    <span class="yn-option"><span class="yn-box">{% if sub and not sub.site_clear %}✓{% endif %}</span> NO</span>
+    <span class="yn-reason">{% if sub %}{% if not sub.site_clear %}See crew's comments{% endif %}{% else %}If NO why? ………………………………………………………………………{% endif %}</span>
+  </div>
+
+  <!-- CREW'S COMMENTS -->
+  <div class="comments-box">
+    <div class="comments-label">Crew's comments:</div>
+    <div style="min-height:24pt;white-space:pre-wrap;font-size:9.5pt;">{% if sub %}{{ sub.snags }}{% endif %}</div>
+  </div>
+
+  <div class="gap"></div>
+
+  <!-- WORK COMPLETED -->
+  <div class="sec">Work Completed:</div>
+  <div class="comments-box">
+    <div class="comments-label">Comments:</div>
+    <div style="min-height:22pt;font-size:9.5pt;">{% if sub and sub.work_completed %}Work completed — reported by {{ sub.fitter_name }} on {{ sub_date }}.{% endif %}</div>
+  </div>
+
+  <!-- STATEMENT -->
+  <div class="statement">
+    I, the undersigned, confirm that I am satisfied with the materials and services provided, as described above, and that
+    the installation crew behaved in a professional and courteous manner, and that the site was left clean and tidy.
+  </div>
+
+  <!-- SIGNATURES -->
+  <div class="sig-grid">
+    <div class="sig-cell">{% if sub and sub.work_completed %}{% if sig_src %}<img src="{{ sig_src }}" style="height:34pt;display:block;">{% else %}<div style="font-size:8.5pt;color:#b91c1c;">No customer signature{% if sub.no_signature_reason %} — {{ sub.no_signature_reason }}{% endif %}</div>{% endif %}<div class="sig-line-text">Signed</div>{% else %}<div class="sig-line-text">Signed: …………………………………………………</div>{% endif %}</div>
+    <div class="sig-cell">{% if sub and sub.work_completed %}<div style="font-size:10.5pt;font-weight:600;min-height:14pt;">{{ sub.customer_name }}</div><div class="sig-line-text">Print</div>{% else %}<div class="sig-line-text">Print: …………………………………………………</div>{% endif %}</div>
+    <div class="sig-cell"><div class="sig-line-text">Position: …………………………………………………</div></div>
+    <div class="sig-cell">{% if sub and sub.work_completed %}<div style="font-size:10.5pt;font-weight:600;min-height:14pt;">{{ sub_date }}</div><div class="sig-line-text">Date</div>{% else %}<div class="sig-line-text">Date: …………………………………………………</div>{% endif %}</div>
+  </div>
+
+  <div class="gap"></div>
+
+  <!-- WORK NOT COMPLETE -->
+  <div class="sec">Work Not Complete:</div>
+  <div class="comments-box">
+    <div class="comments-label">Please specify:</div>
+    <div style="min-height:20pt;white-space:pre-wrap;font-size:9.5pt;">{% if sub and not sub.work_completed %}{{ sub.snags|default:"Work not complete — see fitter report." }}{% endif %}</div>
+  </div>
+
+  <!-- RETURN VISIT -->
+  <div class="yn-row">
+    <span class="yn-label">Return visit required:</span>
+    <span class="yn-option"><span class="yn-box">{% if sub and sub.return_visit %}✓{% endif %}</span> YES</span>
+    <span class="yn-option"><span class="yn-box">{% if sub and not sub.return_visit %}✓{% endif %}</span> NO</span>
+  </div>
+
+  <!-- SECOND SIGNATURE BLOCK -->
+  <div class="sig-grid" style="border-top:none;">
+    <div class="sig-cell">{% if sub and not sub.work_completed %}{% if sig_src %}<img src="{{ sig_src }}" style="height:34pt;display:block;">{% else %}<div style="font-size:8.5pt;color:#b91c1c;">No customer signature{% if sub.no_signature_reason %} — {{ sub.no_signature_reason }}{% endif %}</div>{% endif %}<div class="sig-line-text">Signed</div>{% else %}<div class="sig-line-text">Signed: …………………………………………………</div>{% endif %}</div>
+    <div class="sig-cell">{% if sub and not sub.work_completed %}<div style="font-size:10.5pt;font-weight:600;min-height:14pt;">{{ sub.customer_name }}</div><div class="sig-line-text">Print</div>{% else %}<div class="sig-line-text">Print: …………………………………………………</div>{% endif %}</div>
+    <div class="sig-cell"><div class="sig-line-text">Position: …………………………………………………</div></div>
+    <div class="sig-cell">{% if sub and not sub.work_completed %}<div style="font-size:10.5pt;font-weight:600;min-height:14pt;">{{ sub_date }}</div><div class="sig-line-text">Date</div>{% else %}<div class="sig-line-text">Date: …………………………………………………</div>{% endif %}</div>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,20 @@
+{% extends 'projects/base.html' %}
+{% block title %}Delete Project{% endblock %}
+{% block extra_style %}
+.del-wrap{max-width:480px;margin:4rem auto;}
+.del-title{font-size:1.3rem;font-weight:600;color:var(--txt);margin-bottom:.5rem;letter-spacing:-.01em;}
+.del-sub{color:var(--mut);margin-bottom:1.8rem;font-size:.9rem;}
+{% endblock %}
+{% block content %}
+<div class="del-wrap">
+  <div class="card">
+    <div class="del-title">Delete "{{ project.project_name }}"?</div>
+    <div class="del-sub">This cannot be undone. All data for this project will be permanently removed.</div>
+    <form method="post" style="display:flex;gap:.75rem;">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">Yes, Delete</button>
+      <a href="{% url 'project_edit' project.pk %}" class="btn btn-ghost">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

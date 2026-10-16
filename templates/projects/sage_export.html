@@ -1,0 +1,81 @@
+{% extends 'projects/base.html' %}
+{% block title %}Export to Sage — {{ project.project_name }}{% endblock %}
+{% block content %}
+<div style="max-width:560px;margin:0 auto;">
+  <a href="{% url 'project_edit' project.pk %}" class="btn btn-ghost btn-sm" style="margin-bottom:1rem;">← {{ project.project_name }}</a>
+  <h1 style="font-size:1.4rem;font-weight:700;margin-bottom:.3rem;">Export Invoice to Sage</h1>
+  <p style="color:var(--mut);font-size:.88rem;margin-bottom:1.4rem;">
+    {{ project.project_name }}{% if project.project_number %} · Ref {{ project.project_number }}{% endif %}
+  </p>
+
+  <div class="card" style="padding:1.3rem;">
+    {% if not customer_profile or not customer_profile.account_number %}
+    <div style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:var(--rad);padding:.8rem 1rem;font-size:.85rem;margin-bottom:1.1rem;">
+      ⚠ No Sage account reference is set for <strong>{{ project.customer }}</strong>. Add one on the customer record before exporting.
+    </div>
+    {% endif %}
+
+    <div class="form-group">
+      <label class="form-label">Costing sell price</label>
+      <div style="font-size:1.3rem;font-weight:700;">£{{ sell_price|floatformat:2 }}</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Percentage to invoice now</label>
+      <div style="display:flex;align-items:center;gap:.6rem;">
+        <input type="number" id="pct" value="100" min="1" max="100" step="1" class="form-input" style="max-width:100px;" oninput="updateAmount()">
+        <span style="color:var(--mut);">%</span>
+        <span style="color:var(--mut);font-size:.85rem;">— use less than 100% for a part-delivery invoice</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Invoice amount</label>
+      <div id="amount" style="font-size:1.1rem;font-weight:700;color:var(--acc);">£{{ sell_price|floatformat:2 }}</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Description (optional)</label>
+      <input type="text" id="desc" class="form-input" placeholder="e.g. Part delivery — Bay 1-4">
+    </div>
+
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.6rem;" onclick="doExport()" {% if not customer_profile or not customer_profile.account_number %}disabled{% endif %}>
+      ⬇ Download Sage Invoice CSV
+    </button>
+    <p style="font-size:.76rem;color:var(--mut);margin-top:.8rem;">
+      This downloads a CSV formatted for Sage 50's Sales Invoice import (Type SI). Import it via Sage's own Import Records screen — nothing is sent automatically.
+    </p>
+  </div>
+</div>
+
+<script>
+const SELL_PRICE = {{ sell_price }};
+function updateAmount(){
+  const pct = parseFloat(document.getElementById('pct').value) || 0;
+  const amt = (SELL_PRICE * pct / 100).toFixed(2);
+  document.getElementById('amount').textContent = `£${amt}`;
+}
+async function doExport(){
+  const pct = parseFloat(document.getElementById('pct').value) || 100;
+  const desc = document.getElementById('desc').value.trim();
+  const r = await fetch(`{% url 'project_sage_export_csv' project.pk %}`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
+    body: JSON.stringify({percentage: pct, description: desc})
+  });
+  if(!r.ok){
+    const d = await r.json();
+    alert(d.error || 'Export failed');
+    return;
+  }
+  const blob = await r.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'sage_invoice.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+</script>
+{% endblock %}

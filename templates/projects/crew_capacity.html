@@ -1,0 +1,87 @@
+{% extends 'projects/base.html' %}
+{% block title %}Crew Capacity — Project Tracker{% endblock %}
+{% block extra_style %}
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem;flex-wrap:wrap;gap:.8rem;}
+.page-title{font-size:1.5rem;font-weight:600;letter-spacing:-.02em;}
+.cc-nav{display:flex;align-items:center;gap:.6rem;}
+.cc-table{width:100%;border-collapse:collapse;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);overflow:hidden;box-shadow:var(--shadow);}
+.cc-table th{padding:.6rem .5rem;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);border-bottom:1px solid var(--bdr);background:var(--surf2);text-align:center;}
+.cc-table th.cc-crew-head{text-align:left;width:150px;}
+.cc-table th.cc-today{color:var(--acc);}
+.cc-table td{border-bottom:1px solid var(--bdr);border-right:1px solid var(--bdr);vertical-align:top;padding:.4rem;min-width:130px;height:1px;}
+.cc-table td:last-child{border-right:none;}
+.cc-table tr:last-child td{border-bottom:none;}
+.cc-crew-name{font-weight:600;padding:.6rem .7rem;background:var(--surf2);border-right:1px solid var(--bdr);vertical-align:middle;}
+.cc-job{display:block;background:var(--acc-bg);border:1px solid var(--acc-bdr);border-radius:6px;padding:.3rem .45rem;margin-bottom:.3rem;font-size:.76rem;color:var(--acc);text-decoration:none;line-height:1.3;}
+.cc-job:hover{background:var(--acc);color:#fff;}
+.cc-job-cust{display:block;font-size:.68rem;opacity:.8;font-weight:400;}
+.cc-empty-cell{color:var(--mut2);font-size:.72rem;text-align:center;padding-top:.6rem;}
+.cc-unmatched{margin-top:1.2rem;}
+{% endblock %}
+{% block content %}
+
+<div class="page-hdr">
+  <h1 class="page-title">Crew Capacity</h1>
+  <div class="cc-nav">
+    <a href="?week={{ prev_week }}" class="btn btn-ghost btn-sm">← Previous week</a>
+    <a href="?week={{ this_week }}" class="btn btn-ghost btn-sm">This week</a>
+    <a href="?week={{ next_week }}" class="btn btn-ghost btn-sm">Next week →</a>
+    <span style="font-size:.85rem;color:var(--mut);margin-left:.4rem;">{{ week_start|date:"d M" }} – {{ week_end|date:"d M Y" }}</span>
+  </div>
+</div>
+
+{% if crew_rows %}
+<div style="overflow-x:auto;">
+<table class="cc-table">
+  <thead>
+    <tr>
+      <th class="cc-crew-head">Crew</th>
+      {% for d in days %}
+      <th class="{% if d == today %}cc-today{% endif %}">{{ d|date:"D" }}<br>{{ d|date:"d M" }}</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in crew_rows %}
+    <tr>
+      <td class="cc-crew-name">{{ row.crew.name }}{% if row.crew.phone %}<div style="font-weight:400;font-size:.72rem;color:var(--mut);">{{ row.crew.phone }}</div>{% endif %}</td>
+      {% for cell in row.cells %}
+      <td>
+        {% if cell.projects %}
+          {% for p in cell.projects %}
+          <a href="{% url 'project_edit' p.pk %}" class="cc-job">
+            {{ p.project_name }}
+            {% if p.customer %}<span class="cc-job-cust">{{ p.customer }}</span>{% endif %}
+          </a>
+          {% endfor %}
+        {% else %}
+          <div class="cc-empty-cell">—</div>
+        {% endif %}
+      </td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<div style="text-align:center;padding:3rem;color:var(--mut);background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);">
+  No fitting crews set up yet — add one from the Staff area to start tracking capacity.
+</div>
+{% endif %}
+
+{% if unmatched %}
+<div class="cc-unmatched" style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1rem 1.2rem;box-shadow:var(--shadow);">
+  <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin-bottom:.6rem;">
+    Scheduled this week, but crew name doesn't match a known crew
+  </div>
+  {% for d, p, fc in unmatched %}
+  <div style="display:flex;align-items:center;gap:.75rem;padding:.4rem 0;font-size:.85rem;border-bottom:.5px solid var(--bdr);">
+    <span style="color:var(--mut);width:90px;flex-shrink:0;">{{ d|date:"D d M" }}</span>
+    <a href="{% url 'project_edit' p.pk %}" style="font-weight:500;color:inherit;text-decoration:none;flex:1;">{{ p.project_name }}</a>
+    <span style="color:var(--mut);font-size:.78rem;">"{{ fc }}"</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
