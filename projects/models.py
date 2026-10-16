@@ -207,7 +207,8 @@ def _quote_plain(text):
 
 def _quote_info(msg, author_user):
     """What a quoted message looks like inside a reply (None if no quote)."""
-    if msg is None:
+    if msg is None or msg.is_deleted:
+        # A deleted message disappears from any reply that quoted it.
         return None
     name = author_user.get_full_name() or author_user.username
     if msg.is_deleted:
