@@ -1,0 +1,573 @@
+{% extends 'projects/base.html' %}
+{% block title %}Picking List — {{ project.project_name }}{% endblock %}
+{% block extra_style %}
+
+.pl-page{max-width:1320px;}
+.pl-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem;flex-wrap:wrap;gap:1rem;}
+.pl-header > div{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;min-width:0;}
+@media (max-width: 600px){
+  body{overflow-x:hidden;}
+  .pl-page{overflow-x:hidden;max-width:100vw;width:100vw;}
+  .pl-card, .pl-top, .pl-body{width:100%;box-sizing:border-box;max-width:100vw;}
+  .pl-header, .pl-header > div{flex-direction:column;align-items:flex-start!important;width:100%;max-width:100vw;box-sizing:border-box;}
+  .pl-header .btn-ghost, .pl-header a.btn-ghost, .pl-header h1{max-width:calc(100vw - 3rem);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .pl-top{flex-direction:column;align-items:flex-start!important;gap:.6rem!important;width:100%;max-width:100vw;box-sizing:border-box;}
+  .pl-top > div{flex-wrap:wrap;max-width:100%;width:100%;}
+  .pl-top span{word-break:break-word;}
+  #tmpl-select{min-width:0!important;max-width:calc(100vw - 3rem)!important;flex:1 1 100%!important;box-sizing:border-box;}
+  .tmpl-apply-row{flex-direction:column;align-items:stretch!important;width:100%;max-width:calc(100vw - 3rem);box-sizing:border-box;}
+  .add-row{grid-template-columns:1fr!important;width:100%;max-width:100%;box-sizing:border-box;}
+}
+.pl-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow);overflow:visible;}
+.pl-top{padding:1.1rem 1.5rem;border-bottom:1px solid var(--bdr);background:var(--surf2);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;border-radius:var(--rad-lg) var(--rad-lg) 0 0;}
+.pl-body{padding:1.5rem;}
+/* Items table */
+.items-table{width:100%;border-collapse:collapse;margin-bottom:1.5rem;}
+.items-table th{text-align:left;padding:.6rem 1rem;font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);border-bottom:2px solid var(--bdr);}
+.items-table td{padding:.75rem 1rem;font-size:1rem;border-bottom:.5px solid var(--bdr);vertical-align:middle;}
+.items-table tr:last-child td{border-bottom:none;}
+.items-table tr:hover td{background:var(--surf2);}
+.items-table tr.picked td{opacity:.45;text-decoration:line-through;}
+.code{font-family:var(--fm);font-weight:700;color:var(--acc);font-size:.95rem;}
+.qty-cell{font-size:1.1rem;font-weight:700;text-align:right;}
+.stock-ok{color:var(--grn);}
+.stock-low{color:var(--red);}
+/* Add product area */
+.add-area{background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.2rem;}
+.add-area-title{font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-bottom:1rem;}
+.add-row{display:grid;grid-template-columns:1fr 130px auto;gap:.75rem;align-items:end;}
+.product-search-wrap{position:relative;}
+.product-dd{
+  position:absolute;top:100%;left:0;right:0;
+  background:var(--surf);
+  border:1px solid var(--acc);
+  border-top:none;
+  border-radius:0 0 var(--rad) var(--rad);
+  z-index:9999;
+  max-height:280px;overflow-y:auto;
+  display:none;
+  box-shadow:0 8px 24px rgba(0,0,0,.15);
+}
+.pdd-item{padding:.7rem 1rem;cursor:pointer;border-bottom:.5px solid var(--bdr);transition:background .1s;}
+.pdd-item:last-child{border-bottom:none;}
+.pdd-item:hover,.pdd-item.selected{background:var(--acc-bg);}
+.pdd-code{font-family:var(--fm);font-weight:700;color:var(--acc);font-size:.85rem;}
+.pdd-desc{font-size:.9rem;color:var(--txt);margin-top:2px;}
+.pdd-stock{font-size:.75rem;color:var(--mut);margin-top:1px;}
+.sel-info{font-size:.82rem;color:var(--mut);margin-top:.4rem;min-height:18px;}
+/* Status badge */
+.status-sel{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);padding:5px 10px;font-size:.85rem;font-family:var(--f);color:var(--txt);cursor:pointer;}
+.empty-msg{text-align:center;padding:3rem;color:var(--mut);font-size:.95rem;}
+{% endblock %}
+
+{% block content %}
+<div class="pl-page">
+{% include "projects/_project_tabs.html" with active="pick" %}
+<div style="display:grid;grid-template-columns:1fr 300px;gap:1.2rem;align-items:start;">
+<div><!-- left: picking list -->
+<div class="pl-header" style="justify-content:flex-end;">
+  <div style="display:flex;align-items:center;gap:.6rem;">
+    {% if pl.allocated %}
+    <span style="font-size:.8rem;color:#16a34a;font-weight:600;background:#f0fdf4;border:1px solid #bbf7d0;padding:4px 10px;border-radius:6px;">🔒 Stock allocated — list locked</span>
+    <button class="btn btn-ghost btn-sm" onclick="deallocateStock()">Release Stock</button>
+    {% else %}
+    <button class="btn btn-primary btn-sm" onclick="allocateStock()">Allocate Stock</button>
+    {% endif %}
+    <a href="{% url 'picking_fitting_notes' pl.pk %}" target="_blank" class="btn btn-ghost btn-sm">📐 Fitting Notes</a>
+    <a href="{% url 'picking_list_print' project.pk %}" target="_blank" class="btn btn-ghost btn-sm">🖨 Print</a>
+  </div>
+</div>
+
+{% if any_shortage %}
+<div style="background:rgba(220,38,38,.1);border:1px solid var(--red);border-radius:var(--rad);padding:.75rem 1.1rem;margin-bottom:1.2rem;display:flex;align-items:center;gap:.6rem;color:var(--red);font-size:.88rem;font-weight:600;">
+  ⚠ Stock shortage — one or more items don't have enough free stock. Short items are marked with ⚠ in the list below.
+</div>
+{% endif %}
+
+<div class="pl-card">
+  <div class="pl-top">
+    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+      <span style="font-weight:600;font-size:.95rem;">PL-{{ pl.pk }} &nbsp;·&nbsp; {{ project.project_name }}</span>
+      <span style="font-size:.82rem;color:var(--mut);">{{ project.customer }}{% if project.location %} · {{ project.location }}{% endif %}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:.75rem;">
+      <label style="font-size:.82rem;color:var(--mut);">Status:</label>
+      <select class="status-sel" id="status-sel" onchange="saveStatus(this.value)">
+        <option value="draft" {% if pl.status == 'draft' %}selected{% endif %}>Draft</option>
+        <option value="ready" {% if pl.status == 'ready' %}selected{% endif %}>Ready to Pick</option>
+        <option value="picked" {% if pl.status == 'picked' %}selected{% endif %}>Picked</option>
+        <option value="dispatched" {% if pl.status == 'dispatched' %}selected{% endif %}>Dispatched ✓</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="pl-body">
+    <!-- Apply template -->
+    {% if pl.status != 'dispatched' and not pl.allocated %}
+    <div class="tmpl-apply-row" style="background:var(--acc-bg);border:1px solid var(--acc-bdr);border-radius:var(--rad);padding:.75rem 1rem;margin-bottom:1.2rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+      <span style="font-size:.82rem;font-weight:600;color:var(--acc);">Apply Template:</span>
+      <select class="form-input" id="tmpl-select" style="flex:1;min-width:0;max-width:350px;">
+        <option value="">— Select a template —</option>
+        {% for t in templates %}<option value="{{ t.pk }}">{{ t.name }}{% if t.customer %} ({{ t.customer }}){% endif %}</option>{% endfor %}
+      </select>
+      <button class="btn btn-primary" onclick="applyTemplate()" style="background:var(--acc);flex-shrink:0;">Apply</button>
+      <a href="{% url 'template_list' %}" style="font-size:.78rem;color:var(--acc);">Manage templates →</a>
+    </div>
+    {% endif %}
+    <!-- Items table -->
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+    <table class="items-table">
+      <thead><tr>
+        <th style="width:40px;">✓</th>
+        <th>Code</th>
+        <th>Description</th>
+        <th style="text-align:right;">Qty Needed</th>
+        <th style="width:40px;"></th>
+      </tr></thead>
+      <tbody id="items-tbody">
+      {% for item in items %}
+      {% if item.item_type == 'message' %}
+      <tr id="row-{{ item.pk }}" style="background:var(--surf2);">
+        <td></td>
+        <td colspan="3" style="font-style:italic;color:var(--mut);font-size:.88rem;">📝 {{ item.message|default:item.ns_description }}</td>
+        <td><button onclick="removeItem({{ item.pk }})" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;">✕</button></td>
+      </tr>
+      {% elif item.item_type == 'ns' %}
+      <tr {% if item.picked %}class="picked"{% endif %} id="row-{{ item.pk }}">
+        <td><input type="checkbox" class="form-checkbox" {% if item.picked %}checked{% endif %} onchange="togglePicked({{ item.pk }}, this.checked)"></td>
+        <td><span style="background:var(--acc-bg);color:var(--acc);border:1px solid var(--acc-bdr);border-radius:4px;padding:1px 7px;font-family:var(--fm);font-size:.75rem;font-weight:700;">NS</span></td>
+        <td style="font-size:.95rem;">{{ item.ns_description }}</td>
+        <td class="qty-cell">
+          {% if item.item_type != 'message' %}
+          <input type="number" value="{{ item.quantity|floatformat:0 }}" min="1" step="1"
+            style="width:60px;text-align:center;border:1.5px solid var(--bdr);border-radius:4px;padding:3px 5px;background:var(--surf);color:var(--txt);font-size:.9rem;font-weight:600;"
+            onfocus="this.style.borderColor='var(--acc)'"
+            onblur="this.style.borderColor='var(--bdr)';updateQty({{ item.pk }}, this.value)"
+            onkeydown="if(event.key==='Enter')this.blur()">
+          {% endif %}
+        </td>
+        <td style="white-space:nowrap;">
+          <button onclick="addMsgAfter({{ item.pk }})" style="background:none;border:none;color:var(--acc);cursor:pointer;font-size:1.1rem;padding:2px 5px;border-radius:4px;font-weight:700;" title="Add note below">+</button>
+          <button onclick="removeItem({{ item.pk }})" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;">✕</button>
+        </td>
+      </tr>
+      {% else %}
+      <tr {% if item.picked %}class="picked"{% endif %} id="row-{{ item.pk }}" data-item-pk="{{ item.pk }}" data-product-pk="{{ item.product.pk }}" data-qty="{{ item.quantity }}" data-code="{{ item.product.code|upper }}" data-desc="{% if item.ns_description %}{{ item.ns_description }}{% elif item.product %}{{ item.product.description }}{% endif %}">
+        <td><input type="checkbox" class="form-checkbox" {% if item.picked %}checked{% endif %} onchange="togglePicked({{ item.pk }}, this.checked)"></td>
+        <td><span class="code">{{ item.product.code }}</span>{% if item.is_short %} <span title="Stock short by {{ item.short_by }}" style="color:var(--red);font-weight:700;cursor:help;">⚠</span>{% endif %}</td>
+        <td style="font-size:.95rem;">{% if item.ns_description %}{{ item.ns_description }}{% elif item.product %}{{ item.product.description }}{% endif %}</td>
+        <td class="qty-cell">
+          {% if item.item_type != 'message' %}
+          <input type="number" value="{{ item.quantity|floatformat:0 }}" min="1" step="1" {% if pl.allocated %}disabled title="Locked — release stock to edit"{% endif %}
+            style="width:60px;text-align:center;border:1.5px solid var(--bdr);border-radius:4px;padding:3px 5px;background:var(--surf);color:var(--txt);font-size:.9rem;font-weight:600;{% if pl.allocated %}opacity:.55;cursor:not-allowed;{% endif %}"
+            onfocus="this.style.borderColor='var(--acc)'"
+            onblur="this.style.borderColor='var(--bdr)';updateQty({{ item.pk }}, this.value)"
+            onkeydown="if(event.key==='Enter')this.blur()">
+          {% endif %}
+        </td>
+        <td style="white-space:nowrap;">
+          {% if not pl.allocated %}
+          <button onclick="addMsgAfter({{ item.pk }})" style="background:none;border:none;color:var(--acc);cursor:pointer;font-size:1.1rem;padding:2px 5px;border-radius:4px;font-weight:700;" title="Add note below">+</button>
+          <button onclick="removeItem({{ item.pk }})" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;" title="Remove">✕</button>
+          {% else %}
+          <span style="color:var(--mut2);font-size:.85rem;" title="Locked — release stock to edit">🔒</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endif %}
+      {% empty %}
+      <tr id="empty-row"><td colspan="5" class="empty-msg">No items yet — add products below</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+
+    <!-- Add product area -->
+    {% if pl.status != 'dispatched' and not pl.allocated %}
+    <div class="add-area">
+      <div class="add-area-title">Add Product</div>
+
+      <!-- Stock item row -->
+      <div style="display:flex;gap:.6rem;align-items:center;margin-bottom:.6rem;">
+        <div class="product-search-wrap" style="flex:1;">
+          <input class="form-input" type="text" id="prod-search" placeholder="Product code or description…" autocomplete="off" oninput="searchProds(this.value)">
+          <div class="product-dd" id="prod-dd"></div>
+        </div>
+        <input class="form-input" type="number" id="prod-qty" value="1" min="1" step="1" style="width:80px;flex-shrink:0;">
+        <button class="btn btn-primary" onclick="addItem()" style="flex-shrink:0;white-space:nowrap;">Add</button>
+      </div>
+      <div class="sel-info" id="sel-info" style="margin-bottom:.6rem;"></div>
+
+      <!-- NS (Non-stock) item row -->
+      <div style="display:flex;gap:.6rem;align-items:center;margin-bottom:.6rem;">
+        <span style="background:var(--acc-bg);color:var(--acc);border:1px solid var(--acc-bdr);border-radius:var(--rad);padding:0 10px;font-family:var(--fm);font-size:.78rem;font-weight:700;height:38px;display:flex;align-items:center;flex-shrink:0;">NS</span>
+        <input class="form-input" type="text" id="ns-desc" placeholder="Non-stock description…" style="flex:1;">
+        <input class="form-input" type="number" id="ns-qty" value="1" min="1" step="1" style="width:80px;flex-shrink:0;">
+        <button class="btn btn-primary" onclick="addNS()" style="flex-shrink:0;white-space:nowrap;background:var(--acc-dark);">Add NS</button>
+      </div>
+
+      <!-- Message / bespoke line -->
+      <div style="display:flex;gap:.6rem;align-items:center;">
+        <span style="background:var(--surf3);color:var(--mut);border:1px solid var(--bdr);border-radius:var(--rad);padding:0 10px;font-size:.72rem;font-weight:700;height:38px;display:flex;align-items:center;flex-shrink:0;">NOTE</span>
+        <input class="form-input" type="text" id="msg-text" placeholder="Instruction or note… e.g. Cut to 1200mm" style="flex:1;">
+        <button class="btn btn-ghost" onclick="addMsg()" style="flex-shrink:0;white-space:nowrap;">Add Note</button>
+      </div>
+
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+
+</div><!-- /left -->
+<div style="position:sticky;top:80px;display:flex;flex-direction:column;gap:1rem;">
+  {% if customer_notes %}
+  <div style="background:var(--acc-bg);border:2px solid var(--acc-bdr);border-radius:var(--rad-lg);padding:1.2rem;box-shadow:var(--shadow);">
+    <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--acc);margin-bottom:.75rem;">⚠ Customer Notes — {{ project.customer }}</div>
+    <div style="font-size:.875rem;color:var(--txt);white-space:pre-wrap;line-height:1.6;">{{ customer_notes }}</div>
+  </div>
+  {% endif %}
+
+  <!-- Weight Calculator -->
+  <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.2rem;box-shadow:var(--shadow);">
+    <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:.9rem;">⚖ Weight Estimate</div>
+
+    <div style="font-size:.78rem;color:var(--mut);margin-bottom:.2rem;">From stock items (auto)</div>
+    <div style="font-size:1rem;font-weight:700;color:var(--txt);margin-bottom:1rem;" id="wgt-auto">calculating...</div>
+
+    <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem;">
+      <div style="font-size:.75rem;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Manual additions (total kg)</div>
+
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <label style="font-size:.78rem;color:var(--txt2);flex:1;">Metal decks</label>
+        <input type="number" id="wgt-metal" min="0" step="0.1" value="0" style="width:70px;padding:3px 6px;border:1px solid var(--bdr);border-radius:4px;background:var(--surf2);color:var(--txt);font-size:.82rem;text-align:right;" oninput="calcWeight()">
+      </div>
+
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <label style="font-size:.78rem;color:var(--txt2);flex:1;">Mesh decks</label>
+        <input type="number" id="wgt-mesh" min="0" step="0.1" value="0" style="width:70px;padding:3px 6px;border:1px solid var(--bdr);border-radius:4px;background:var(--surf2);color:var(--txt);font-size:.82rem;text-align:right;" oninput="calcWeight()">
+      </div>
+
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <label style="font-size:.78rem;color:var(--txt2);flex:1;">Mobile bases</label>
+        <input type="number" id="wgt-mobbase" min="0" step="0.1" value="0" style="width:70px;padding:3px 6px;border:1px solid var(--bdr);border-radius:4px;background:var(--surf2);color:var(--txt);font-size:.82rem;text-align:right;" oninput="calcWeight()">
+      </div>
+
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <label style="font-size:.78rem;color:var(--txt2);flex:1;">Misc</label>
+        <input type="number" id="wgt-misc" min="0" step="0.1" value="0" style="width:70px;padding:3px 6px;border:1px solid var(--bdr);border-radius:4px;background:var(--surf2);color:var(--txt);font-size:.82rem;text-align:right;" oninput="calcWeight()">
+      </div>
+    </div>
+
+    <div style="border-top:2px solid var(--bdr);padding-top:.75rem;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:.82rem;font-weight:700;color:var(--txt);">TOTAL</span>
+      <span style="font-size:1.4rem;font-weight:800;color:var(--acc);" id="wgt-total">— kg</span>
+    </div>
+  </div>
+
+</div><!-- /right -->
+</div><!-- /grid -->
+
+{{ stock_weights|json_script:"stock-weights-data" }}
+<script>
+// ── Stock Allocation ─────────────────────────────────────────────────────────
+const PL_PK_ALLOC = {{ pl.pk }};
+async function allocateStock(){
+  const r = await fetch(`/picking/${PL_PK_ALLOC}/allocate/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+  const d = await r.json();
+  if(d.ok){
+    if(d.shortages && d.shortages.length){
+      let msg = '⚠ Stock allocated, but some items are short:\n\n';
+      d.shortages.forEach(s=>{ msg += `• ${s.code} — short by ${s.short_by} (need ${s.needed}, ${s.free} free)\n`; });
+      msg += '\nThese are flagged with ⚠ in the list. You may need to order more.';
+      alert(msg);
+    }
+    location.reload();
+    return;
+  }
+  alert(d.error || 'Failed to allocate');
+}
+async function deallocateStock(){
+  if(!confirm('Release the allocated stock back to free stock?')) return;
+  const r = await fetch(`/picking/${PL_PK_ALLOC}/deallocate/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+  const d = await r.json();
+  if(d.ok) location.reload(); else alert(d.error||'Failed');
+}
+const STOCK_WEIGHTS = JSON.parse(document.getElementById('stock-weights-data').textContent || '{}');
+const ITEM_WEIGHTS = {
+  'BTP48':2.0,'BTP60':2.3,'BTP72':2.7,'BTP84':3.2,'BTP96':3.6,'BTP108':4.1,'BTP120':4.5,
+  'TP48':2.0,'TP60':2.3,'TP72':2.7,'TP84':3.2,'TP96':3.6,'TP108':4.1,'TP120':4.5,
+  'TPC12':0.5,'TPC15':0.5,'TPC18':0.6,'TPC21':0.8,'TPC24':0.9,'TPC27':1.0,'TPC30':1.2,'TPC36':1.3,
+  'TFCL36':1.6,'TFCL39.5':1.6,'TFCL48':2.0,
+  'TFCV24':1.4,'TFCV30':1.4,'TFCV36':1.5,'TFCV39.5':1.6,'TFCV43.5':1.8,'TFCV48':2.0,
+  'TBC36':1.5,'TBC39.5':1.8,'TBC48':2.0,
+  'TWB36':2.2,'TWB39.5':3.2,'TWB48':3.2,'TWB60':3.8,'TWB66':4.2,'TWB72':4.6,
+  'TCTB18':0.6,'TCTB24':0.8,'TCTB30':1.0,'TCTB36':1.2,
+  'SB18':0.6,'SB24':0.8,'SB30':1.0,'SB36':1.2,
+  'FP':0.1,'SMFOOT':0.12,'TFP':0.01,
+};
+const MM2_PER_SQFT = 92903.04; // 1 sq ft = 92903.04 sq mm
+
+// Board weight from description: "1216 X 685 X 18mm CHIPBOARD" -> first two = mm dims
+// 1 kg per sq ft of surface area
+function boardWeightFromDesc(desc){
+  if(!desc) return 0;
+  const m = desc.match(/^\s*(\d+)\s*[xX]\s*(\d+)/);
+  if(!m) return 0;
+  const wMm = parseInt(m[1]), dMm = parseInt(m[2]);
+  const sqft = (wMm * dMm) / MM2_PER_SQFT;
+  return sqft; // 1kg per sqft
+}
+
+function isBoardDesc(desc){
+  return /CHIPBOARD|MELAMINE|MFC|TIMBER DECK|BOARD/i.test(desc || '');
+}
+
+function calcWeight(){
+  let auto = 0;
+  document.querySelectorAll('.items-table tbody tr[data-code]').forEach(row => {
+    const code = row.dataset.code;
+    const desc = (row.dataset.desc || '').trim();
+    const qty  = parseFloat(row.querySelector('.qty-cell input')?.value ?? row.dataset.qty) || 0;
+    if(isBoardDesc(desc)){
+      auto += boardWeightFromDesc(desc) * qty;
+    } else if(STOCK_WEIGHTS[code] !== undefined){
+      auto += STOCK_WEIGHTS[code] * qty;
+    } else if(ITEM_WEIGHTS[code]){
+      auto += ITEM_WEIGHTS[code] * qty;
+    }
+    // else: lightweight item, contributes 0
+  });
+  document.getElementById('wgt-auto').textContent = auto.toFixed(1) + ' kg';
+  const metal   = parseFloat(document.getElementById('wgt-metal').value)   || 0;
+  const mesh    = parseFloat(document.getElementById('wgt-mesh').value)    || 0;
+  const mobbase = parseFloat(document.getElementById('wgt-mobbase').value) || 0;
+  const misc    = parseFloat(document.getElementById('wgt-misc').value)    || 0;
+  document.getElementById('wgt-total').textContent = (auto + metal + mesh + mobbase + misc).toFixed(1) + ' kg';
+}
+
+window.addEventListener('load', () => {
+  calcWeight();
+  document.querySelector('.items-table')?.addEventListener('input', e => {
+    if(e.target.closest('.qty-cell')) calcWeight();
+  });
+});
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+const PL_PK = {{ pl.pk }};
+let selProduct = null;
+let ddIdx = -1;
+
+// Product search
+async function searchProds(q){
+  const dd = document.getElementById('prod-dd');
+  ddIdx = -1;
+  if(q.length < 1){ dd.style.display='none'; selProduct=null; return; }
+  const r = await fetch(`/api/products/?q=${encodeURIComponent(q)}`);
+  const items = await r.json();
+  if(!items.length){ dd.style.display='none'; return; }
+  dd.innerHTML = items.map((p,i)=>`
+    <div class="pdd-item" id="pdd-${i}" onmousedown="event.preventDefault();selectProd(${p.id},'${p.code.replace(/'/g,"\\'")}','${p.description.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${p.quantity},${p.free_stock})">
+      <div class="pdd-code">${p.code}</div>
+      <div class="pdd-desc">${p.description}</div>
+      <div class="pdd-stock">In stock: <strong>${p.quantity}</strong> · Free: <strong>${p.free_stock}</strong></div>
+    </div>`).join('');
+  dd.style.display = 'block';
+}
+
+function selectProd(id, code, desc, qty, free){
+  selProduct = {id, code, desc, qty, free};
+  document.getElementById('prod-search').value = code;
+  document.getElementById('prod-dd').style.display = 'none';
+  document.getElementById('sel-info').textContent = desc + ' — In stock: ' + qty;
+  document.getElementById('prod-qty').focus();
+  document.getElementById('prod-qty').select();
+}
+
+// Keyboard nav in dropdown
+document.getElementById('prod-search').addEventListener('keydown', function(e){
+  const dd = document.getElementById('prod-dd');
+  const items = dd.querySelectorAll('.pdd-item');
+  if(dd.style.display === 'block' && items.length){
+    if(e.key === 'ArrowDown'){ e.preventDefault(); ddIdx=Math.min(ddIdx+1,items.length-1); items.forEach((it,i)=>it.classList.toggle('selected',i===ddIdx)); items[ddIdx]?.scrollIntoView({block:'nearest'}); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); ddIdx=Math.max(ddIdx-1,0); items.forEach((it,i)=>it.classList.toggle('selected',i===ddIdx)); items[ddIdx]?.scrollIntoView({block:'nearest'}); }
+    else if(e.key === 'Enter' && ddIdx >= 0){ e.preventDefault(); items[ddIdx].click(); }
+    else if(e.key === 'Escape'){ dd.style.display='none'; }
+  } else if(e.key === 'Enter'){ e.preventDefault(); addItem(); }
+});
+
+document.getElementById('prod-qty').addEventListener('keydown', function(e){
+  if(e.key === 'Enter'){ e.preventDefault(); addItem(); }
+});
+
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.product-search-wrap'))
+    document.getElementById('prod-dd').style.display='none';
+});
+
+// Add item
+async function addItem(){
+  if(!selProduct){ 
+    document.getElementById('prod-search').focus();
+    document.getElementById('prod-search').style.borderColor='var(--red)';
+    setTimeout(()=>document.getElementById('prod-search').style.borderColor='',2000);
+    return; 
+  }
+  const qty = parseFloat(document.getElementById('prod-qty').value) || 1;
+  const r = await fetch(`/picking/${PL_PK}/add-item/`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+    body:JSON.stringify({product_id: selProduct.id, quantity: qty})
+  });
+  const d = await r.json();
+  if(d.error){ alert(d.error); return; }
+  // Remove empty row
+  document.getElementById('empty-row')?.remove();
+  // Add or update row in table
+  const existing = document.getElementById(`row-${d.item_pk}`);
+  if(existing){ existing.querySelector('.qty-cell').textContent = d.quantity; }
+  else {
+    const tbody = document.getElementById('items-tbody');
+    const tr = document.createElement('tr');
+    tr.id = `row-${d.item_pk}`;
+    tr.dataset.itemPk = d.item_pk;
+    tr.dataset.productPk = selProduct.id;
+    tr.dataset.qty = qty;
+    tr.innerHTML = `
+      <td><input type="checkbox" class="form-checkbox" onchange="togglePicked(${d.item_pk}, this.checked)"></td>
+      <td><span class="code">${selProduct.code}</span></td>
+      <td style="font-size:.95rem;">${selProduct.desc}</td>
+      <td class="qty-cell">${d.quantity}</td>
+      <td><button onclick="removeItem(${d.item_pk})" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;">✕</button></td>`;
+    tbody.appendChild(tr);
+  }
+  // Reset
+  selProduct = null;
+  document.getElementById('prod-search').value = '';
+  document.getElementById('prod-qty').value = '1';
+  document.getElementById('sel-info').textContent = '';
+  document.getElementById('prod-search').focus();
+}
+
+// Remove item
+async function removeItem(itemPk){
+  await fetch(`/picking/item/${itemPk}/delete/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+  document.getElementById(`row-${itemPk}`)?.remove();
+  if(!document.querySelector('#items-tbody tr:not(#empty-row)')){
+    const tbody = document.getElementById('items-tbody');
+    tbody.innerHTML = '<tr id="empty-row"><td colspan="5" class="empty-msg">No items yet — add products below</td></tr>';
+  }
+}
+
+// Toggle picked
+async function togglePicked(itemPk, checked){
+  const row = document.getElementById(`row-${itemPk}`);
+  if(checked) row.classList.add('picked'); else row.classList.remove('picked');
+  await fetch(`/picking/item/${itemPk}/toggle/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({picked:checked})});
+}
+
+// Update quantity
+async function updateQty(itemPk, qty){
+  qty = parseFloat(qty);
+  if(!qty || qty < 0) return;
+  await fetch(`/picking/item/${itemPk}/qty/`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+    body:JSON.stringify({quantity: qty})
+  });
+}
+
+// Add NS item
+async function addNS(){
+  const desc = document.getElementById('ns-desc').value.trim();
+  const qty  = parseFloat(document.getElementById('ns-qty').value) || 1;
+  if(!desc){ document.getElementById('ns-desc').style.borderColor='var(--red)'; setTimeout(()=>document.getElementById('ns-desc').style.borderColor='',2000); return; }
+  const r = await fetch(`/picking/${PL_PK}/add-ns/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({description:desc,quantity:qty})});
+  const d = await r.json();
+  if(d.error){alert(d.error);return;}
+  document.getElementById('empty-row')?.remove();
+  const tbody = document.getElementById('items-tbody');
+  const tr = document.createElement('tr');
+  tr.id = `row-${d.item_pk}`;
+  tr.innerHTML = `
+    <td><input type="checkbox" class="form-checkbox" onchange="togglePicked(${d.item_pk},this.checked)"></td>
+    <td><span style="background:var(--acc-bg);color:var(--acc);border:1px solid var(--acc-bdr);border-radius:4px;padding:1px 7px;font-family:var(--fm);font-size:.75rem;font-weight:700;">NS</span></td>
+    <td style="font-size:.95rem;">${desc}</td>
+    <td class="qty-cell">${qty}</td>
+    <td><button onclick="removeItem(${d.item_pk})" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;">✕</button></td>`;
+  tbody.appendChild(tr);
+  document.getElementById('ns-desc').value = '';
+  document.getElementById('ns-qty').value = '1';
+  document.getElementById('ns-desc').focus();
+}
+
+// Add message line
+async function addMsgAfter(itemPk){
+  const msg = prompt('Add a note below this item:');
+  if(!msg || !msg.trim()) return;
+  const r = await fetch(`/picking/${PL_PK}/add-msg/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({message:msg.trim(), after_pk:itemPk})});
+  const d = await r.json();
+  if(d.error){alert(d.error);return;}
+  location.reload();
+}
+async function addMsg(){
+  const msg = document.getElementById('msg-text').value.trim();
+  if(!msg){ document.getElementById('msg-text').style.borderColor='var(--red)'; setTimeout(()=>document.getElementById('msg-text').style.borderColor='',2000); return; }
+  const r = await fetch(`/picking/${PL_PK}/add-msg/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({message:msg})});
+  const d = await r.json();
+  if(d.error){alert(d.error);return;}
+  document.getElementById('empty-row')?.remove();
+  const tbody = document.getElementById('items-tbody');
+  const tr = document.createElement('tr');
+  tr.id = `row-${d.item_pk}`;
+  tr.style.background = 'var(--surf2)';
+  tr.innerHTML = `
+    <td></td>
+    <td colspan="3" style="font-style:italic;color:var(--mut);font-size:.88rem;">📝 ${msg}</td>
+    <td><button onclick="removeItem(${d.item_pk})" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;">✕</button></td>`;
+  tbody.appendChild(tr);
+  document.getElementById('msg-text').value = '';
+  document.getElementById('msg-text').focus();
+}
+
+// NS and MSG enter key
+document.getElementById('ns-desc')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addNS();}});
+document.getElementById('msg-text')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addMsg();}});
+
+// Set print date
+const pdEl = document.getElementById('print-date'); if(pdEl) pdEl.textContent = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+
+
+
+// Apply template
+async function applyTemplate(){
+  const tmplId = document.getElementById('tmpl-select').value;
+  if(!tmplId){ alert('Please select a template'); return; }
+  const r = await fetch(`/picking/${PL_PK}/apply-template/`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+    body:JSON.stringify({template_id: tmplId})
+  });
+  const d = await r.json();
+  if(d.ok) location.reload();
+}
+
+// Save status
+async function saveStatus(status){
+  if(status === 'dispatched'){
+    if(!confirm('Marking as Dispatched will deduct quantities from stock. Continue?')){ 
+      document.getElementById('status-sel').value = '{{ pl.status }}';
+      return; 
+    }
+  }
+  const r = await fetch(`/picking/${PL_PK}/status/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify({status})});
+  const d = await r.json();
+  if(d.ok && status === 'dispatched') location.reload();
+}
+
+</script>
+{% endblock %}
