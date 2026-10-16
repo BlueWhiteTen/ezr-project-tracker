@@ -1,6 +1,7 @@
 {% extends 'projects/base.html' %}
 {% block title %}Installation Report — {{ project.project_name }}{% endblock %}
 {% block extra_style %}
+.col-head{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--acc);margin:0 0 .6rem;padding-bottom:.35rem;border-bottom:2px solid var(--acc);}
 .report-layout{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start;}
 .form-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.5rem;box-shadow:var(--shadow);margin-bottom:1.2rem;}
 .section-title{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:.85rem;padding-bottom:.4rem;border-bottom:1px solid var(--bdr);}
@@ -11,7 +12,7 @@
 .photo-del:hover{background:var(--red);}
 .sat-item{display:flex;align-items:center;gap:.75rem;padding:.65rem .9rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--rad);margin-bottom:.6rem;}
 .sat-item a{color:var(--acc);font-weight:500;font-size:.875rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.upload-zone{border:2px dashed var(--bdr);border-radius:var(--rad);padding:1.5rem;text-align:center;color:var(--mut);cursor:pointer;transition:all .15s;margin-top:.6rem;}
+.upload-zone{display:block;border:2px dashed var(--bdr);border-radius:var(--rad);padding:1.5rem;text-align:center;color:var(--mut);cursor:pointer;transition:all .15s;margin-top:.6rem;}
 .upload-zone:hover{border-color:var(--acc);color:var(--acc);background:var(--acc-bg);}
 .upload-zone input{display:none;}
 @media(max-width:768px){.report-layout{grid-template-columns:1fr;}}
@@ -28,8 +29,58 @@
   {% if project.installation_date %} · Installed {{ project.installation_date|date:"d M Y" }}{% endif %}
 </div>
 
+
+<form method="post" enctype="multipart/form-data" id="report-form">
+  {% csrf_token %}
+  <div class="report-layout">
+    <div>
+      <div class="col-head">Pre-installation</div>
+      <div class="form-card">
+        <div class="section-title">Job Details</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem;">
+          <div>
+            <label class="form-label">Site Contact</label>
+            <input class="form-input" type="text" name="site_contact" value="{{ report.site_contact }}" placeholder="Contact name on site">
+          </div>
+          <div>
+            <label class="form-label">Contact Number</label>
+            <input class="form-input" type="text" name="contact_number" value="{{ report.contact_number }}" placeholder="Phone number">
+          </div>
+          <div style="grid-column:1/-1;">
+            <label class="form-label">Fitting Crew</label>
+            <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem;">
+              <select id="crew-select" class="form-input" style="flex:1;" onchange="selectCrew(this)">
+                <option value="">— Select saved crew —</option>
+              </select>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="openCrewManager()">✏ Edit List</button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
+              <div>
+                <label class="form-label">Name</label>
+                <input class="form-input" type="text" name="fitting_crew" id="fitting-crew-name" list="fitting-crew-options" value="{{ report.fitting_crew }}" placeholder="Crew member names" autocomplete="off" onchange="fillCrewPhone(this.value)">
+                <datalist id="fitting-crew-options">
+                  {% for crew in fitting_crews %}<option value="{{ crew.name }}" data-phone="{{ crew.phone }}">{% endfor %}
+                </datalist>
+              </div>
+              <div>
+                <label class="form-label">Mobile</label>
+                <input class="form-input" type="text" name="fitting_crew_phone" id="fitting-crew-phone" value="{{ report.fitting_crew_phone }}" placeholder="Mobile number(s)">
+              </div>
+            </div>
+          </div>
+        </div>
+        <label class="form-label">Schedule of Works / Job Tasks</label>
+        <textarea class="form-input" name="job_tasks" rows="4" placeholder="Describe the work carried out e.g. BUILD 2 RUNS OF 2 BAYS — GROUND FLOOR AND FIRST FLOOR" style="margin-bottom:.75rem;">{{ report.job_tasks }}</textarea>
+
+
+
+        <div style="margin-top:.75rem;">
+          <button type="button" class="btn btn-primary" style="background:#D4700A;" onclick="saveAndOpenSatNote()">📋 Generate Satisfaction Note</button>
+          {% if project.fitter_submissions.exists %}<a href="{% url 'satisfaction_note' project.pk %}?filled=1" target="_blank" class="btn" style="background:var(--grn);color:#fff;margin-left:.4rem;">📄 Export filled-in Satisfaction Note</a>{% endif %}
+        </div>
+
       {% if project %}
-      <div class="form-card" id="fitter-card" style="border-color:rgba(212,112,10,.35);">
+      <div id="fitter-card" style="border:1px solid rgba(212,112,10,.35);border-radius:var(--rad);padding:1rem;margin-top:1rem;">
         <div class="section-title" style="color:var(--acc);">FITTER LINK</div>
         <div id="fl-flag" style="display:none;background:var(--red-bg);color:var(--red);border-radius:8px;padding:.5rem .7rem;font-size:.82rem;margin-bottom:.7rem;">⚠ <strong>No customer signature</strong> on this job. <a href="#" onclick="flClear();return false;" style="color:var(--red);">Clear flag</a></div>
         <p style="font-size:.82rem;color:var(--mut);margin-bottom:.8rem;">A private link for the fitter's phone: photos, completion checks and an optional customer signature. Fills in the Installation Report and makes a PDF. Works until the project is Completed.</p>
@@ -78,54 +129,6 @@
       </script>
       {% endif %}
 
-<form method="post" enctype="multipart/form-data" id="report-form">
-  {% csrf_token %}
-  <div class="report-layout">
-    <div>
-      <div class="form-card">
-        <div class="section-title">Job Details</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem;">
-          <div>
-            <label class="form-label">Site Contact</label>
-            <input class="form-input" type="text" name="site_contact" value="{{ report.site_contact }}" placeholder="Contact name on site">
-          </div>
-          <div>
-            <label class="form-label">Contact Number</label>
-            <input class="form-input" type="text" name="contact_number" value="{{ report.contact_number }}" placeholder="Phone number">
-          </div>
-          <div style="grid-column:1/-1;">
-            <label class="form-label">Fitting Crew</label>
-            <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem;">
-              <select id="crew-select" class="form-input" style="flex:1;" onchange="selectCrew(this)">
-                <option value="">— Select saved crew —</option>
-              </select>
-              <button type="button" class="btn btn-ghost btn-sm" onclick="openCrewManager()">✏ Edit List</button>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
-              <div>
-                <label class="form-label">Name</label>
-                <input class="form-input" type="text" name="fitting_crew" id="fitting-crew-name" list="fitting-crew-options" value="{{ report.fitting_crew }}" placeholder="Crew member names" autocomplete="off" onchange="fillCrewPhone(this.value)">
-                <datalist id="fitting-crew-options">
-                  {% for crew in fitting_crews %}<option value="{{ crew.name }}" data-phone="{{ crew.phone }}">{% endfor %}
-                </datalist>
-              </div>
-              <div>
-                <label class="form-label">Mobile</label>
-                <input class="form-input" type="text" name="fitting_crew_phone" id="fitting-crew-phone" value="{{ report.fitting_crew_phone }}" placeholder="Mobile number(s)">
-              </div>
-            </div>
-          </div>
-        </div>
-        <label class="form-label">Schedule of Works / Job Tasks</label>
-        <textarea class="form-input" name="job_tasks" rows="4" placeholder="Describe the work carried out e.g. BUILD 2 RUNS OF 2 BAYS — GROUND FLOOR AND FIRST FLOOR" style="margin-bottom:.75rem;">{{ report.job_tasks }}</textarea>
-
-
-
-        <div style="margin-top:.75rem;">
-          <button type="button" class="btn btn-primary" style="background:#D4700A;" onclick="saveAndOpenSatNote()">📋 Generate Satisfaction Note</button>
-          {% if project.fitter_submissions.exists %}<a href="{% url 'satisfaction_note' project.pk %}?filled=1" target="_blank" class="btn" style="background:var(--grn);color:#fff;margin-left:.4rem;">📄 Export filled-in Satisfaction Note</a>{% endif %}
-        </div>
-
         <div class="section-title" style="margin-top:1.2rem;">Satisfaction Note</div>
         <p style="font-size:.82rem;color:var(--mut);margin-bottom:.75rem;">Upload a signed satisfaction note, PDF or image</p>
         <div id="sat-list">
@@ -166,6 +169,7 @@
     </div>
 
     <div>
+      <div class="col-head">Post-installation</div>
       <div class="form-card">
         <div class="section-title">As-Built Photos</div>
         <div class="photo-grid" id="photo-grid">
