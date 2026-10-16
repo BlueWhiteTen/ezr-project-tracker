@@ -105,11 +105,32 @@ def project_quick_create(request):
 
 
 
+def _remember_delivery_address(project):
+    """Build up the customer's own address list — one entry per distinct
+    address, so repeat multi-site customers get a reusable history."""
+    has_address = bool(project.addr_line1 or project.addr_postcode)
+    if has_address and project.customer_profile_id:
+        already_exists = CustomerDeliveryAddress.objects.filter(
+            customer_id=project.customer_profile_id,
+            line1__iexact=project.addr_line1,
+            postcode__iexact=project.addr_postcode,
+        ).exists()
+        if not already_exists:
+            next_order = CustomerDeliveryAddress.objects.filter(customer_id=project.customer_profile_id).count()
+            CustomerDeliveryAddress.objects.create(
+                customer_id=project.customer_profile_id, source_project=project,
+                line1=project.addr_line1, line2=project.addr_line2, city=project.addr_city,
+                county=project.addr_county, postcode=project.addr_postcode, country=project.addr_country,
+                fao=project.addr_fao, phone=project.addr_phone, sort_order=next_order,
+            )
+
+
 @login_required
 def project_edit(request, pk):
     project = get_object_or_404(Project, pk=pk)
     if request.method == 'POST':
         before = _snap(project)
+        before['status'] = project.get_status_display()
         form = ProjectForm(request.POST, instance=project)
         if form.is_valid():
             old_status_val = project.status
@@ -144,10 +165,34 @@ def project_edit(request, pk):
             if old_status_val != 'enquiry' and edited.status == 'enquiry':
                 messages.error(request, "This project has already moved past Enquiry and can't be set back to it.")
                 return redirect('project_edit', pk=project.pk)
+            # Things that used to save the moment they were clicked now ride along
+            # with Save Changes (the page keeps them in hidden fields).
+            pm = request.POST.get('payment_method')
+            if pm is not None and (pm == '' or pm in dict(Project.PAYMENT_CHOICES)):
+                edited.payment_method = pm
+            if edited.status == 'cancelled':
+                lr = request.POST.get('lost_reason', '').strip()
+                if lr:
+                    edited.lost_reason = lr
+            if request.POST.get('blocked_present'):
+                blk = request.POST.get('is_blocked') == '1'
+                if blk and not edited.is_blocked:
+                    edited.blocked_at = timezone.now()
+                if not blk:
+                    edited.blocked_at = None
+                edited.is_blocked = blk
+                edited.blocked_reason = request.POST.get('blocked_reason', '').strip() if blk else ''
+            if request.POST.get('addr_present'):
+                for f in ('line1', 'line2', 'city', 'county', 'postcode', 'fao', 'phone'):
+                    setattr(edited, 'addr_' + f, request.POST.get('addr_' + f, '').strip())
+                edited.addr_country = request.POST.get('addr_country', '').strip() or 'United Kingdom'
             edited.save()
+            if request.POST.get('addr_present'):
+                _remember_delivery_address(edited)
             if old_status_val != edited.status:
                 _handle_quoted_status_reminders(edited, old_status_val, edited.status, request.user)
             after = _snap(edited)
+            after['status'] = edited.get_status_display()
             _log_changes(edited, before, after, request.user)
             if cust:
                 Customer.objects.get_or_create(name=cust)
@@ -768,22 +813,7 @@ def project_address_save(request, pk):
     project.save()
     has_address = bool(project.addr_line1 or project.addr_postcode)
 
-    # Build up the customer's own address list — one entry per distinct
-    # address, so repeat multi-site customers get a reusable history.
-    if has_address and project.customer_profile_id:
-        already_exists = CustomerDeliveryAddress.objects.filter(
-            customer_id=project.customer_profile_id,
-            line1__iexact=project.addr_line1,
-            postcode__iexact=project.addr_postcode,
-        ).exists()
-        if not already_exists:
-            next_order = CustomerDeliveryAddress.objects.filter(customer_id=project.customer_profile_id).count()
-            CustomerDeliveryAddress.objects.create(
-                customer_id=project.customer_profile_id, source_project=project,
-                line1=project.addr_line1, line2=project.addr_line2, city=project.addr_city,
-                county=project.addr_county, postcode=project.addr_postcode, country=project.addr_country,
-                fao=project.addr_fao, phone=project.addr_phone, sort_order=next_order,
-            )
+    _remember_delivery_address(project)
 
     return JsonResponse({'ok': True, 'has_address': has_address})
 

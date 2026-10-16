@@ -79,6 +79,12 @@
   {% if project.last_edited_by %}<span>Last edited by <strong>{{ project.last_edited_by.get_full_name|default:project.last_edited_by.username }}</strong> &nbsp;·&nbsp; {{ project.updated_at|date:"d M Y, H:i" }}</span>{% endif %}
 </div>
 
+{% if project %}
+<div id="unsaved-banner" style="display:none;position:sticky;top:0;z-index:40;align-items:center;gap:.6rem;background:var(--amb-bg);border:1px solid var(--amb);color:var(--txt);border-radius:var(--rad);padding:.55rem .9rem;margin-bottom:.8rem;font-size:.85rem;">
+  <span style="color:var(--amb);font-size:1rem;">●</span>
+  <span style="flex:1;"><b>You have unsaved changes.</b> They are not stored until you click <b>Save Changes</b>.</span>
+</div>
+{% endif %}
 <!-- Status bar -->
 <div class="status-bar" id="status-bar">
   {% for val, label in form.status.field.choices %}
@@ -148,6 +154,22 @@
 
 <form method="post" id="project-form">
   {% csrf_token %}
+  {% if project %}
+  <input type="hidden" name="payment_method" id="h-payment" value="{{ project.payment_method }}">
+  <input type="hidden" name="lost_reason" id="h-lost" value="">
+  <input type="hidden" name="blocked_present" value="1">
+  <input type="hidden" name="is_blocked" id="h-blocked" value="{% if project.is_blocked %}1{% else %}0{% endif %}">
+  <input type="hidden" name="blocked_reason" id="h-blocked-reason" value="{{ project.blocked_reason }}">
+  <input type="hidden" name="addr_present" value="1">
+  <input type="hidden" name="addr_line1" id="h-addr_line1" value="{{ project.addr_line1 }}">
+  <input type="hidden" name="addr_line2" id="h-addr_line2" value="{{ project.addr_line2 }}">
+  <input type="hidden" name="addr_city" id="h-addr_city" value="{{ project.addr_city }}">
+  <input type="hidden" name="addr_county" id="h-addr_county" value="{{ project.addr_county }}">
+  <input type="hidden" name="addr_postcode" id="h-addr_postcode" value="{{ project.addr_postcode }}">
+  <input type="hidden" name="addr_country" id="h-addr_country" value="{{ project.addr_country }}">
+  <input type="hidden" name="addr_fao" id="h-addr_fao" value="{{ project.addr_fao }}">
+  <input type="hidden" name="addr_phone" id="h-addr_phone" value="{{ project.addr_phone }}">
+  {% endif %}
   {% if form.errors %}
   <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:var(--rad);padding:.75rem 1rem;margin-bottom:1rem;font-size:.85rem;color:#991b1b;">
     ⚠ Please fix the following errors: {{ form.errors }}
@@ -541,33 +563,23 @@ function closeAddress(){
   document.getElementById('addr-overlay').style.display='none';
   document.getElementById('addr-modal').style.display='none';
 }
-async function saveAddress(){
-  const r=await fetch('/project/{{ project.pk }}/address/',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
-    body:JSON.stringify({
-      addr_line1:    document.getElementById('a-line1').value.trim(),
-      addr_line2:    document.getElementById('a-line2').value.trim(),
-      addr_city:     document.getElementById('a-city').value.trim(),
-      addr_county:   document.getElementById('a-county').value.trim(),
-      addr_postcode: document.getElementById('a-postcode').value.trim(),
-      addr_country:  document.getElementById('a-country').value,
-      addr_fao:      document.getElementById('a-fao').value.trim(),
-      addr_phone:    document.getElementById('a-phone').value.trim(),
-    })
+function saveAddress(){
+  const map = {addr_line1:'a-line1', addr_line2:'a-line2', addr_city:'a-city', addr_county:'a-county',
+               addr_postcode:'a-postcode', addr_country:'a-country', addr_fao:'a-fao', addr_phone:'a-phone'};
+  Object.keys(map).forEach(k => {
+    const src = document.getElementById(map[k]); const dst = document.getElementById('h-'+k);
+    if(src && dst) dst.value = (src.value || '').trim();
   });
-  const d=await r.json();
-  if(d.ok){
-    closeAddress();
-    const btn=document.getElementById('addr-btn');
-    if(d.has_address){
-      if(!btn.querySelector('span')){
-        const s=document.createElement('span');
-        s.style.cssText='display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:#16a34a;color:#fff;border-radius:50%;font-size:.6rem;margin-left:3px;vertical-align:middle;';
-        s.textContent='✓';btn.appendChild(s);
-      }
-    }
-  }
+  closeAddress();
+  const has = (document.getElementById('h-addr_line1').value || document.getElementById('h-addr_postcode').value);
+  const btn = document.getElementById('addr-btn');
+  const tick = btn.querySelector('span');
+  if(has && !tick){
+    const t = document.createElement('span');
+    t.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:#16a34a;color:#fff;border-radius:50%;font-size:.6rem;margin-left:3px;vertical-align:middle;';
+    t.textContent = '✓'; btn.appendChild(t);
+  } else if(!has && tick){ tick.remove(); }
+  markFormDirty();
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAddress();});
 {% endif %}
@@ -739,11 +751,6 @@ let _pendingStatus = null;
 async function statusBarClick(newStatus){
   const current = document.querySelector('.status-bar-active')?.dataset.status;
   if(newStatus === current) return;
-  if(newStatus === 'completed'){
-    if(!confirm('Mark this project as Completed?\n\nThis is normally a permanent action — only an administrator can reverse it.')){
-      return;
-    }
-  }
   let lostReason = null;
   if(newStatus === 'cancelled'){
     lostReason = prompt('Why isn\'t this proceeding? (optional, but helps track patterns over time)', '');
@@ -758,29 +765,27 @@ async function statusBarClick(newStatus){
   await _doStatusChange(newStatus, null, lostReason);
 }
 
+function _paymentLabel(val){
+  const btn = document.querySelector(`.payment-opt-btn[data-value="${val}"]`);
+  return btn ? btn.textContent.trim() : '';
+}
+
+// Nothing is sent to the server here — the choice is held on the page and saved
+// together with everything else when Save Changes is clicked.
 async function _doStatusChange(newStatus, paymentMethod, lostReason){
-  const body = {status: newStatus};
-  if(paymentMethod) body.payment_method = paymentMethod;
-  if(lostReason) body.lost_reason = lostReason;
-  const r = await fetch(`/project/{{ project.pk }}/status/`, {
-    method: 'POST',
-    headers: {'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
-    body: JSON.stringify(body)
+  document.querySelectorAll('.status-bar-btn').forEach(btn => {
+    btn.classList.remove('status-bar-active', ...['enquiry','quoted','order_received','processed','part_delivered','completed','on_hold','cancelled'].map(s=>'status-bar-'+s));
   });
-  const d = await r.json();
-  if(d.ok){
-    document.querySelectorAll('.status-bar-btn').forEach(btn => {
-      btn.classList.remove('status-bar-active', ...['enquiry','quoted','order_received','processed','part_delivered','completed','on_hold','cancelled'].map(s=>'status-bar-'+s));
-    });
-    const active = document.querySelector(`.status-bar-btn[data-status="${newStatus}"]`);
-    if(active) active.classList.add('status-bar-active', 'status-bar-'+newStatus);
-    const sel = document.getElementById('id_status');
-    if(sel) sel.value = newStatus;
-    // Update payment badge if returned
-    if(d.payment_method) updatePaymentBadge(d.payment_method, d.payment_label);
-  } else {
-    alert(d.error || 'Could not update status.');
+  const active = document.querySelector(`.status-bar-btn[data-status="${newStatus}"]`);
+  if(active) active.classList.add('status-bar-active', 'status-bar-'+newStatus);
+  const sel = document.getElementById('id_status');
+  if(sel) sel.value = newStatus;
+  if(paymentMethod){
+    const hp = document.getElementById('h-payment'); if(hp) hp.value = paymentMethod;
+    updatePaymentBadge(paymentMethod, _paymentLabel(paymentMethod));
   }
+  if(lostReason){ const hl = document.getElementById('h-lost'); if(hl) hl.value = lostReason; }
+  markFormDirty();
 }
 
 // ── Payment method modal ───────────────────────────────────────────────────────
@@ -824,14 +829,10 @@ async function savePaymentMethod(){
     await _doStatusChange(_pendingStatus, _selectedPayment);
     _pendingStatus = null;
   } else {
-    // Standalone payment method change
-    const r = await fetch(`/project/{{ project.pk }}/payment/`, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
-      body: JSON.stringify({payment_method: _selectedPayment})
-    });
-    const d = await r.json();
-    if(d.ok) updatePaymentBadge(d.payment_method, d.payment_label);
+    // Standalone payment method change — held until Save Changes
+    const hp = document.getElementById('h-payment'); if(hp) hp.value = _selectedPayment;
+    updatePaymentBadge(_selectedPayment, _paymentLabel(_selectedPayment));
+    markFormDirty();
   }
 }
 
@@ -918,12 +919,28 @@ async function duplicateProject(){
   const d = await r.json();
   if(d.ok){
     if(confirm('✓ Project duplicated.\n\nOpen the new project now?'))
-      window.location.href = '/project/' + d.new_pk + '/edit/';
+      { _skipUnload = true; window.location.href = '/project/' + d.new_pk + '/edit/'; }
   } else {
     alert('Duplication failed.');
   }
 }
 {% endif %}
+
+// ── Unsaved-changes warning ──────────────────────────────────────────────────
+let _formDirty = false, _skipUnload = false;
+function markFormDirty(){
+  if(_formDirty) return;
+  _formDirty = true;
+  const b = document.getElementById('unsaved-banner'); if(b) b.style.display = 'flex';
+}
+(function(){
+  const f = document.getElementById('project-form');
+  if(!f) return;
+  const ignore = el => !el || el.id === 'comment-input' || (el.classList && el.classList.contains('manual-po-field')) || (el.closest && el.closest('[data-nodirty]'));
+  ['input','change'].forEach(ev => f.addEventListener(ev, e => { if(!ignore(e.target)) markFormDirty(); }));
+  f.addEventListener('submit', e => { if(!e.defaultPrevented) _skipUnload = true; });
+  window.addEventListener('beforeunload', e => { if(_formDirty && !_skipUnload){ e.preventDefault(); e.returnValue = ''; } });
+})();
 
 // Confirmation before saving as Completed
 document.getElementById('project-form').addEventListener('submit', function(e){
@@ -945,19 +962,13 @@ document.getElementById('project-form').addEventListener('submit', function(e){
 
 // ── Supplier / PO reference (manual) ────────────────────────────────────────
 {% if project %}
-async function toggleBlocked(isBlocked, reason){
-  const csrf = '{{ csrf_token }}';
-  const payload = {is_blocked: isBlocked};
-  if(isBlocked) payload.blocked_reason = reason || '';
-  const r = await fetch(`/project/{{ project.pk }}/toggle-blocked/`, {
-    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrf}, body: JSON.stringify(payload)
-  });
-  const d = await r.json();
-  if(d.ok){
-    document.getElementById('blocked-banner').style.display = d.is_blocked ? 'flex' : 'none';
-    document.getElementById('block-toggle-row').style.display = d.is_blocked ? 'none' : 'flex';
-    document.getElementById('blocked-reason-display').textContent = d.blocked_reason;
-  }
+function toggleBlocked(isBlocked, reason){
+  document.getElementById('h-blocked').value = isBlocked ? '1' : '0';
+  document.getElementById('h-blocked-reason').value = isBlocked ? (reason || '') : '';
+  document.getElementById('blocked-banner').style.display = isBlocked ? 'flex' : 'none';
+  document.getElementById('block-toggle-row').style.display = isBlocked ? 'none' : 'flex';
+  document.getElementById('blocked-reason-display').textContent = isBlocked ? (reason || '') : '';
+  markFormDirty();
 }
 function openBlockPrompt(){
   const reason = prompt('Why is this project blocked? (e.g. waiting on customer, drawing sign-off, site not ready)', '');

@@ -129,27 +129,6 @@
       </script>
       {% endif %}
 
-        <div class="section-title" style="margin-top:1.2rem;">Satisfaction Note</div>
-        <p style="font-size:.82rem;color:var(--mut);margin-bottom:.75rem;">Upload a signed satisfaction note, PDF or image</p>
-        <div id="sat-list">
-        {% for sat in satisfaction_notes %}
-          <div class="sat-item" id="sat-{{ sat.pk }}">
-            <span style="font-size:1.2rem;">📄</span>
-            <a href="{% url 'satisfaction_note_file' sat.pk %}" target="_blank">{{ sat.file_original_name|default:"View note" }}</a>
-            {% if sat.caption %}<span style="font-size:.75rem;color:var(--mut);">{{ sat.caption }}</span>{% endif %}
-            <button type="button" class="btn btn-danger btn-sm" onclick="deleteSat({{ sat.pk }})">✕</button>
-          </div>
-        {% endfor %}
-        </div>
-        <label class="upload-zone" for="sat-input">
-          <input type="file" name="satisfaction_note" id="sat-input" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadSat(this)">
-          <div>📎 Click to upload</div>
-          <div id="sat-name" style="font-size:.78rem;margin-top:.3rem;"></div>
-        </label>
-        <div class="form-group" style="margin-top:.6rem;margin-bottom:0;">
-          <label class="form-label">Caption (optional)</label>
-          <input class="form-input" type="text" name="sat_caption" id="sat-caption" placeholder="e.g. Signed by John Smith">
-        </div>
       </div>
 
       <div class="form-card" id="rams-card">
@@ -188,6 +167,30 @@
         <div class="form-group" style="margin-top:.6rem;margin-bottom:0;">
           <label class="form-label">Photo caption (applies to all uploaded)</label>
           <input class="form-input" type="text" name="photo_caption" id="photo-caption" placeholder="e.g. Completed installation">
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="section-title">Signed Satisfaction Note</div>
+        <p style="font-size:.82rem;color:var(--mut);margin-bottom:.75rem;">Upload a signed satisfaction note, PDF or image</p>
+        <div id="sat-list">
+        {% for sat in satisfaction_notes %}
+          <div class="sat-item" id="sat-{{ sat.pk }}">
+            <span style="font-size:1.2rem;">📄</span>
+            <a href="{% url 'satisfaction_note_file' sat.pk %}" target="_blank">{{ sat.file_original_name|default:"View note" }}</a>
+            {% if sat.caption %}<span style="font-size:.75rem;color:var(--mut);">{{ sat.caption }}</span>{% endif %}
+            <button type="button" class="btn btn-danger btn-sm" onclick="deleteSat({{ sat.pk }})">✕</button>
+          </div>
+        {% endfor %}
+        </div>
+        <label class="upload-zone" for="sat-input">
+          <input type="file" name="satisfaction_note" id="sat-input" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadSat(this)">
+          <div>📎 Click to upload</div>
+          <div id="sat-name" style="font-size:.78rem;margin-top:.3rem;"></div>
+        </label>
+        <div class="form-group" style="margin-top:.6rem;margin-bottom:0;">
+          <label class="form-label">Caption (optional)</label>
+          <input class="form-input" type="text" name="sat_caption" id="sat-caption" placeholder="e.g. Signed by John Smith">
         </div>
       </div>
 
