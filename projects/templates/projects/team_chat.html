@@ -308,6 +308,7 @@ async function sendTeamMsg(){
 }
 
 function markDeleted(id){
+  document.querySelectorAll(`.quote-block[onclick^="jumpToMsg(${id})"],.quote-block[onclick^="jumpToMsg(${id},"]`).forEach(q=>q.remove());
   const el = document.getElementById(`msg-${id}`);
   if(!el || el.dataset.deleted) return;
   el.dataset.deleted = '1';
