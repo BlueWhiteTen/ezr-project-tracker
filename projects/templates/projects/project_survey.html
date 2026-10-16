@@ -3,14 +3,22 @@
 {% block extra_style %}
 .form-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);padding:1.6rem;margin-bottom:1.2rem;box-shadow:var(--shadow);}
 .section-title{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid var(--bdr);}
-.page-narrow{max-width:760px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start;}
+.two-col .form-card{margin-bottom:0;}
+.empty-msg{display:none;color:var(--mut);font-size:.88rem;padding:1.2rem .5rem;text-align:center;}
+.list-box:empty + .empty-msg{display:block;}
+@media(max-width:800px){.two-col{grid-template-columns:1fr;}.two-col .col-up{order:-1;}}
 {% endblock %}
 {% block content %}
 {% include "projects/_project_tabs.html" with active="survey" %}
-<div class="page-narrow">
-<div class="form-card" style="border-color:rgba(234,88,12,.3);background:rgba(234,88,12,.03);">
+<div class="two-col">
+<div class="form-card col-list" style="border-color:rgba(234,88,12,.3);background:rgba(234,88,12,.03);">
         <div class="section-title" style="color:#ea580c;">Survey Photos</div>
-        <div id="survey-photo-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:.5rem;margin-bottom:.75rem;"></div>
+        <div id="survey-photo-grid" class="list-box" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:.5rem;"></div>
+        <div class="empty-msg">No photos uploaded yet</div>
+      </div>
+<div class="form-card col-up" style="border-color:rgba(234,88,12,.3);background:rgba(234,88,12,.03);">
+        <div class="section-title" style="color:#ea580c;">Upload</div>
         <div id="survey-dropzone" style="border:2px dashed rgba(234,88,12,.3);border-radius:var(--rad);padding:.75rem;background:rgba(234,88,12,.03);">
           <div class="form-group" style="margin-bottom:.5rem;">
             <label class="form-label">Photos &amp; Videos <span style="font-weight:400;color:var(--mut2);">(select as many as you like, or drag &amp; drop here)</span></label>

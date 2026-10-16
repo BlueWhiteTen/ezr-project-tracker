@@ -67,18 +67,18 @@
 <div><!-- left: picking list -->
 <div class="pl-header" style="justify-content:flex-end;">
   <div style="display:flex;align-items:center;gap:.6rem;">
-    {% if pl.allocated %}
+    {% if pl_locked %}
     <span style="font-size:.8rem;color:#16a34a;font-weight:600;background:#f0fdf4;border:1px solid #bbf7d0;padding:4px 10px;border-radius:6px;">🔒 Stock allocated — list locked</span>
     <button class="btn btn-ghost btn-sm" onclick="deallocateStock()">Release Stock</button>
     {% else %}
-    {% if show_stock_allocation %}<button class="btn btn-primary btn-sm" onclick="allocateStock()">Allocate Stock</button>{% endif %}
+    {% if features.stock_movements %}<button class="btn btn-primary btn-sm" onclick="allocateStock()">Allocate Stock</button>{% endif %}
     {% endif %}
     <a href="{% url 'picking_fitting_notes' pl.pk %}" target="_blank" class="btn btn-ghost btn-sm">📐 Fitting Notes</a>
     <a href="{% url 'picking_list_print' project.pk %}" target="_blank" class="btn btn-ghost btn-sm">🖨 Print</a>
   </div>
 </div>
 
-{% if show_stock_allocation and any_shortage %}
+{% if features.stock_movements and any_shortage %}
 <div style="background:rgba(220,38,38,.1);border:1px solid var(--red);border-radius:var(--rad);padding:.75rem 1.1rem;margin-bottom:1.2rem;display:flex;align-items:center;gap:.6rem;color:var(--red);font-size:.88rem;font-weight:600;">
   ⚠ Stock shortage — one or more items don't have enough free stock. Short items are marked with ⚠ in the list below.
 </div>
@@ -103,7 +103,7 @@
 
   <div class="pl-body">
     <!-- Apply template -->
-    {% if pl.status != 'dispatched' and not pl.allocated %}
+    {% if pl.status != 'dispatched' and not pl_locked %}
     <div class="tmpl-apply-row" style="background:var(--acc-bg);border:1px solid var(--acc-bdr);border-radius:var(--rad);padding:.75rem 1rem;margin-bottom:1.2rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
       <span style="font-size:.82rem;font-weight:600;color:var(--acc);">Apply Template:</span>
       <select class="form-input" id="tmpl-select" style="flex:1;min-width:0;max-width:350px;">
@@ -154,19 +154,19 @@
       {% else %}
       <tr {% if item.picked %}class="picked"{% endif %} id="row-{{ item.pk }}" data-item-pk="{{ item.pk }}" data-product-pk="{{ item.product.pk }}" data-qty="{{ item.quantity }}" data-code="{{ item.product.code|upper }}" data-desc="{% if item.ns_description %}{{ item.ns_description }}{% elif item.product %}{{ item.product.description }}{% endif %}">
         <td><input type="checkbox" class="form-checkbox" {% if item.picked %}checked{% endif %} onchange="togglePicked({{ item.pk }}, this.checked)"></td>
-        <td><span class="code">{{ item.product.code }}</span>{% if show_stock_allocation and item.is_short %} <span title="Stock short by {{ item.short_by }}" style="color:var(--red);font-weight:700;cursor:help;">⚠</span>{% endif %}</td>
+        <td><span class="code">{{ item.product.code }}</span>{% if features.stock_movements and item.is_short %} <span title="Stock short by {{ item.short_by }}" style="color:var(--red);font-weight:700;cursor:help;">⚠</span>{% endif %}</td>
         <td style="font-size:.95rem;">{% if item.ns_description %}{{ item.ns_description }}{% elif item.product %}{{ item.product.description }}{% endif %}</td>
         <td class="qty-cell">
           {% if item.item_type != 'message' %}
-          <input type="number" value="{{ item.quantity|floatformat:0 }}" min="1" step="1" {% if pl.allocated %}disabled title="Locked — release stock to edit"{% endif %}
-            style="width:60px;text-align:center;border:1.5px solid var(--bdr);border-radius:4px;padding:3px 5px;background:var(--surf);color:var(--txt);font-size:.9rem;font-weight:600;{% if pl.allocated %}opacity:.55;cursor:not-allowed;{% endif %}"
+          <input type="number" value="{{ item.quantity|floatformat:0 }}" min="1" step="1" {% if pl_locked %}disabled title="Locked — release stock to edit"{% endif %}
+            style="width:60px;text-align:center;border:1.5px solid var(--bdr);border-radius:4px;padding:3px 5px;background:var(--surf);color:var(--txt);font-size:.9rem;font-weight:600;{% if pl_locked %}opacity:.55;cursor:not-allowed;{% endif %}"
             onfocus="this.style.borderColor='var(--acc)'"
             onblur="this.style.borderColor='var(--bdr)';updateQty({{ item.pk }}, this.value)"
             onkeydown="if(event.key==='Enter')this.blur()">
           {% endif %}
         </td>
         <td style="white-space:nowrap;">
-          {% if not pl.allocated %}
+          {% if not pl_locked %}
           <button onclick="addMsgAfter({{ item.pk }})" style="background:none;border:none;color:var(--acc);cursor:pointer;font-size:1.1rem;padding:2px 5px;border-radius:4px;font-weight:700;" title="Add note below">+</button>
           <button onclick="removeItem({{ item.pk }})" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;" title="Remove">✕</button>
           {% else %}
@@ -183,7 +183,7 @@
     </div>
 
     <!-- Add product area -->
-    {% if pl.status != 'dispatched' and not pl.allocated %}
+    {% if pl.status != 'dispatched' and not pl_locked %}
     <div class="add-area">
       <div class="add-area-title">Add Product</div>
 
@@ -357,6 +357,8 @@ window.addEventListener('load', () => {
 
 {% block extra_js %}
 <script>
+const STOCK_ON = {% if features.stock_movements %}true{% else %}false{% endif %};
+
 const CSRF = '{{ csrf_token }}';
 const PL_PK = {{ pl.pk }};
 let selProduct = null;
@@ -374,7 +376,7 @@ async function searchProds(q){
     <div class="pdd-item" id="pdd-${i}" onmousedown="event.preventDefault();selectProd(${p.id},'${p.code.replace(/'/g,"\\'")}','${p.description.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${p.quantity},${p.free_stock})">
       <div class="pdd-code">${p.code}</div>
       <div class="pdd-desc">${p.description}</div>
-      <div class="pdd-stock">In stock: <strong>${p.quantity}</strong> · Free: <strong>${p.free_stock}</strong></div>
+      ${STOCK_ON ? `<div class="pdd-stock">In stock: <strong>${p.quantity}</strong> · Free: <strong>${p.free_stock}</strong></div>` : ''}
     </div>`).join('');
   dd.style.display = 'block';
 }
@@ -383,7 +385,7 @@ function selectProd(id, code, desc, qty, free){
   selProduct = {id, code, desc, qty, free};
   document.getElementById('prod-search').value = code;
   document.getElementById('prod-dd').style.display = 'none';
-  document.getElementById('sel-info').textContent = desc + ' — In stock: ' + qty;
+  document.getElementById('sel-info').textContent = STOCK_ON ? desc + ' — In stock: ' + qty : desc;
   document.getElementById('prod-qty').focus();
   document.getElementById('prod-qty').select();
 }
@@ -558,7 +560,7 @@ async function applyTemplate(){
 
 // Save status
 async function saveStatus(status){
-  if(status === 'dispatched'){
+  if(status === 'dispatched' && STOCK_ON){
     if(!confirm('Marking as Dispatched will deduct quantities from stock. Continue?')){ 
       document.getElementById('status-sel').value = '{{ pl.status }}';
       return; 

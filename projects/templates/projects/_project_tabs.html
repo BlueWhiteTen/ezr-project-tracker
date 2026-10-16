@@ -32,7 +32,7 @@
   </div>
   <div class="ph-tabs">
     <a class="ph-tab {% if active == 'main' %}on{% endif %}" href="{% url 'project_edit' project.pk %}">📁 Main project</a>
-    <a class="ph-tab {% if active == 'cost' %}on{% endif %}" href="{% url 'project_cost' project.pk %}">💰 Costing</a>
+    <a class="ph-tab {% if active == 'cost' %}on{% endif %}" href="{% url 'project_cost' project.pk %}">💰 Costing &amp; Quoting</a>
     <a class="ph-tab {% if active == 'pick' %}on{% endif %}" href="{% url 'picking_list_view' project.pk %}">📦 Picking list</a>
     <span class="ph-gap"></span>
     <a class="ph-tab ph-tab2 {% if active == 'docs' %}on{% endif %}" href="{% url 'project_files_page' project.pk %}">📄 Documents</a>

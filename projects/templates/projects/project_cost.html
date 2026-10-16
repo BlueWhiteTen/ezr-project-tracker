@@ -672,7 +672,7 @@ tr.repriced{background:rgba(245,158,11,.10);}
         <th style="text-align:left;padding:.4rem .6rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);border-bottom:1px solid var(--bdr);">Code</th>
         <th style="text-align:left;padding:.4rem .6rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);border-bottom:1px solid var(--bdr);">Description</th>
         <th style="text-align:right;padding:.4rem .6rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);border-bottom:1px solid var(--bdr);">Qty</th>
-        <th style="text-align:right;padding:.4rem .6rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);border-bottom:1px solid var(--bdr);">In Stock</th>
+{% if features.stock_movements %}        <th style="text-align:right;padding:.4rem .6rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);border-bottom:1px solid var(--bdr);">In Stock</th>{% endif %}
       </tr></thead>
       <tbody id="stock-ref-tbody">
       {% for item in picking_ref %}
@@ -680,9 +680,9 @@ tr.repriced{background:rgba(245,158,11,.10);}
         <td style="padding:.35rem .6rem;font-family:var(--fm);font-weight:700;color:var(--acc);font-size:.78rem;">{{ item.code }}</td>
         <td style="padding:.35rem .6rem;color:var(--txt2);font-size:.78rem;">{{ item.description }}</td>
         <td style="padding:.35rem .6rem;text-align:right;font-weight:700;">{{ item.qty }}</td>
-        <td style="padding:.35rem .6rem;text-align:right;font-weight:600;{% if item.in_stock is not None and item.in_stock < item.qty %}color:var(--red);{% else %}color:var(--grn);{% endif %}">
+{% if features.stock_movements %}        <td style="padding:.35rem .6rem;text-align:right;font-weight:600;{% if item.in_stock is not None and item.in_stock < item.qty %}color:var(--red);{% else %}color:var(--grn);{% endif %}">
           {% if item.in_stock is not None %}{{ item.in_stock|floatformat:0 }}{% else %}—{% endif %}
-        </td>
+        </td>{% endif %}
       </tr>
       {% endfor %}
       </tbody>
@@ -729,6 +729,7 @@ tr.repriced{background:rgba(245,158,11,.10);}
 <script>
 const CSRF = '{{ csrf_token }}';
 const PROJ_PK = {{ project.pk }};
+const STOCK_ON = {% if features.stock_movements %}true{% else %}false{% endif %};
 const COST_PK = {{ cost.pk }};            // the working copy this page edits
 const REAL_COST_PK = {{ real_cost.pk }};   // the saved option (approve / rename / tabs)
 const PRICE_CHANGES = {{ price_changes }};
@@ -1378,7 +1379,7 @@ async function refreshStockReference(){
         <td style="padding:.35rem .6rem;font-family:var(--fm);font-weight:700;color:var(--acc);font-size:.78rem;">${item.code}</td>
         <td style="padding:.35rem .6rem;color:var(--txt2);font-size:.78rem;">${item.description}</td>
         <td style="padding:.35rem .6rem;text-align:right;font-weight:700;">${item.qty}</td>
-        ${stockCell}
+        ${STOCK_ON ? stockCell : ''}
       </tr>`;
     }).join('');
   } catch(e){ /* non-critical — the panel just won't refresh this once */ }
@@ -1609,14 +1610,14 @@ function renderGPL(items){
       <th style="padding:.4rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);">Include</th>
       <th style="padding:.4rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);">Code</th>
       <th style="padding:.4rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);">Description</th>
-      <th style="padding:.4rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);">In Stock</th>
+      ${STOCK_ON ? '<th style="padding:.4rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);">In Stock</th>' : ''}
       <th style="padding:.4rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);">Qty</th>
     </tr></thead><tbody>`;
 
   items.forEach((item, idx) => {
     if(item.type === 'message'){
       html += `<tr style="border-bottom:.5px solid var(--bdr);background:var(--surf2);">
-        <td colspan="5" style="padding:.35rem .5rem .35rem 2rem;font-size:.78rem;color:var(--mut);font-style:italic;">ℹ ${item.description}</td>
+        <td colspan="${STOCK_ON?5:4}" style="padding:.35rem .5rem .35rem 2rem;font-size:.78rem;color:var(--mut);font-style:italic;">ℹ ${item.description}</td>
       </tr>`;
       return;
     }
@@ -1631,7 +1632,7 @@ function renderGPL(items){
       <td style="padding:.4rem .5rem;"><input type="checkbox" class="gpl-include" data-idx="${idx}" ${notFound?'':'checked'} onchange="gplToggle(${idx},this.checked)"></td>
       <td style="padding:.4rem .5rem;font-family:var(--fm);font-weight:700;color:var(--acc);font-size:.8rem;">${isStock?item.code:'NS'}${notFound?' <span style="color:var(--red);font-size:.7rem;">⚠ not in stock DB</span>':''}</td>
       <td style="padding:.4rem .5rem;color:var(--txt2);">${item.description}</td>
-      <td style="padding:.4rem .5rem;text-align:right;">${isStock?stockCol:'—'}</td>
+      ${STOCK_ON ? `<td style="padding:.4rem .5rem;text-align:right;">${isStock?stockCol:'—'}</td>` : ''}
       <td style="padding:.4rem .5rem;text-align:right;"><input type="number" class="form-input gpl-qty" data-idx="${idx}" value="${item.quantity}" min="0" step="1" style="width:65px;text-align:right;padding:3px 6px;" oninput="gplQty(${idx},this.value)"></td>
     </tr>`;
   });
