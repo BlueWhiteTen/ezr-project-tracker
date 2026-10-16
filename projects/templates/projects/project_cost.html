@@ -91,11 +91,10 @@ tr.repriced{background:rgba(245,158,11,.10);}
 {% block content %}
 <div class="cost-page">
 {% include "projects/_project_tabs.html" with active="cost" %}
-<div class="cost-hdr" style="justify-content:flex-start;">
-  <div style="display:flex;gap:.6rem;">
-    <button class="btn btn-ghost" onclick="saveAndPrint()">🖨 Print</button>
+<div class="cost-hdr" style="justify-content:space-between;">
+  <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
     <div style="position:relative;display:inline-block;" id="doc-dd">
-      <button type="button" class="btn btn-ghost" onclick="var m=document.getElementById('doc-menu');m.style.display=m.style.display==='block'?'none':'block';event.stopPropagation();">📄 Documents ▾</button>
+      <button type="button" class="btn btn-ghost" onclick="var m=document.getElementById('doc-menu');m.style.display=m.style.display==='block'?'none':'block';event.stopPropagation();">📄 Quotation ▾</button>
       <div id="doc-menu" style="display:none;position:absolute;top:100%;left:0;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);box-shadow:var(--shadow-md);z-index:50;min-width:190px;margin-top:2px;" class="doc-menu">
         {% for c in all_costs %}
         <a href="{% url 'customer_quote_option' project.pk c.pk %}" style="display:block;padding:.55rem .9rem;text-decoration:none;color:var(--txt);font-size:.85rem;border-bottom:1px solid var(--bdr);">📄 Quote{% if c.label %} — {{ c.label }}{% endif %}</a>
@@ -118,6 +117,9 @@ tr.repriced{background:rgba(245,158,11,.10);}
     </script>
     <button class="btn btn-primary" onclick="generatePickingList()" style="background:#0f766e;box-shadow:none;">📦 Generate Picking List</button>
     <button class="btn btn-ghost" onclick="refreshCostingPrices({{ cost.pk }})" title="Force this costing option's frame/shelf/trolley lines to today's prices">🔄 Refresh to Current Prices</button>
+  </div>
+  <div style="display:flex;gap:.6rem;">
+    <button class="btn btn-ghost" onclick="saveAndPrint()">🖨 Print</button>
     <button class="btn btn-primary" id="save-btn" onclick="commitDraft()" style="background:#7c3aed;">Save</button>
   </div>
 </div>
