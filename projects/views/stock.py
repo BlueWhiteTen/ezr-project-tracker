@@ -218,6 +218,9 @@ def stock_price_history(request, pk):
 
 @login_required
 def stock_activity(request, pk):
+    from django.conf import settings
+    if not settings.FEATURE_FLAGS.get('stock_movements'):
+        return JsonResponse({'error': 'Stock counting is switched off.'}, status=403)
     product = get_object_or_404(Product, pk=pk)
     movements = product.movements.select_related('project', 'purchase_order', 'user').all()
     from_date = request.GET.get('from', '').strip()

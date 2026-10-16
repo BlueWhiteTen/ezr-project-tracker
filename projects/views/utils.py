@@ -239,7 +239,8 @@ def _po_locked_response(po):
 
 
 def _picking_locked_response(pl):
-    if pl.allocated:
+    from django.conf import settings
+    if pl.allocated and settings.FEATURE_FLAGS.get('stock_movements'):
         from django.http import JsonResponse
         return JsonResponse({'error': 'This picking list is allocated — unlock stock first.'}, status=400)
     return None

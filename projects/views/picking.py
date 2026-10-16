@@ -25,9 +25,17 @@ from django.contrib.auth.views import (
     PasswordResetConfirmView, PasswordResetCompleteView,
 )
 
-# Stock allocation is switched off on the website for now. Set to True to bring back the
-# "Allocate Stock" button, the stock-shortage warning and the red short-item markers.
-SHOW_STOCK_ALLOCATION = False
+from django.conf import settings
+
+
+def _stock_on():
+    """Stock counting (allocation, dispatch deductions, in-stock figures) follows the
+    stock_movements feature flag. Off = codes/descriptions/prices only."""
+    return bool(settings.FEATURE_FLAGS.get('stock_movements'))
+
+
+def _stock_off_response():
+    return JsonResponse({'error': 'Stock counting is switched off.'}, status=403)
 
 
 @login_required
@@ -43,7 +51,7 @@ def picking_list_view(request, project_pk):
     # Compute stock shortage per item.
     # Free stock excluding this list's own allocation (so an allocated list still shows true picture)
     any_shortage = False
-    for item in items:
+    for item in (items if _stock_on() else []):
         item.is_short = False
         item.short_by = 0
         if item.item_type == 'stock' and item.product:
@@ -73,7 +81,7 @@ def picking_list_view(request, project_pk):
         'project': project, 'pl': pl, 'items': items,
         'templates': templates, 'customer_notes': customer_notes,
         'any_shortage': any_shortage, 'project_pk': project.pk,
-        'show_stock_allocation': SHOW_STOCK_ALLOCATION,
+        'pl_locked': bool(pl.allocated and _stock_on()),
         'stock_weights': stock_weights,
     })
 
@@ -108,9 +116,10 @@ def picking_list_save(request, pk):
     # We still allow this call through for status/notes changes (e.g. dispatching),
     # we just skip rewriting the items in that case.
     items_data = data.get('items', [])
-    if items_data and pl.allocated:
+    locked = pl.allocated and _stock_on()
+    if items_data and locked:
         return JsonResponse({'error': 'This picking list is locked because stock has been allocated. Release the allocation first to make changes.'}, status=400)
-    if not pl.allocated:
+    if not locked:
         pl.items.all().delete()
         for item in items_data:
             product = get_object_or_404(Product, pk=item['product_id'])
@@ -124,7 +133,7 @@ def picking_list_save(request, pk):
     # Deduct stock when dispatched
     if new_status == 'dispatched' and not was_dispatched:
         pl.dispatched_at = timezone.now()
-        for item in pl.items.filter(item_type='stock', product__isnull=False):
+        for item in (pl.items.filter(item_type='stock', product__isnull=False) if _stock_on() else []):
             prod = item.product
             prod.quantity = float(prod.quantity) - float(item.quantity)
             # If this list had allocated the stock, release that allocation as it's now physically gone
@@ -199,7 +208,7 @@ def picking_status(request, pk):
     if new_status == 'dispatched' and not was_dispatched:
         from django.utils import timezone
         pl.dispatched_at = timezone.now()
-        for item in pl.items.select_related('product').all():
+        for item in (pl.items.select_related('product').all() if _stock_on() else []):
             item.product.quantity -= item.quantity
             item.product.save()
     pl.save()
@@ -233,6 +242,8 @@ def picking_item_add_ns(request, pk):
 @login_required
 @require_POST
 def picking_allocate(request, pk):
+    if not _stock_on():
+        return _stock_off_response()
     pl = get_object_or_404(PickingList, pk=pk)
     if pl.allocated:
         return JsonResponse({'error': 'Stock already allocated for this list.'}, status=400)
@@ -273,6 +284,8 @@ def picking_allocate(request, pk):
 @login_required
 @require_POST
 def picking_deallocate(request, pk):
+    if not _stock_on():
+        return _stock_off_response()
     pl = get_object_or_404(PickingList, pk=pk)
     if not pl.allocated:
         return JsonResponse({'error': 'Stock is not allocated.'}, status=400)
@@ -1019,7 +1032,7 @@ def picking_fitting_notes_pdf(request, pk):
 @require_POST
 def picking_list_delete(request, pk):
     pl = get_object_or_404(PickingList, pk=pk)
-    if pl.allocated:
+    if pl.allocated and _stock_on():
         return JsonResponse({'error': 'This picking list is locked because stock has been allocated. Release the allocation first to delete it.'}, status=400)
     pl.delete()
     return JsonResponse({'ok': True})
