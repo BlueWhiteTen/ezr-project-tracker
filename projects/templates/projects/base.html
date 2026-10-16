@@ -44,7 +44,7 @@
   --blue:#185fa5;--blue-light:#378add;--blue-bg:#e6f1fb;--blue-bdr:#b5d4f4;
   --grn:#1E7B4D;--grn-bg:#DCEEE3;--amb:#946200;--amb-bg:#F5E9D2;--red:#B3261E;--red-bg:#F6DBD9;
   --txt:#15171A;--txt2:#3A3D40;--mut:#5B6066;--mut2:#8A8F94;
-  --f:'Work Sans',system-ui,sans-serif;--fm:'Work Sans',system-ui,sans-serif;
+  --f:'Work Sans',system-ui,sans-serif;--fm:'Work Sans',system-ui,sans-serif;--fh:'Barlow Condensed',sans-serif;
   --rad:0px;--rad-lg:0px;--shadow:none;--shadow-md:none;
 }
 [data-style="site_signage"] .btn{border-radius:0;border:2px solid var(--bdr);font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
@@ -75,7 +75,7 @@
   --blue:#185fa5;--blue-light:#378add;--blue-bg:#e6f1fb;--blue-bdr:#b5d4f4;
   --grn:#2F5233;--grn-bg:#E4EDE3;--amb:#8A5A18;--amb-bg:#F3E7D2;--red:#96322A;--red-bg:#F5E4E1;
   --txt:#241F1A;--txt2:#4A4238;--mut:#8B8071;--mut2:#ABA292;
-  --f:'Karla',system-ui,sans-serif;--fm:'Karla',system-ui,sans-serif;
+  --f:'Karla',system-ui,sans-serif;--fm:'Karla',system-ui,sans-serif;--fh:'Fraunces',serif;
   --rad:6px;--rad-lg:8px;--shadow:0 1px 2px rgba(36,31,26,.05);--shadow-md:0 3px 10px rgba(36,31,26,.08);
 }
 [data-style="ledger"] h1,[data-style="ledger"] .page-title{font-family:'Fraunces',serif;font-weight:600;}
@@ -99,16 +99,22 @@
   --red:#D97360;--red-bg:rgba(217,115,96,.14);
   --txt:#F2EFE6;--txt2:#D8D2C2;--mut:#A39D8A;--mut2:#7A7566;
 }
-[data-style="ops_console"] .btn{border-radius:0;font-family:var(--fm);font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:.76rem;}
+[data-style="ops_console"] .btn{border-radius:0;font-weight:600;}
 [data-style="ops_console"] .form-input{border-radius:0;}
 [data-style="ops_console"] .card,[data-style="ops_console"] .form-card,[data-style="ops_console"] .stock-table-wrap{border-radius:0;box-shadow:none;}
 [data-style="ops_console"] h1,[data-style="ops_console"] h2,[data-style="ops_console"] .page-title{font-family:var(--f);font-weight:700;letter-spacing:-.01em;}
-[data-style="ops_console"] .badge{border-radius:0;font-family:var(--fm);font-weight:700;text-transform:uppercase;letter-spacing:.03em;border-width:1px;}
-[data-style="ops_console"] .tl{border-radius:0;font-family:var(--fm);}
+[data-style="ops_console"] .badge{border-radius:0;font-weight:600;border-width:1px;}
+[data-style="ops_console"] .tl{border-radius:0;}
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:var(--f);background:var(--bg);color:var(--txt);min-height:100vh;font-size:14px;line-height:1.5;}
 a{color:inherit;text-decoration:none;}
+/* Font roles (each theme sets its own fonts):
+   --fh headings, --f body/tabs/buttons/labels, --fm codes & numbers only. */
+button,input,select,textarea{font-family:inherit;}
+h1,h2,h3,.page-title,.ph-top h1{font-family:var(--fh,var(--f));}
+[data-style="site_signage"] body,[data-style="ledger"] body{font-variant-numeric:tabular-nums;}
+[data-style="site_signage"] .ph-tab,[data-style="site_signage"] .ph-tab2{text-transform:uppercase;letter-spacing:.03em;}
 
 /* TOP NAV - fixed 56px tall */
 .top-nav{position:fixed;top:0;left:0;right:0;height:78px;background:#1a1a1a;border-bottom:3px solid #d4700a;display:flex;align-items:center;justify-content:space-between;padding:0 1.2rem;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,.3);}
