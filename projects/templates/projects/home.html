@@ -14,7 +14,7 @@
 .hg-item.hg-dragging{opacity:.45;outline:2px dashed var(--acc);outline-offset:2px;}
 .hg-item.hg-dragging .hg-handle{cursor:grabbing;}
 .hg-item.hg-hidden{display:none;}
-.hg-bar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin:-.4rem 0 1rem;}
+.hg-bar{display:flex;align-items:center;justify-content:flex-end;gap:.6rem;flex-wrap:wrap;margin:-.4rem 0 1rem;}
 .hg-tray{display:none;align-items:center;gap:.5rem;flex-wrap:wrap;margin:0 0 1rem;padding:.6rem .8rem;border:1px dashed var(--bdr);border-radius:var(--rad,8px);background:var(--surf2);font-size:.82rem;color:var(--mut);}
 .hg-editing-on .hg-tray{display:flex;}
 .hg-chip{background:var(--surf);border:1px solid var(--bdr);border-radius:99px;padding:2px 10px;font-size:.78rem;cursor:pointer;color:var(--txt);font-family:inherit;}
@@ -49,7 +49,7 @@
 
 <div class="hg-bar">
   <span style="font-size:.78rem;color:var(--mut);">Drag a box by its ⠿ handle to move it.</span>
-  <button type="button" class="btn btn-ghost btn-sm" id="hg-customize" style="margin-left:auto;" onclick="homeLayout.toggleEdit()">⚙ Customize layout</button>
+  <button type="button" class="btn btn-ghost btn-sm" id="hg-customize" onclick="homeLayout.toggleEdit()">⚙ Customize layout</button>
 </div>
 <div class="hg-tray" id="hg-tray">
   <span id="hg-tray-label">Hidden boxes:</span>
