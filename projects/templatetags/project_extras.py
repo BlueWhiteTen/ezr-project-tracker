@@ -40,3 +40,24 @@ def user_colour_map():
         parts.append(f'{u.id}:"{colour}"')
     from django.utils.safestring import mark_safe
     return mark_safe('{' + ','.join(parts) + '}')
+
+
+@register.simple_tag
+def project_strip(project, user):
+    """Data for the status strip + pin star shown on every project tab."""
+    from projects.models import PinnedProject
+    from projects.views.utils import _calc_sell_price
+    cost = project.costs.filter(is_accepted=True).first() or project.costs.first()
+    value = None
+    if cost:
+        try:
+            v = _calc_sell_price(cost)
+            value = v if v else None
+        except Exception:
+            value = None
+    nxt = project.get_effective_installation_date()
+    kind = 'Fitting'
+    if not nxt and project.delivery_required and project.delivery_date:
+        nxt, kind = project.delivery_date, 'Delivery'
+    pinned = bool(user and user.is_authenticated and PinnedProject.objects.filter(user=user, project=project).exists())
+    return {'value': value, 'next': nxt, 'next_kind': kind, 'pinned': pinned}

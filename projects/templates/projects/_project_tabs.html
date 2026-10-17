@@ -1,3 +1,4 @@
+{% load project_extras %}
 {# Shared project header + folder tabs. Needs `project`; pass active="main|cost|pick". #}
 <style>
 .ph-wrap{margin:0 0 1rem;}
@@ -12,23 +13,56 @@
 .ph-tab:hover{color:var(--txt);}
 .ph-tab.on,.ph-tab2.on{background:var(--bg);color:var(--txt);border-top:3px solid var(--acc);padding-top:calc(.6rem - 2px);border-bottom:1px solid var(--bg);}
 @media(max-width:640px){.ph-top h1{font-size:1.3rem;}.ph-tabs{padding-left:0;gap:3px;}.ph-tab{padding:.55rem .9rem .5rem;font-size:.82rem;}.ph-tab.on,.ph-tab2.on{padding-top:calc(.55rem - 2px);}.ph-gap{flex:0 0 10px;min-width:10px;}}
+.ph-star{background:none;border:0;font-size:1.4rem;line-height:1;cursor:pointer;color:var(--mut2);padding:0 .2rem;vertical-align:middle;}
+.ph-star.on{color:#f0a020;}
+.ph-strip{display:flex;flex-wrap:wrap;margin:0 0 .9rem;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad);overflow:hidden;}
+.ph-cell{padding:.5rem .9rem;border-right:1px solid var(--bdr);flex:1 1 120px;min-width:110px;}
+.ph-cell:last-child{border-right:0;}
+.ph-cell small{display:block;color:var(--mut);font-size:.66rem;text-transform:uppercase;letter-spacing:.04em;font-weight:700;}
+.ph-cell b{font-size:.9rem;font-weight:700;}
+.ph-pill{display:inline-block;padding:.1rem .55rem;border-radius:99px;font-size:.76rem;font-weight:700;background:var(--surf3);color:var(--txt2);}
+.ph-pill.g{background:var(--grn-bg);color:var(--grn);}.ph-pill.a{background:var(--amb-bg);color:var(--amb);}.ph-pill.b{background:var(--blue-bg);color:var(--blue);}.ph-pill.r{background:var(--red-bg);color:var(--red);}
+#act-panel{position:fixed;top:0;right:0;bottom:0;width:360px;max-width:100vw;background:var(--surf);border-left:1px solid var(--bdr2);box-shadow:-8px 0 24px rgba(0,0,0,.18);transform:translateX(105%);transition:transform .22s;display:flex;flex-direction:column;z-index:3000;}
+#act-panel.open{transform:none;}
+.act-head{padding:.8rem 1rem;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;font-weight:800;}
+.act-tabs{display:flex;border-bottom:1px solid var(--bdr);}
+.act-tabs span{flex:1;text-align:center;padding:.5rem;font-size:.8rem;font-weight:700;color:var(--mut);cursor:pointer;}
+.act-tabs span.on{color:var(--acc-dark);border-bottom:2px solid var(--acc);}
+#act-feed{flex:1;overflow:auto;padding:.8rem 1rem;font-size:.82rem;}
+.act-ev{display:flex;gap:.6rem;margin-bottom:.9rem;}
+.act-av{width:28px;height:28px;border-radius:50%;background:var(--acc-bg);color:var(--acc-dark);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.72rem;flex:none;}
+.act-ev small{color:var(--mut);display:block;}
+.act-bub{background:var(--surf3);border-radius:10px;padding:.4rem .6rem;margin-top:.2rem;white-space:pre-wrap;word-break:break-word;}
+.act-in{border-top:1px solid var(--bdr);padding:.6rem;display:flex;gap:.4rem;}
+.act-in input{flex:1;border:1px solid var(--bdr2);border-radius:var(--rad);padding:.5rem .6rem;font:inherit;background:var(--surf);color:var(--txt);}
+@media print{#act-panel{display:none;}}
 @media print{.ph-wrap{display:none;}}
 </style>
 <div class="ph-wrap">
   <div class="ph-top">
     <div>
-      <h1>{{ project.project_name }}</h1>
+      {% project_strip project request.user as strip %}
+      <h1>{{ project.project_name }} <button type="button" class="ph-star {% if strip.pinned %}on{% endif %}" id="ph-star" title="Pin / unpin this project for you" onclick="phTogglePin()">&#9733;</button></h1>
       <div class="ph-sub">
         {% if project.project_number %}{% if project.is_order %}Order No.{% else %}Enquiry No.{% endif %}: <span style="{% if project.is_order %}font-weight:700;color:var(--txt);{% endif %}font-family:var(--fm);">{{ project.project_number }}</span>{% endif %}{% if project.project_number and project.customer %} &nbsp;·&nbsp; {% endif %}{{ project.customer }}
       </div>
     </div>
     <div class="ph-actions">
+      <button type="button" class="btn btn-ghost" onclick="actOpen()" title="Comments and change history">💬 Activity</button>
       {% if active == 'main' %}
       <button type="submit" form="project-form" class="btn btn-primary" style="box-shadow:none;">💾 Save Changes</button>
       <button type="button" class="btn btn-ghost" onclick="duplicateProject()" title="Duplicate this project">⧉ Duplicate</button>
       {% endif %}
       <a href="{% url 'dashboard' %}" class="btn btn-ghost">← Back</a>
     </div>
+  </div>
+  <div class="ph-strip">
+    <div class="ph-cell"><small>Status</small><b><span class="ph-pill {% if project.status == 'completed' or project.status == 'processed' %}g{% elif project.status == 'cancelled' %}r{% elif project.status == 'on_hold' or project.status == 'quoted' %}a{% else %}b{% endif %}">{{ project.get_status_display }}</span></b></div>
+    <div class="ph-cell"><small>{% if strip.next %}{{ strip.next_kind }}{% else %}Fitting / delivery{% endif %}</small><b>{% if strip.next %}{{ strip.next|date:"D j M" }}{% else %}<span style="color:var(--mut);font-weight:500;">Not set</span>{% endif %}</b></div>
+    <div class="ph-cell"><small>Quote value</small><b>{% if strip.value %}£{{ strip.value|floatformat:2 }}{% else %}<span style="color:var(--mut);font-weight:500;">—</span>{% endif %}</b></div>
+    <div class="ph-cell"><small>Payment</small><b>{% if project.payment_method %}<span class="ph-pill b">{{ project.get_payment_method_display }}</span>{% else %}<span style="color:var(--mut);font-weight:500;">—</span>{% endif %}</b></div>
+    {% if project.rams_required %}<div class="ph-cell"><small>RAMS</small><b>{% if project.rams_sent %}<span class="ph-pill g">Sent</span>{% else %}<span class="ph-pill a">Not sent</span>{% endif %}</b></div>{% endif %}
+    {% if project.is_blocked or project.no_customer_signature %}<div class="ph-cell"><small>Flags</small><b>{% if project.is_blocked %}<span class="ph-pill r" title="{{ project.blocked_reason }}">⛔ Blocked{% if project.blocked_reason %}: {{ project.blocked_reason|truncatechars:30 }}{% endif %}</span>{% endif %}{% if project.no_customer_signature %} <span class="ph-pill a">No signature</span>{% endif %}</b></div>{% endif %}
   </div>
   <div class="ph-tabs">
     <a class="ph-tab {% if active == 'main' %}on{% endif %}" href="{% url 'project_edit' project.pk %}">📁 Main project</a>
@@ -41,3 +75,40 @@
   </div>
 </div>
 <script>(function(){var t=document.querySelector('.ph-tab.on');if(t&&t.scrollIntoView){var w=t.parentNode;w.scrollLeft=Math.max(0,t.offsetLeft-w.clientWidth/2+t.offsetWidth/2);}})();</script>
+<div id="act-panel" aria-hidden="true">
+  <div class="act-head"><span>Activity</span><button type="button" class="btn btn-ghost" onclick="actClose()">✕</button></div>
+  <div class="act-tabs"><span class="on" data-f="all" onclick="actFilter(this)">All</span><span data-f="comment" onclick="actFilter(this)">Comments</span><span data-f="change" onclick="actFilter(this)">Changes</span></div>
+  <div id="act-feed"><div style="color:var(--mut)">Loading…</div></div>
+  <div class="act-in"><input id="act-input" placeholder="Write a comment…" data-nodirty="1" onkeydown="if(event.key==='Enter')actSend()"><button type="button" class="btn btn-primary" onclick="actSend()">Send</button></div>
+</div>
+<script>
+(function(){
+  var PK={{ project.pk }}, items=[], flt='all';
+  function csrf(){var m=document.cookie.match(/csrftoken=([^;]+)/);return m?m[1]:'';}
+  function esc(t){var d=document.createElement('div');d.textContent=t;return d.innerHTML;}
+  function render(){
+    var f=document.getElementById('act-feed'),h='';
+    items.forEach(function(i){
+      if(flt!=='all'&&i.kind!==flt)return;
+      var ini=(i.user||'?').split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();
+      if(i.kind==='comment') h+='<div class="act-ev"><div class="act-av">'+esc(ini)+'</div><div><b>'+esc(i.user)+'</b><small>'+esc(i.when)+'</small><div class="act-bub">'+esc(i.text)+'</div></div></div>';
+      else h+='<div class="act-ev"><div class="act-av" style="background:var(--surf3);color:var(--mut);">⚙</div><div><b>'+esc(i.user)+'</b> '+esc(i.text)+'<small>'+esc(i.when)+'</small></div></div>';
+    });
+    f.innerHTML=h||'<div style="color:var(--mut)">Nothing here yet.</div>';
+  }
+  function load(){fetch('/project/'+PK+'/activity/').then(function(r){return r.json();}).then(function(d){items=d.items||[];render();}).catch(function(){});}
+  window.actOpen=function(){var p=document.getElementById('act-panel');p.classList.add('open');p.setAttribute('aria-hidden','false');load();};
+  window.actClose=function(){var p=document.getElementById('act-panel');p.classList.remove('open');p.setAttribute('aria-hidden','true');};
+  window.actFilter=function(el){flt=el.dataset.f;document.querySelectorAll('.act-tabs span').forEach(function(s){s.classList.toggle('on',s===el);});render();};
+  window.actSend=function(){
+    var inp=document.getElementById('act-input'),t=inp.value.trim();if(!t)return;
+    fetch('/project/'+PK+'/comment/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},body:JSON.stringify({text:t})})
+      .then(function(r){return r.json();}).then(function(){inp.value='';load();});
+  };
+  window.phTogglePin=function(){
+    fetch('/project/'+PK+'/pin/',{method:'POST',headers:{'X-CSRFToken':csrf()}}).then(function(r){return r.json();})
+      .then(function(d){document.getElementById('ph-star').classList.toggle('on',!!d.pinned);});
+  };
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')actClose();});
+})();
+</script>

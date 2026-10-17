@@ -700,6 +700,7 @@ def dashboard(request):
         'assigned_filter': assigned_filter, 'all_users': all_users,
         'page_obj': page_obj, 'total_matching': total_matching,
         'show_completed': show_completed,
+        'pinned_ids': set(request.user.pinned_projects.values_list('project_id', flat=True)),
     })
 
 

@@ -141,6 +141,16 @@
   </a>
 
   <!-- Your assigned projects -->
+  <div class="home-tile hg-item" data-tile="pinned" data-title="Pinned projects" style="min-height:260px;max-height:260px;align-self:start;">
+    <div class="home-tile-title">⭐ Pinned projects</div>
+    <ul class="home-list" style="overflow-y:auto;flex:1;">
+      {% for p in pinned_projects %}
+      <li><a href="{% url 'project_edit' p.pk %}" class="home-row">{{ p.project_name }}{% if p.is_blocked %} <span style="color:var(--red);font-size:.72rem;">⛔ Blocked</span>{% endif %}
+        <div class="home-row-meta">{{ p.get_status_display }}{% if p.customer %} · {{ p.customer }}{% endif %}</div></a></li>
+      {% empty %}<div class="home-empty">Click the ★ on a project to pin it here.</div>{% endfor %}
+    </ul>
+  </div>
+
   <div class="home-tile hg-item" data-tile="my_projects" data-title="Your Projects" style="min-height:260px;max-height:260px;align-self:start;">
     <div class="home-tile-title">📁 Your Projects</div>
     <ul class="home-list" style="overflow-y:auto;flex:1;">

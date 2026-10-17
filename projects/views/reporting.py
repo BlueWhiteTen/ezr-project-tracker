@@ -25,7 +25,7 @@ from django.contrib.auth.views import (
 )
 
 HOME_TILE_KEYS = ['dashboard', 'new_project', 'todo', 'reminders', 'messages',
-                  'my_projects', 'chat', 'whos_off', 'latest', 'photos', 'this_week']
+                  'my_projects', 'chat', 'whos_off', 'latest', 'photos', 'this_week', 'pinned']
 
 
 @login_required
@@ -116,6 +116,7 @@ def home(request):
         'slideshow_photos': slideshow_photos,
         'recent_logs': recent_logs,
         'my_projects': my_projects,
+        'pinned_projects': [x.project for x in request.user.pinned_projects.select_related('project')[:30]],
         'latest_updates': latest_updates,
         'unread_messages': unread_messages,
         'recent_team_messages': recent_team_messages,

@@ -117,3 +117,5 @@ from .fitter import (fitter_submission_delete, fitter_link_info, fitter_link_cre
                      fitter_photo_upload, fitter_photo_thumb, fitter_photo_delete, fitter_submit, fitter_file)
 from .fitting_job import (fitting_steps_save, fitting_note_hide, fitting_note_unhide, fitting_file_upload,
                           fitting_file_delete, fitting_file_download)
+
+from .pins import pin_toggle, project_activity

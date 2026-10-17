@@ -1478,3 +1478,14 @@ class ProjectHiddenFittingNote(models.Model):
 
     class Meta:
         unique_together = [['project', 'note']]
+
+
+class PinnedProject(models.Model):
+    """A project a user has starred so it shows in their own 'pinned' list."""
+    user    = models.ForeignKey(User, on_delete=models.CASCADE, related_name='pinned_projects')
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='pins')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'project')
+        ordering = ['-created_at']
