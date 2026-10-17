@@ -22,20 +22,6 @@
 .ph-cell b{font-size:.9rem;font-weight:700;}
 .ph-pill{display:inline-block;padding:.1rem .55rem;border-radius:99px;font-size:.76rem;font-weight:700;background:var(--surf3);color:var(--txt2);}
 .ph-pill.g{background:var(--grn-bg);color:var(--grn);}.ph-pill.a{background:var(--amb-bg);color:var(--amb);}.ph-pill.b{background:var(--blue-bg);color:var(--blue);}.ph-pill.r{background:var(--red-bg);color:var(--red);}
-#act-panel{position:fixed;top:0;right:0;bottom:0;width:360px;max-width:100vw;background:var(--surf);border-left:1px solid var(--bdr2);box-shadow:-8px 0 24px rgba(0,0,0,.18);transform:translateX(105%);transition:transform .22s;display:flex;flex-direction:column;z-index:3000;}
-#act-panel.open{transform:none;}
-.act-head{padding:.8rem 1rem;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;font-weight:800;}
-.act-tabs{display:flex;border-bottom:1px solid var(--bdr);}
-.act-tabs span{flex:1;text-align:center;padding:.5rem;font-size:.8rem;font-weight:700;color:var(--mut);cursor:pointer;}
-.act-tabs span.on{color:var(--acc-dark);border-bottom:2px solid var(--acc);}
-#act-feed{flex:1;overflow:auto;padding:.8rem 1rem;font-size:.82rem;}
-.act-ev{display:flex;gap:.6rem;margin-bottom:.9rem;}
-.act-av{width:28px;height:28px;border-radius:50%;background:var(--acc-bg);color:var(--acc-dark);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.72rem;flex:none;}
-.act-ev small{color:var(--mut);display:block;}
-.act-bub{background:var(--surf3);border-radius:10px;padding:.4rem .6rem;margin-top:.2rem;white-space:pre-wrap;word-break:break-word;}
-.act-in{border-top:1px solid var(--bdr);padding:.6rem;display:flex;gap:.4rem;}
-.act-in input{flex:1;border:1px solid var(--bdr2);border-radius:var(--rad);padding:.5rem .6rem;font:inherit;background:var(--surf);color:var(--txt);}
-@media print{#act-panel{display:none;}}
 @media print{.ph-wrap{display:none;}}
 </style>
 <div class="ph-wrap">
@@ -48,7 +34,6 @@
       </div>
     </div>
     <div class="ph-actions">
-      <button type="button" class="btn btn-ghost" onclick="actOpen()" title="Comments and change history">💬 Activity</button>
       {% if active == 'main' %}
       <button type="submit" form="project-form" class="btn btn-primary" style="box-shadow:none;">💾 Save Changes</button>
       <button type="button" class="btn btn-ghost" onclick="duplicateProject()" title="Duplicate this project">⧉ Duplicate</button>
@@ -75,40 +60,12 @@
   </div>
 </div>
 <script>(function(){var t=document.querySelector('.ph-tab.on');if(t&&t.scrollIntoView){var w=t.parentNode;w.scrollLeft=Math.max(0,t.offsetLeft-w.clientWidth/2+t.offsetWidth/2);}})();</script>
-<div id="act-panel" aria-hidden="true">
-  <div class="act-head"><span>Activity</span><button type="button" class="btn btn-ghost" onclick="actClose()">✕</button></div>
-  <div class="act-tabs"><span class="on" data-f="all" onclick="actFilter(this)">All</span><span data-f="comment" onclick="actFilter(this)">Comments</span><span data-f="change" onclick="actFilter(this)">Changes</span></div>
-  <div id="act-feed"><div style="color:var(--mut)">Loading…</div></div>
-  <div class="act-in"><input id="act-input" placeholder="Write a comment…" data-nodirty="1" onkeydown="if(event.key==='Enter')actSend()"><button type="button" class="btn btn-primary" onclick="actSend()">Send</button></div>
-</div>
 <script>
 (function(){
-  var PK={{ project.pk }}, items=[], flt='all';
   function csrf(){var m=document.cookie.match(/csrftoken=([^;]+)/);return m?m[1]:'';}
-  function esc(t){var d=document.createElement('div');d.textContent=t;return d.innerHTML;}
-  function render(){
-    var f=document.getElementById('act-feed'),h='';
-    items.forEach(function(i){
-      if(flt!=='all'&&i.kind!==flt)return;
-      var ini=(i.user||'?').split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();
-      if(i.kind==='comment') h+='<div class="act-ev"><div class="act-av">'+esc(ini)+'</div><div><b>'+esc(i.user)+'</b><small>'+esc(i.when)+'</small><div class="act-bub">'+esc(i.text)+'</div></div></div>';
-      else h+='<div class="act-ev"><div class="act-av" style="background:var(--surf3);color:var(--mut);">⚙</div><div><b>'+esc(i.user)+'</b> '+esc(i.text)+'<small>'+esc(i.when)+'</small></div></div>';
-    });
-    f.innerHTML=h||'<div style="color:var(--mut)">Nothing here yet.</div>';
-  }
-  function load(){fetch('/project/'+PK+'/activity/').then(function(r){return r.json();}).then(function(d){items=d.items||[];render();}).catch(function(){});}
-  window.actOpen=function(){var p=document.getElementById('act-panel');p.classList.add('open');p.setAttribute('aria-hidden','false');load();};
-  window.actClose=function(){var p=document.getElementById('act-panel');p.classList.remove('open');p.setAttribute('aria-hidden','true');};
-  window.actFilter=function(el){flt=el.dataset.f;document.querySelectorAll('.act-tabs span').forEach(function(s){s.classList.toggle('on',s===el);});render();};
-  window.actSend=function(){
-    var inp=document.getElementById('act-input'),t=inp.value.trim();if(!t)return;
-    fetch('/project/'+PK+'/comment/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},body:JSON.stringify({text:t})})
-      .then(function(r){return r.json();}).then(function(){inp.value='';load();});
-  };
   window.phTogglePin=function(){
-    fetch('/project/'+PK+'/pin/',{method:'POST',headers:{'X-CSRFToken':csrf()}}).then(function(r){return r.json();})
+    fetch('/project/{{ project.pk }}/pin/',{method:'POST',headers:{'X-CSRFToken':csrf()}}).then(function(r){return r.json();})
       .then(function(d){document.getElementById('ph-star').classList.toggle('on',!!d.pinned);});
   };
-  document.addEventListener('keydown',function(e){if(e.key==='Escape')actClose();});
 })();
 </script>

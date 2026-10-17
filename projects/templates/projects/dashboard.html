@@ -197,7 +197,7 @@ tbody tr:hover td{background:var(--surf3) !important;}
   <tbody>
   {% for p in projects %}
   {% with tl_val=p.get_traffic_light %}
-  <tr>
+  <tr{% if p.pk in pinned_ids %} style="background:var(--acc-bg);"{% endif %}>
     <td style="width:58px;padding-left:1rem;white-space:nowrap;"><input type="checkbox" class="row-sel-cb" value="{{ p.pk }}" onchange="updateBulkBar()"> <button type="button" class="dash-star {% if p.pk in pinned_ids %}on{% endif %}" onclick="dashPin(this,{{ p.pk }})" title="Pin / unpin for you">&#9733;</button></td>
     <td style="padding-left:.6rem;padding-right:.4rem;">
       {% if p.project_number %}

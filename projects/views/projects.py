@@ -661,6 +661,12 @@ def dashboard(request):
         else:
             projects = list(projects.order_by(sort))
 
+    # This user's pinned projects float to the top (within whatever filter/sort is active).
+    pinned_ids = set(request.user.pinned_projects.values_list('project_id', flat=True))
+    if pinned_ids:
+        projects = list(projects)
+        projects = [p for p in projects if p.pk in pinned_ids] + [p for p in projects if p.pk not in pinned_ids]
+
     # Paginate — without this, a page with 500+ projects spends most of its
     # time rendering rows nobody can see, not running queries.
     from django.core.paginator import Paginator
@@ -700,7 +706,7 @@ def dashboard(request):
         'assigned_filter': assigned_filter, 'all_users': all_users,
         'page_obj': page_obj, 'total_matching': total_matching,
         'show_completed': show_completed,
-        'pinned_ids': set(request.user.pinned_projects.values_list('project_id', flat=True)),
+        'pinned_ids': pinned_ids,
     })
 
 
