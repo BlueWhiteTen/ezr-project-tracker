@@ -87,6 +87,27 @@ tbody tr:hover td{background:var(--surf3) !important;}
 .sp-ac-item{padding:8px 12px;font-size:.875rem;cursor:pointer;color:var(--txt2);}
 .sp-ac-item:hover{background:var(--acc-bg);color:var(--acc);}
 .sp-ac-item strong{color:var(--acc);}
+@media(max-width:768px){
+  /* phone: only Ref. No., Project, Delivery, Installation */
+  .dash-table th:nth-child(1),.dash-table td:nth-child(1),
+  .dash-table th:nth-child(3),.dash-table td:nth-child(3),
+  .dash-table th:nth-child(4),.dash-table td:nth-child(4),
+  .dash-table th:nth-child(6),.dash-table td:nth-child(6),
+  .dash-table th:nth-child(9),.dash-table td:nth-child(9),
+  .dash-table th:nth-child(10),.dash-table td:nth-child(10),
+  .dash-table th:nth-child(11),.dash-table td:nth-child(11){display:none;}
+  .dash-table{display:table !important;width:100%;min-width:0 !important;table-layout:auto;}
+  .dash-table td:nth-child(5),.dash-table th:nth-child(5){min-width:0 !important;}
+  .dash-table td:nth-child(2),.dash-table th:nth-child(2){width:46px !important;font-size:.78rem;}
+  .dash-table th,.dash-table td{width:auto !important;padding:.55rem .4rem !important;}
+  .dash-table td:nth-child(5){max-width:none !important;}
+  .dash-table .ck-lbl{display:none;}
+  .dash-table th{font-size:.58rem !important;letter-spacing:0 !important;}
+  .dash-table th,.dash-table td{padding-left:.3rem !important;padding-right:.3rem !important;}
+  .dash-table td:nth-child(7) span,.dash-table td:nth-child(8) span{white-space:normal !important;}
+  .dash-table td:nth-child(7) span,.dash-table td:nth-child(8) span{font-size:.72rem !important;}
+  .dash-table td:nth-child(7) div,.dash-table td:nth-child(8) div{flex-wrap:wrap !important;gap:.25rem !important;}
+}
 @media(max-width:900px){.slide-panel{width:100%;}.stats{grid-template-columns:repeat(3,1fr);}}
 @media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr);}.sp-grid{grid-template-columns:1fr;}}
 {% endblock %}
