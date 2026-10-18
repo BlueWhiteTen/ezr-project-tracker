@@ -663,8 +663,10 @@ def dashboard(request):
 
     # This user's pinned projects float to the top (within whatever filter/sort is active).
     pinned_ids = set(request.user.pinned_projects.values_list('project_id', flat=True))
+    projects = list(projects)
+    for _i, _p in enumerate(projects):
+        _p.dash_idx = _i          # position in the active sort (ref number by default), before pinned ones float up
     if pinned_ids:
-        projects = list(projects)
         projects = [p for p in projects if p.pk in pinned_ids] + [p for p in projects if p.pk not in pinned_ids]
 
     # Paginate — without this, a page with 500+ projects spends most of its
