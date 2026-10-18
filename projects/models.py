@@ -86,6 +86,7 @@ class Project(models.Model):
     addr_country  = models.CharField(max_length=60, blank=True, default='United Kingdom')
     addr_fao      = models.CharField(max_length=200, blank=True)
     addr_phone    = models.CharField(max_length=30, blank=True)
+    addr_access   = models.TextField(blank=True, help_text='Delivery access details — notes for the driver/site (opening hours, gate codes, vehicle limits, etc.)')
     last_edited_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='edited_projects')
     created_at     = models.DateTimeField(auto_now_add=True)
     updated_at     = models.DateTimeField(auto_now=True)

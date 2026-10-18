@@ -183,9 +183,10 @@ def project_edit(request, pk):
                 edited.is_blocked = blk
                 edited.blocked_reason = request.POST.get('blocked_reason', '').strip() if blk else ''
             if request.POST.get('addr_present'):
-                for f in ('line1', 'line2', 'city', 'county', 'postcode', 'fao', 'phone'):
+                for f in ('line1', 'line2', 'city', 'county', 'postcode', 'fao', 'phone', 'access'):
                     setattr(edited, 'addr_' + f, request.POST.get('addr_' + f, '').strip())
                 edited.addr_country = request.POST.get('addr_country', '').strip() or 'United Kingdom'
+            edited.addr_access = edited.addr_access.replace('\r\n', '\n')
             edited.save()
             if request.POST.get('addr_present'):
                 _remember_delivery_address(edited)
@@ -501,6 +502,7 @@ def project_duplicate(request, pk):
         addr_country    = original.addr_country,
         addr_fao        = original.addr_fao,
         addr_phone      = original.addr_phone,
+        addr_access     = original.addr_access,
         delivery_required   = original.delivery_required,
         installation_required = original.installation_required,
         rams_required   = original.rams_required,
@@ -819,6 +821,7 @@ def project_address_save(request, pk):
     project.addr_country = data.get('addr_country', '').strip() or 'United Kingdom'
     project.addr_fao     = data.get('addr_fao', '').strip()
     project.addr_phone   = data.get('addr_phone', '').strip()
+    project.addr_access  = data.get('addr_access', '').replace('\r\n', '\n').strip()
     project.save()
     has_address = bool(project.addr_line1 or project.addr_postcode)
 

@@ -169,6 +169,7 @@
   <input type="hidden" name="addr_country" id="h-addr_country" value="{{ project.addr_country }}">
   <input type="hidden" name="addr_fao" id="h-addr_fao" value="{{ project.addr_fao }}">
   <input type="hidden" name="addr_phone" id="h-addr_phone" value="{{ project.addr_phone }}">
+  <input type="hidden" name="addr_access" id="h-addr_access" value="{{ project.addr_access }}">
   {% endif %}
   {% if form.errors %}
   <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:var(--rad);padding:.75rem 1rem;margin-bottom:1rem;font-size:.85rem;color:#991b1b;">
@@ -565,7 +566,7 @@ function closeAddress(){
 }
 function saveAddress(){
   const map = {addr_line1:'a-line1', addr_line2:'a-line2', addr_city:'a-city', addr_county:'a-county',
-               addr_postcode:'a-postcode', addr_country:'a-country', addr_fao:'a-fao', addr_phone:'a-phone'};
+               addr_postcode:'a-postcode', addr_country:'a-country', addr_fao:'a-fao', addr_phone:'a-phone', addr_access:'a-access'};
   Object.keys(map).forEach(k => {
     const src = document.getElementById(map[k]); const dst = document.getElementById('h-'+k);
     if(src && dst) dst.value = (src.value || '').trim();
@@ -1061,6 +1062,7 @@ if(document.querySelectorAll('#manual-po-list .manual-po-row').length === 0){
     </div>
     <div><label class="form-label">FAO (For Attention Of)</label><input class="form-input" id="a-fao" value="{{ project.addr_fao }}" placeholder="Contact name"></div>
     <div><label class="form-label">Phone</label><input class="form-input" id="a-phone" value="{{ project.addr_phone }}" placeholder="Phone number"></div>
+    <div style="grid-column:1/-1;"><label class="form-label">Delivery access details</label><textarea class="form-input" id="a-access" rows="4" placeholder="Notes about the delivery: opening hours, gate codes, height/vehicle limits, unloading point, who to call on arrival…" style="resize:vertical;font-family:inherit;">{{ project.addr_access }}</textarea></div>
   </div>
   <div style="padding:.85rem 1.3rem;border-top:1px solid var(--bdr);display:flex;gap:.5rem;justify-content:flex-end;">
     <button onclick="closeAddress()" class="btn btn-ghost btn-sm">Cancel</button>
