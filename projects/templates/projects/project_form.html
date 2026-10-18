@@ -198,7 +198,8 @@
           {% if project.addr_line1 %}<div style="font-size:.78rem;color:var(--mut);margin-top:.3rem;">{{ project.addr_line1 }}{% if project.addr_city %}, {{ project.addr_city }}{% endif %}{% if project.addr_postcode %} {{ project.addr_postcode }}{% endif %}</div>{% endif %}
         </div>
         {% endif %}
-        <div class="form-group"><label class="form-label">Drawing Number</label>{{ form.drawing_number }}</div>
+        {# Drawing Number is hidden from this page; kept as a hidden field so saving never wipes an existing value #}
+        {{ form.drawing_number.as_hidden }}
         <div class="form-group" style="margin-bottom:0;"><label class="form-label">Scope of Works <span style="font-weight:400;color:var(--mut2)">(brief description of what needs to be done — shown on dashboard)</span></label>{{ form.description }}</div>
       </div>
 
