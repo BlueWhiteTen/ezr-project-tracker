@@ -15,7 +15,7 @@ import json
 from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence
 from ..forms import RegisterForm, ProjectForm
 from .utils import (_picking_locked_response)
-from .costing import generate_picking_reference, parse_ns2_key
+from .costing import generate_picking_reference, parse_ns2_key, inhang_tube_cuts
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -771,6 +771,14 @@ def picking_from_costing(request, pk):
                             'description': f'Cut to {cut_info} ({int(float(line.quantity))} panel{"s" if float(line.quantity)!=1 else ""})',
                             'quantity': None,
                         })
+        if code.upper() == '25MMFLOCOATTUBE1MM':
+            stock_items[-1]['description'] = '1240mm tubes (stock length, cut to size)'
+            for mm, n in sorted(inhang_tube_cuts(lines).items(), reverse=True):
+                stock_items.append({
+                    'type': 'message',
+                    'description': f'{n}x tubes cut to {mm}mm',
+                    'quantity': None,
+                })
         if code.upper() == '19MMRODS':
             # Group top ties by their actual length (parsed from description)
             import re as _re_tt2

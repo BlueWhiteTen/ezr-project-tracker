@@ -1210,7 +1210,7 @@ def generate_picking_reference(lines, selected_accessories=None, wall_fixings=0,
                     items[f'TWB{w}'] += qty
         elif line.line_type == 'inhang':
             # Description: "Inboard Hanging 48" x 18""
-            # 2 rails (HRS{depth}) + 1 foot (SMFOOT) per set
+            # 2 rail supports (HRS{depth}) + 1 tube per set (2 tubes for 30" and 36" depths). No feet.
             # The real Stock code is HRS{depth}/3N (21, 24, 27); see inboard_rail_code().
             parts = line.description.replace('"','').split('x')
             if len(parts) >= 2:
@@ -1219,8 +1219,7 @@ def generate_picking_reference(lines, selected_accessories=None, wall_fixings=0,
                     depth = str(int(float(depth_str)))
                     hrs_code = inboard_rail_code(depth)
                     items[hrs_code] += qty * 2
-                    items['SMFOOT'] += qty
-                    items['25MMFLOCOATTUBE1MM'] += qty
+                    items['25MMFLOCOATTUBE1MM'] += qty * (2 if depth in ('30', '36') else 1)
                 except (ValueError, IndexError):
                     pass
 
@@ -1452,6 +1451,31 @@ def board_material_label(width, depth, melamine, chipboard_18mm_threshold=27):
 
 import re as _re_ns2
 _NS2_KEY_RE = _re_ns2.compile(r'^NS2::([\d.]+)X([\d.]+)(MFC)?$')
+
+
+def inhang_tube_cuts(lines):
+    """Inboard hanging tubes are cut from 1240mm stock tube. Returns
+    {cut_length_mm: number_of_tubes} for tubes that need cutting (anything
+    other than the full 1240mm). Cut length = width in mm + 20, to nearest 5.
+    A 30\" or 36\" depth set uses 2 tubes, others 1."""
+    cuts = {}
+    for line in lines:
+        if line.line_type != 'inhang':
+            continue
+        parts = (line.description or '').replace('"', '').split('x')
+        if len(parts) < 2:
+            continue
+        try:
+            width = float(parts[0].split()[-1])
+            depth = str(int(float(parts[-1].strip().split()[0])))
+            qty = int(float(line.quantity))
+        except (ValueError, IndexError):
+            continue
+        mm = int(round((width * 25.4 + 20) / 5.0)) * 5
+        n = qty * (2 if depth in ('30', '36') else 1)
+        if mm != 1240:
+            cuts[mm] = cuts.get(mm, 0) + n
+    return cuts
 
 
 def parse_ns2_key(code):
