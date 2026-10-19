@@ -221,12 +221,19 @@ def project_edit(request, pk):
 
 @login_required
 def project_delete(request, pk):
+    if not request.user.is_superuser:
+        messages.error(request, 'Only superusers can delete a project.')
+        return redirect('project_edit', pk=pk)
     project = get_object_or_404(Project, pk=pk)
+    error = ''
     if request.method == 'POST':
-        project.delete()
-        messages.success(request, 'Project deleted.')
-        return redirect('dashboard')
-    return render(request, 'projects/project_confirm_delete.html', {'project': project})
+        typed = (request.POST.get('confirm_name') or '').strip()
+        if typed == (project.project_name or '').strip():
+            project.delete()
+            messages.success(request, 'Project deleted.')
+            return redirect('dashboard')
+        error = 'The name you typed does not match. Nothing was deleted.'
+    return render(request, 'projects/project_confirm_delete.html', {'project': project, 'error': error})
 
 
 

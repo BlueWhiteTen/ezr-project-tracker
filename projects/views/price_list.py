@@ -166,9 +166,9 @@ def _seed_price_list():
         PriceListItem.objects.create(product_line='trimline', category='TWB Beams (pairs)',
             code=f'TWB{wd}', label=f'TWB {wd}"', price=price, weight=w(f'TWB{wd}'), sort_order=sort); sort += 1
     # Inboard Hanging Rail Support (a set = a pair of these + a 25mm tube)
-    # HRS21/HRS27 use different Stock codes (HRS21/3N, HRS27/3N) — everything
+    # HRS21/HRS24/HRS27 use different Stock codes (HRS21/3N, HRS24/3N, HRS27/3N) — everything
     # else follows the plain HRS{depth} pattern.
-    hrs_code_override = {'21': 'HRS21/3N', '27': 'HRS27/3N'}
+    hrs_code_override = {'21': 'HRS21/3N', '24': 'HRS24/3N', '27': 'HRS27/3N'}
     sort = 0
     for d, price in IN_HANG_RAILS.items():
         code = hrs_code_override.get(d, f'HRS{d}')

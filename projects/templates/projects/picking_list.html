@@ -75,6 +75,7 @@
     {% endif %}
     <a href="{% url 'picking_fitting_notes' pl.pk %}" target="_blank" class="btn btn-ghost btn-sm">📐 Fitting Notes</a>
     <a href="{% url 'picking_list_print' project.pk %}" target="_blank" class="btn btn-ghost btn-sm">🖨 Print</a>
+    {% if not pl_locked %}<button type="button" class="btn btn-ghost btn-sm" style="color:#dc2626;" onclick="clearPickingList()">🗑 Clear list</button>{% endif %}
   </div>
 </div>
 
@@ -360,6 +361,12 @@ window.addEventListener('load', () => {
 const STOCK_ON = {% if features.stock_movements %}true{% else %}false{% endif %};
 
 const CSRF = '{{ csrf_token }}';
+async function clearPickingList(){
+  if(!confirm('Clear the whole picking list?\n\nEvery item will be removed. This cannot be undone.')) return;
+  const r = await fetch(`/picking/${PL_PK}/clear/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+  let d={}; try{d=await r.json();}catch(e){}
+  if(d.ok) location.reload(); else alert(d.error||'Could not clear the list');
+}
 const PL_PK = {{ pl.pk }};
 let selProduct = null;
 let ddIdx = -1;

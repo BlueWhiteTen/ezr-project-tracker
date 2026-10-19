@@ -1030,6 +1030,18 @@ def picking_fitting_notes_pdf(request, pk):
 
 @login_required
 @require_POST
+def picking_list_clear(request, pk):
+    """Remove every item from a picking list (the list itself stays)."""
+    pl = get_object_or_404(PickingList, pk=pk)
+    if pl.allocated and _stock_on():
+        return JsonResponse({'error': 'This picking list is locked because stock has been allocated. Release the allocation first to clear it.'}, status=400)
+    n = pl.items.count()
+    pl.items.all().delete()
+    return JsonResponse({'ok': True, 'removed': n})
+
+
+@login_required
+@require_POST
 def picking_list_delete(request, pk):
     pl = get_object_or_404(PickingList, pk=pk)
     if pl.allocated and _stock_on():

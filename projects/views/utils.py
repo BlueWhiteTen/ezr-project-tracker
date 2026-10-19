@@ -12,6 +12,22 @@ from ..models import (
 )
 
 
+def inboard_rail_code(depth):
+    """Stock code for the inboard hanging rail support of a given depth.
+    Stock holds these as HRS{depth}/3N (21, 24, 27 are known to be /3N); an older plain
+    HRS{depth} row may also exist, often inactive. Prefer whichever one is active."""
+    depth = str(depth)
+    cands = [f'HRS{depth}/3N', f'HRS{depth}']
+    found = {}
+    for pr in Product.objects.filter(Q(code__iexact=cands[0]) | Q(code__iexact=cands[1])):
+        found[pr.code.upper()] = pr
+    for c in cands:
+        pr = found.get(c.upper())
+        if pr and pr.is_active:
+            return c
+    return cands[0] if depth in ('21', '24', '27') else cands[1]
+
+
 # ── Stock-mirrored pricing/weight (Stock is the source of truth) ──────────────
 
 def stock_lookup_by_code():

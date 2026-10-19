@@ -119,6 +119,7 @@ tr.repriced{background:rgba(245,158,11,.10);}
     <button class="btn btn-ghost" onclick="refreshCostingPrices({{ cost.pk }})" title="Force this costing option's frame/shelf/trolley lines to today's prices">🔄 Refresh to Current Prices</button>
   </div>
   <div style="display:flex;gap:.6rem;">
+    <button class="btn btn-ghost" style="color:#dc2626;" onclick="clearCosting()">🗑 Clear costing</button>
     <button class="btn btn-ghost" onclick="saveAndPrint()">🖨 Print</button>
     <button class="btn btn-primary" id="save-btn" onclick="commitDraft()" style="background:#7c3aed;">Save</button>
   </div>
@@ -742,7 +743,7 @@ let dirty = {{ has_unsaved|yesno:"true,false" }};
 let skipUnload = false;
 let bannerTimer = null;
 const _fetch = window.fetch.bind(window);
-const DIRTY_URL = /\/cost-line\/\d+\/(update|delete)\/|\/cost\/(add-line|wall-fixings|extras|accessory-toggle|accessory-override)\/|\/refresh-prices\//;
+const DIRTY_URL = /\/cost-line\/\d+\/(update|delete)\/|\/cost\/\d+\/clear\/|\/cost\/(add-line|wall-fixings|extras|accessory-toggle|accessory-override)\/|\/refresh-prices\//;
 window.fetch = function(url, opts){
   if(opts && opts.method === 'POST' && DIRTY_URL.test(String(url))) markDirty();
   return _fetch(url, opts);
@@ -771,6 +772,12 @@ function flashSaved(){
   document.getElementById('banner-discard').style.display = 'none';
   b.classList.add('show', 'saved');
   bannerTimer = setTimeout(() => { b.classList.remove('show', 'saved'); }, 2500);
+}
+async function clearCosting(){
+  if(!confirm('Clear the whole costing?\n\nAll lines will be removed (markup, labour and delivery settings are kept). This only becomes permanent when you click Save - use Discard changes to undo.')) return;
+  const r = await _fetch(`/cost/${COST_PK}/clear/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+  const d = await r.json();
+  if(d.ok){ markDirty(); reloadDraft(); } else alert(d.error||'Could not clear the costing');
 }
 function reloadDraft(){ skipUnload = true; location.href = location.pathname + '?draft=' + COST_PK; }
 function discardDraft(){

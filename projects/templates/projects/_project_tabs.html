@@ -37,6 +37,7 @@
       {% if active == 'main' %}
       <button type="submit" form="project-form" class="btn btn-primary" style="box-shadow:none;">💾 Save Changes</button>
       <button type="button" class="btn btn-ghost" onclick="duplicateProject()" title="Duplicate this project">⧉ Duplicate</button>
+      {% if request.user.is_superuser %}<a href="{% url 'project_delete' project.pk %}" class="btn btn-ghost" style="color:#dc2626;" title="Delete this project (superusers only)">🗑 Delete</a>{% endif %}
       {% endif %}
       <a href="{% url 'dashboard' %}" class="btn btn-ghost">← Back</a>
     </div>

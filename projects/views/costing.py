@@ -15,7 +15,7 @@ import json
 
 from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence
 from ..forms import RegisterForm, ProjectForm
-from .utils import _calc_cost_breakdown, _calc_cost_flags
+from .utils import _calc_cost_breakdown, _calc_cost_flags, inboard_rail_code
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -777,6 +777,18 @@ def cost_line_delete(request, line_pk):
 
 
 @login_required
+@require_POST
+def cost_clear_lines(request, cost_pk):
+    """Remove every line from a costing working copy (markup, labour, delivery
+    and notes are kept). Like every other edit, it is only stored on Save."""
+    cost = get_object_or_404(ProjectCost.all_objects, pk=cost_pk)
+    n = cost.lines.count()
+    cost.lines.all().delete()
+    AccessoryOverride.objects.filter(cost=cost).delete()
+    return JsonResponse({'ok': True, 'removed': n})
+
+
+@login_required
 def project_cost_stock_reference(request, cost_pk):
     """Recompute the Stock Reference panel for a costing option — used to
     refresh it live after a change like toggling No Deck/Melamine, without
@@ -1199,15 +1211,13 @@ def generate_picking_reference(lines, selected_accessories=None, wall_fixings=0,
         elif line.line_type == 'inhang':
             # Description: "Inboard Hanging 48" x 18""
             # 2 rails (HRS{depth}) + 1 foot (SMFOOT) per set
-            # HRS21/HRS27 use different real Stock codes (HRS21/3N, HRS27/3N)
-            # — matches the same override in price_list.py's _seed_price_list().
-            hrs_code_override = {'21': 'HRS21/3N', '27': 'HRS27/3N'}
+            # The real Stock code is HRS{depth}/3N (21, 24, 27); see inboard_rail_code().
             parts = line.description.replace('"','').split('x')
             if len(parts) >= 2:
                 depth_str = parts[-1].strip().split()[0]  # last number
                 try:
                     depth = str(int(float(depth_str)))
-                    hrs_code = hrs_code_override.get(depth, f'HRS{depth}')
+                    hrs_code = inboard_rail_code(depth)
                     items[hrs_code] += qty * 2
                     items['SMFOOT'] += qty
                     items['25MMFLOCOATTUBE1MM'] += qty
