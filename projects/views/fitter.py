@@ -155,7 +155,7 @@ def fitter_page(request, token):
         'risk_docs': risk_docs(project), 'method_docs': method_docs(project), 'old_rams': rams_docs(project),
         'access': (project.addr_access or '').strip(),
         'fit_notes': notes, 'job_files': list(project.fitting_files.all()),
-        'has_notes': bool(project.install_steps or drawing or notes or project.fitting_files.exists() or safety_docs(project)),
+        'has_notes': bool(project.install_steps or drawing or notes or project.fitting_files.exists()),
     })
 
 
