@@ -219,8 +219,19 @@ def project_edit(request, pk):
 
 
 
+BIN_DAYS = 30
+
+
+def _purge_old_bin():
+    """Permanently delete projects that have been in the bin longer than BIN_DAYS."""
+    cutoff = timezone.now() - timedelta(days=BIN_DAYS)
+    for p in Project.all_objects.filter(deleted_at__lt=cutoff):
+        p.delete()
+
+
 @login_required
 def project_delete(request, pk):
+    """Superusers only. Moves the project to the recycle bin (restorable for 30 days)."""
     if not request.user.is_superuser:
         messages.error(request, 'Only superusers can delete a project.')
         return redirect('project_edit', pk=pk)
@@ -229,11 +240,54 @@ def project_delete(request, pk):
     if request.method == 'POST':
         typed = (request.POST.get('confirm_name') or '').strip()
         if typed == (project.project_name or '').strip():
-            project.delete()
-            messages.success(request, 'Project deleted.')
+            project.deleted_at = timezone.now()
+            project.deleted_by = request.user
+            project.save(update_fields=['deleted_at', 'deleted_by'])
+            _purge_old_bin()
+            messages.success(request, f'Project moved to the bin. You can restore it from the Bin for {BIN_DAYS} days.')
             return redirect('dashboard')
         error = 'The name you typed does not match. Nothing was deleted.'
-    return render(request, 'projects/project_confirm_delete.html', {'project': project, 'error': error})
+    return render(request, 'projects/project_confirm_delete.html', {'project': project, 'error': error, 'bin_days': BIN_DAYS})
+
+
+@login_required
+def project_bin(request):
+    """Superusers only: deleted projects, with Restore and Delete forever."""
+    if not request.user.is_superuser:
+        messages.error(request, 'Only superusers can open the bin.')
+        return redirect('dashboard')
+    _purge_old_bin()
+    items = []
+    for p in Project.all_objects.filter(deleted_at__isnull=False).select_related('deleted_by').order_by('-deleted_at'):
+        days_left = max(0, BIN_DAYS - (timezone.now() - p.deleted_at).days)
+        items.append({'p': p, 'days_left': days_left})
+    return render(request, 'projects/project_bin.html', {'items': items, 'bin_days': BIN_DAYS})
+
+
+@login_required
+@require_POST
+def project_restore(request, pk):
+    if not request.user.is_superuser:
+        return redirect('dashboard')
+    project = get_object_or_404(Project.all_objects, pk=pk, deleted_at__isnull=False)
+    project.deleted_at = None
+    project.deleted_by = None
+    project.save(update_fields=['deleted_at', 'deleted_by'])
+    messages.success(request, f'"{project.project_name}" restored.')
+    return redirect('project_bin')
+
+
+@login_required
+@require_POST
+def project_purge(request, pk):
+    """Delete a binned project for good."""
+    if not request.user.is_superuser:
+        return redirect('dashboard')
+    project = get_object_or_404(Project.all_objects, pk=pk, deleted_at__isnull=False)
+    name = project.project_name
+    project.delete()
+    messages.success(request, f'"{name}" deleted for good.')
+    return redirect('project_bin')
 
 
 

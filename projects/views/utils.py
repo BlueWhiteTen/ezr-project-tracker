@@ -243,7 +243,7 @@ def _initials(name):
 
 def _next_project_number():
     from ..models import Project as Proj
-    last = Proj.objects.filter(project_number__isnull=False).order_by('-project_number').first()
+    last = Proj.all_objects.filter(project_number__isnull=False).order_by('-project_number').first()
     return (last.project_number + 1) if last else 1
 
 

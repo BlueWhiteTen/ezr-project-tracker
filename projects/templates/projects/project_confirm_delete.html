@@ -9,14 +9,14 @@
 <div class="del-wrap">
   <div class="card">
     <div class="del-title">Delete "{{ project.project_name }}"?</div>
-    <div class="del-sub">This cannot be undone. All data for this project will be permanently removed.</div>
+    <div class="del-sub">The project will be moved to the Bin and hidden everywhere (including its fitter link and quote links). A superuser can restore it within {{ bin_days }} days; after that it is deleted for good.</div>
     {% if error %}<div style="color:var(--red,#dc2626);font-size:.85rem;margin-bottom:.8rem;">{{ error }}</div>{% endif %}
     <form method="post" autocomplete="off">
       {% csrf_token %}
       <label style="display:block;font-size:.82rem;color:var(--mut);margin-bottom:.35rem;">Type <b style="color:var(--txt);">{{ project.project_name }}</b> to confirm</label>
       <input type="text" name="confirm_name" id="confirm_name" data-want="{{ project.project_name }}" class="form-control" style="width:100%;margin-bottom:1rem;" autofocus>
       <div style="display:flex;gap:.75rem;">
-        <button type="submit" id="del_btn" class="btn btn-danger" disabled style="opacity:.5;">Yes, Delete</button>
+        <button type="submit" id="del_btn" class="btn btn-danger" disabled style="opacity:.5;">Move to bin</button>
         <a href="{% url 'project_edit' project.pk %}" class="btn btn-ghost">Cancel</a>
       </div>
     </form>

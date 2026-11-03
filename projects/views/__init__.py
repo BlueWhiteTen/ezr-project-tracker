@@ -21,7 +21,7 @@ from .reporting import (
     sales_summary, sales_summary_export,
 )
 from .projects import (
-    project_create, project_quick_create, project_edit, project_delete,
+    project_create, project_quick_create, project_edit, project_delete, project_bin, project_restore, project_purge,
     project_data, project_quick_status, project_payment_method, project_add_comment,
     project_manual_po_add, project_manual_po_update, project_manual_po_delete, project_toggle_blocked,
     project_presence, project_presence_leave, project_files_page, project_survey_page, project_duplicate, bulk_status_update,

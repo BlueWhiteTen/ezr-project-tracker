@@ -1,0 +1,35 @@
+{% extends 'projects/base.html' %}
+{% block title %}Bin{% endblock %}
+{% block extra_style %}
+.bin-wrap{max-width:860px;margin:2rem auto;}
+.bin-title{font-size:1.3rem;font-weight:700;margin-bottom:.3rem;}
+.bin-sub{color:var(--mut);font-size:.88rem;margin-bottom:1.2rem;}
+.bin-row{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;padding:.8rem 0;border-bottom:1px solid var(--bdr);}
+.bin-row:last-child{border-bottom:none;}
+.bin-main{flex:1 1 260px;min-width:0;}
+.bin-main b{display:block;}
+.bin-main small{color:var(--mut);}
+.bin-left{font-size:.78rem;color:var(--mut);white-space:nowrap;}
+.bin-left.soon{color:var(--red);font-weight:600;}
+{% endblock %}
+{% block content %}
+<div class="bin-wrap">
+  <div class="bin-title">🗑 Bin</div>
+  <div class="bin-sub">Deleted projects are kept for {{ bin_days }} days, then removed for good. Only superusers can see this page.</div>
+  <div class="card">
+    {% for it in items %}
+    <div class="bin-row">
+      <div class="bin-main">
+        <b>{% if it.p.project_number %}#{{ it.p.project_number }} · {% endif %}{{ it.p.project_name }}</b>
+        <small>Deleted {{ it.p.deleted_at|date:"j M Y, H:i" }}{% if it.p.deleted_by %} by {{ it.p.deleted_by.get_full_name|default:it.p.deleted_by.username }}{% endif %}</small>
+      </div>
+      <div class="bin-left {% if it.days_left <= 3 %}soon{% endif %}">{{ it.days_left }} day{{ it.days_left|pluralize }} left</div>
+      <form method="post" action="{% url 'project_restore' it.p.pk %}">{% csrf_token %}<button type="submit" class="btn btn-primary btn-sm">Restore</button></form>
+      <form method="post" action="{% url 'project_purge' it.p.pk %}" onsubmit="return confirm('Delete this project for good? This cannot be undone.');">{% csrf_token %}<button type="submit" class="btn btn-ghost btn-sm" style="color:#dc2626;">Delete for good</button></form>
+    </div>
+    {% empty %}
+    <div style="text-align:center;color:var(--mut);padding:1.6rem;">The bin is empty.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

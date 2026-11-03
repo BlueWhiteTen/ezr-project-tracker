@@ -7,7 +7,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib import messages
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, Http404
 from django.db.models import Q, F as models_F, Count
 from django.views.decorators.http import require_POST
 from datetime import date, timedelta
@@ -321,6 +321,8 @@ def quote_public_view(request, token):
     link = get_object_or_404(QuoteShareLink, token=token)
     quote = link.quote
     project = quote.project
+    if project is not None and project.deleted_at:
+        raise Http404('This quote is no longer available.')
     cost = quote.cost
 
     cp = CustomerProfile.objects.filter(name__iexact=project.customer).first()
@@ -389,7 +391,7 @@ def quote_public_view(request, token):
 def quote_public_accept(request, token):
     """No-login accept action from the public quote page."""
     link = get_object_or_404(QuoteShareLink, token=token)
-    if link.is_expired or link.is_stale or link.is_retired:
+    if link.is_expired or link.is_stale or link.is_retired or (link.quote.project and link.quote.project.deleted_at):
         return JsonResponse({'error': 'This link is no longer valid.'}, status=400)
     data = json.loads(request.body)
     name_role = (data.get('name_role') or '').strip()

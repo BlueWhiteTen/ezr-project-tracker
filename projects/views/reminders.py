@@ -111,7 +111,7 @@ def check_reminders(request):
     from django.utils import timezone
     now = timezone.now()
     due = Reminder.objects.filter(
-        notify_user=request.user, sent=False, remind_at__lte=now
+        notify_user=request.user, sent=False, remind_at__lte=now, project__deleted_at__isnull=True
     ).select_related('project')
     fired = []
     for r in due:

@@ -13,7 +13,17 @@ class Customer(models.Model):
         return self.name
 
 
+class ActiveProjectManager(models.Manager):
+    """Default manager for Project: hides projects that are in the recycle bin."""
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted_at__isnull=True)
+
+
 class Project(models.Model):
+    objects     = ActiveProjectManager()
+    all_objects = models.Manager()
+    deleted_at  = models.DateTimeField(null=True, blank=True, db_index=True, help_text='Set when moved to the recycle bin; purged after 30 days')
+    deleted_by  = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='deleted_projects')
     STATUS_CHOICES = [
         ('enquiry',      'Enquiry'),
         ('quoted',       'Quoted'),
@@ -1436,7 +1446,7 @@ class FitterLink(models.Model):
 
     @property
     def is_active(self):
-        return (not self.is_revoked) and self.project.status not in ('completed', 'cancelled')
+        return (not self.is_revoked) and not self.project.deleted_at and self.project.status not in ('completed', 'cancelled')
 
     def __str__(self):
         return f"Fitter link — {self.project}"

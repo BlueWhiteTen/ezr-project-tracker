@@ -64,11 +64,11 @@ def home(request):
     week_end = today + timedelta(days=7)
 
     my_reminders = Reminder.objects.filter(
-        notify_user=request.user, dismissed=False, remind_at__lte=now
+        notify_user=request.user, dismissed=False, remind_at__lte=now, project__deleted_at__isnull=True
     ).select_related('project').order_by('remind_at')[:10]
 
     upcoming_reminders = Reminder.objects.filter(
-        notify_user=request.user, sent=False, remind_at__gt=now, dismissed=False
+        notify_user=request.user, sent=False, remind_at__gt=now, dismissed=False, project__deleted_at__isnull=True
     ).select_related('project').order_by('remind_at')[:5]
 
     leave_week = LeaveRequest.objects.filter(
@@ -116,7 +116,7 @@ def home(request):
         'slideshow_photos': slideshow_photos,
         'recent_logs': recent_logs,
         'my_projects': my_projects,
-        'pinned_projects': [x.project for x in request.user.pinned_projects.select_related('project')[:30]],
+        'pinned_projects': [x.project for x in request.user.pinned_projects.filter(project__deleted_at__isnull=True).select_related('project')[:30]],
         'latest_updates': latest_updates,
         'unread_messages': unread_messages,
         'recent_team_messages': recent_team_messages,
