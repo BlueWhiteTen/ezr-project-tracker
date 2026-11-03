@@ -995,6 +995,17 @@ def project_cost_print(request, pk):
         cost, _ = ProjectCost.objects.get_or_create(project=project)
     lines = cost.lines.select_related('product').all()
     buying_total = sum(l.line_total for l in lines)
+    # Project Accessories (floor fixings etc.) are part of the price on the
+    # costing screen, so include them here too. Same rule as the screen: a
+    # custom qty counts as-is, otherwise a ticked accessory counts once per upright.
+    total_uprights = sum(int(float(l.quantity)) * 2 for l in lines if l.line_type == 'frame')
+    overrides = {o.accessory_id: o.override_qty for o in AccessoryOverride.objects.filter(cost=cost)}
+    selected_ids = set(cost.accessories.values_list('id', flat=True))
+    for acc in UprightAccessory.objects.filter(Q(is_active=True) | Q(pk__in=selected_ids)):
+        qty = overrides.get(acc.id)
+        if qty is None:
+            qty = total_uprights if acc.id in selected_ids else 0
+        buying_total += float(acc.unit_price) * qty
     markup_amount = buying_total * float(cost.markup) / 100
     sell_price = buying_total + markup_amount + float(cost.labour) + float(cost.delivery)
     goods_sell = buying_total + markup_amount
