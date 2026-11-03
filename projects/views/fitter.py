@@ -141,7 +141,12 @@ def fitter_page(request, token):
     photos = []
     if report:
         photos = list(ReportPhoto.objects.filter(report=report, fitter_link=link).order_by('uploaded_at').values_list('pk', flat=True))
-    maps_q = ', '.join(addr)
+    # Search by first line + postcode only: the lookup's extra lines ("unparished area", repeated
+    # town/county) make Google show the whole area instead of the building.
+    if project.addr_line1 and project.addr_postcode:
+        maps_q = f'{project.addr_line1}, {project.addr_postcode}'
+    else:
+        maps_q = ', '.join(addr)
     from ..fitting import job_notes, latest_drawing, risk_docs, method_docs, rams_docs, safety_docs
     notes, _hidden = job_notes(project)
     drawing = latest_drawing(project)
