@@ -142,7 +142,7 @@ def fitter_page(request, token):
     if report:
         photos = list(ReportPhoto.objects.filter(report=report, fitter_link=link).order_by('uploaded_at').values_list('pk', flat=True))
     maps_q = ', '.join(addr)
-    from ..fitting import job_notes, latest_drawing, rams_docs
+    from ..fitting import job_notes, latest_drawing, risk_docs, method_docs, rams_docs, safety_docs
     notes, _hidden = job_notes(project)
     drawing = latest_drawing(project)
     return render(request, 'projects/fitter_page.html', {
@@ -151,9 +151,11 @@ def fitter_page(request, token):
         'contact': project.addr_fao, 'phone': project.addr_phone,
         'photo_ids': photos,
         'steps_html': project.install_steps,
-        'drawing': drawing, 'rams': rams_docs(project),
+        'drawing': drawing, 'rams': safety_docs(project),
+        'risk_docs': risk_docs(project), 'method_docs': method_docs(project), 'old_rams': rams_docs(project),
+        'access': (project.addr_access or '').strip(),
         'fit_notes': notes, 'job_files': list(project.fitting_files.all()),
-        'has_notes': bool(project.install_steps or drawing or notes or project.fitting_files.exists() or rams_docs(project)),
+        'has_notes': bool(project.install_steps or drawing or notes or project.fitting_files.exists() or safety_docs(project)),
     })
 
 
@@ -356,7 +358,7 @@ def fitter_submit(request, token):
 
 
 def fitter_file(request, token, kind, pk):
-    """Serve a drawing / fitting note / RAMS to the fitter. Only files that belong to this job's
+    """Serve a drawing / fitting note / risk assessment / method statement to the fitter. Only files that belong to this job's
     Installation notes are reachable; ?dl=1 forces a download instead of opening in the browser."""
     link = _get_link(token)
     if not link or not link.is_active:
@@ -365,7 +367,7 @@ def fitter_file(request, token, kind, pk):
     from ..fitting import job_notes
     obj = None
     if kind == 'doc':
-        obj = project.documents.filter(pk=pk, doc_type__in=['drawing', 'rams']).first()
+        obj = project.documents.filter(pk=pk, doc_type__in=['drawing', 'rams', 'risk_assessment', 'method_statement']).first()
         data = bytes(obj.file_data) if obj and obj.file_data else None
         if obj and not data and obj.file:
             data = obj.file.open().read()

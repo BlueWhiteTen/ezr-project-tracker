@@ -125,9 +125,17 @@ def home(request):
     })
 
 
+def _uname(u):
+    return (u.get_full_name() or u.username) if u else 'someone'
+
+
 def _todo_items(user):
     """Open items first, most urgent 'do by' date first (undated last), then the user's own order."""
-    items = list(TodoItem.objects.filter(user=user))
+    items = list(TodoItem.objects.filter(user=user).select_related('shared_by').prefetch_related('shared_copies__user'))
+    for t in items:
+        t.is_copy = bool(t.shared_from_id)
+        t.from_name = _uname(t.shared_by) if t.is_copy else ''
+        t.share_info = [{'name': _uname(c.user), 'done': c.is_done} for c in t.shared_copies.all()]
     items.sort(key=lambda t: (t.is_done, t.due_date is None, t.due_date or date.max, t.sort_order, t.created_at))
     return items
 
@@ -140,6 +148,9 @@ def _todo_json(item):
         'due': item.due_date.isoformat() if item.due_date else None,
         'due_text': item.due_date.strftime('%a %-d %b') if item.due_date else '',
         'level': info['level'], 'label': info['label'],
+        'is_copy': bool(item.shared_from_id),
+        'from_name': _uname(item.shared_by) if item.shared_from_id else '',
+        'share_info': [{'name': _uname(c.user), 'done': c.is_done} for c in item.shared_copies.select_related('user')],
     }
 
 
@@ -182,12 +193,15 @@ def todo_add(request):
 def todo_due(request, pk):
     """Set or clear the 'do by' date of one of your to-do items."""
     item = get_object_or_404(TodoItem, pk=pk, user=request.user)
+    if item.shared_from_id:
+        return JsonResponse({'ok': False, 'error': 'This item was shared with you - you can only tick it.'}, status=403)
     try:
         data = json.loads(request.body)
     except Exception:
         return JsonResponse({'ok': False}, status=400)
     item.due_date = _parse_due(data.get('due'))
     item.save(update_fields=['due_date'])
+    item.shared_copies.update(due_date=item.due_date)
     return JsonResponse(_todo_json(item))
 
 
@@ -197,6 +211,9 @@ def todo_toggle(request, pk):
     item = get_object_or_404(TodoItem, pk=pk, user=request.user)
     item.is_done = not item.is_done
     item.save(update_fields=['is_done'])
+    if item.is_done and item.shared_from_id and item.shared_from and item.shared_from.user_id != request.user.pk:
+        Notification.objects.create(user=item.shared_from.user, type='todo', link='/',
+                                    text=f'{_uname(request.user)} completed the to-do: {item.text}'[:300])
     return JsonResponse(dict(_todo_json(item), is_done=item.is_done))
 
 
@@ -204,20 +221,57 @@ def todo_toggle(request, pk):
 @require_POST
 def todo_edit(request, pk):
     item = get_object_or_404(TodoItem, pk=pk, user=request.user)
+    if item.shared_from_id:
+        return JsonResponse({'ok': False, 'error': 'This item was shared with you - you can only tick it.'}, status=403)
     data = json.loads(request.body)
     text = (data.get('text') or '').strip()
     if not text:
         return JsonResponse({'error': 'Text is required.'}, status=400)
     item.text = text
     item.save(update_fields=['text'])
+    item.shared_copies.update(text=text)
     return JsonResponse({'ok': True, 'text': item.text})
 
 
 @login_required
 @require_POST
 def todo_delete(request, pk):
-    TodoItem.objects.filter(pk=pk, user=request.user).delete()
+    item = TodoItem.objects.filter(pk=pk, user=request.user).first()
+    if item and item.shared_from_id:
+        return JsonResponse({'ok': False, 'error': 'This item was shared with you - you can only tick it.'}, status=403)
+    if item:
+        item.delete()
     return JsonResponse({'ok': True})
+
+
+@login_required
+def todo_share(request, pk):
+    """GET: colleagues with a checkbox state. POST {user_ids: [...]}: share the item with
+    exactly those people (each gets their own copy to tick; unticked people lose their copy)."""
+    item = get_object_or_404(TodoItem, pk=pk, user=request.user, shared_from__isnull=True)
+    current = {c.user_id: c for c in item.shared_copies.select_related('user')}
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            wanted = {int(x) for x in data.get('user_ids', [])}
+        except Exception:
+            return JsonResponse({'ok': False}, status=400)
+        valid = {u.pk: u for u in User.objects.filter(is_active=True, pk__in=wanted).exclude(pk=request.user.pk)}
+        for uid, copy in current.items():
+            if uid not in valid:
+                copy.delete()
+        order_base = 0
+        for uid, u in valid.items():
+            if uid in current:
+                continue
+            order_base = TodoItem.objects.filter(user=u).count()
+            TodoItem.objects.create(user=u, text=item.text, due_date=item.due_date, sort_order=order_base,
+                                    shared_from=item, shared_by=request.user)
+            Notification.objects.create(user=u, type='todo', link='/',
+                                        text=f'{_uname(request.user)} shared a to-do with you: {item.text}'[:300])
+        return JsonResponse({'ok': True, 'share_info': _todo_json(item)['share_info']})
+    users = User.objects.filter(is_active=True).exclude(pk=request.user.pk).order_by('first_name', 'username')
+    return JsonResponse({'ok': True, 'users': [{'id': u.pk, 'name': _uname(u), 'checked': u.pk in current} for u in users]})
 
 
 

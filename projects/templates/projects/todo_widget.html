@@ -25,6 +25,9 @@
 .todo-meta{font-size:.7rem;color:var(--mut);margin-top:1px;cursor:pointer;line-height:1.35;}
   .todo-meta:hover{color:var(--acc);}
   .todo-meta b{font-weight:700;}
+  .todo-shared{font-size:.68rem;color:var(--mut);margin-top:1px;line-height:1.35;}
+  .todo-from{font-size:.68rem;color:var(--acc);font-weight:600;margin-top:1px;line-height:1.35;}
+  
   .todo-meta[data-level="overdue"]{color:#dc2626;}
   .todo-meta[data-level="today"],.todo-meta[data-level="soon"]{color:#c2570c;}
   .todo-meta[data-level="overdue"] b,.todo-meta[data-level="today"] b{text-transform:uppercase;letter-spacing:.02em;}
@@ -49,10 +52,12 @@
         <input type="checkbox" class="todo-check" data-pk="{{ t.pk }}" {% if t.is_done %}checked{% endif %}>
         <div class="todo-body" style="flex:1;min-width:0;">
           <span class="todo-text" style="{% if t.is_done %}text-decoration:line-through;color:var(--mut2);{% endif %}">{{ t.text }}</span>
-          {% with di=t.due_info %}<div class="todo-meta" data-level="{{ di.level }}" data-due="{{ t.due_date|date:'Y-m-d' }}" onclick="pickDue({{ t.pk }})" title="Tap to set or change the do-by date">Added {{ t.created_at|date:"j M" }}{% if t.due_date %} · Do by {{ t.due_date|date:"D j M" }}{% if di.label %} · <b>{{ di.label }}</b>{% endif %}{% else %} · <u style="text-decoration:underline dotted;">+ do-by date</u>{% endif %}</div>{% endwith %}
+          {% with di=t.due_info %}<div class="todo-meta" data-level="{{ di.level }}" data-due="{{ t.due_date|date:'Y-m-d' }}" {% if not t.is_copy %}onclick="pickDue({{ t.pk }})" title="Tap to set or change the do-by date"{% endif %}>Added {{ t.created_at|date:"j M" }}{% if t.due_date %} · Do by {{ t.due_date|date:"D j M" }}{% if di.label %} · <b>{{ di.label }}</b>{% endif %}{% elif not t.is_copy %} · <u style="text-decoration:underline dotted;">+ do-by date</u>{% endif %}</div>{% endwith %}
+          {% if t.is_copy %}<div class="todo-from">↪ from {{ t.from_name }}</div>{% else %}<div class="todo-shared"{% if not t.share_info %} style="display:none"{% endif %}>{% if t.share_info %}👥 Shared with {% for s in t.share_info %}{{ s.name }}{% if s.done %} ✓{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}</div>{% endif %}
         </div>
+        {% if not t.is_copy %}<button onclick="shareTodo({{ t.pk }}, this)" title="Share with colleagues" style="color:var(--mut);">👥</button>
         <button onclick="editTodo({{ t.pk }})" title="Edit" style="color:var(--mut);">✎</button>
-        <button onclick="deleteTodo({{ t.pk }})" title="Delete">✕</button>
+        <button onclick="deleteTodo({{ t.pk }})" title="Delete">✕</button>{% endif %}
       </li>
       {% empty %}
       <div class="empty" id="todo-empty">Nothing on your list yet.</div>
@@ -74,6 +79,59 @@ window.addEventListener('resize', setRealVh);
 window.addEventListener('orientationchange', setRealVh);
 
 const CSRF = '{{ csrf_token }}';
+
+const CSRF_TODO = '{{ csrf_token }}';
+
+function renderShare(row, info){
+  const box = row.querySelector('.todo-shared');
+  if(!box) return;
+  box.textContent = '';
+  if(!info || !info.length){ box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  box.append('👥 Shared with ');
+  info.forEach((s, i) => { box.append(s.name + (s.done ? ' ✓' : '') + (i < info.length - 1 ? ', ' : '')); });
+}
+function closeSharePop(){ const p = document.getElementById('share-pop'); if(p) p.remove(); }
+async function shareTodo(pk, btn){
+  closeSharePop();
+  const row = document.getElementById(`todo-row-${pk}`);
+  const r = await fetch(`/todo/${pk}/share/`);
+  const d = await r.json();
+  if(!d.ok) return;
+  const pop = document.createElement('div');
+  pop.id = 'share-pop';
+  pop.style.cssText = 'position:fixed;z-index:9999;background:var(--surf,#fff);border:1px solid var(--bdr,#ddd);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.18);padding:.6rem .7rem;min-width:210px;max-width:84vw;max-height:60vh;overflow-y:auto;font-size:.85rem;';
+  const title = document.createElement('div');
+  title.textContent = 'Share with…';
+  title.style.cssText = 'font-weight:700;margin-bottom:.4rem;';
+  pop.appendChild(title);
+  if(!d.users.length){ const e = document.createElement('div'); e.textContent = 'No colleagues found.'; pop.appendChild(e); }
+  d.users.forEach(u => {
+    const lab = document.createElement('label');
+    lab.style.cssText = 'display:flex;align-items:center;gap:.5rem;padding:.3rem 0;cursor:pointer;';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.value = u.id; cb.checked = u.checked;
+    cb.addEventListener('change', async () => {
+      const ids = Array.from(pop.querySelectorAll('input:checked')).map(x => parseInt(x.value));
+      const rr = await fetch(`/todo/${pk}/share/`, {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF_TODO}, body: JSON.stringify({user_ids: ids})});
+      const dd = await rr.json();
+      if(dd.ok) renderShare(row, dd.share_info); else cb.checked = !cb.checked;
+    });
+    lab.append(cb, u.name);
+    pop.appendChild(lab);
+  });
+  const done = document.createElement('button');
+  done.type = 'button'; done.textContent = 'Done';
+  done.style.cssText = 'margin-top:.5rem;width:100%;padding:.4rem;border:none;border-radius:8px;background:var(--acc,#d4700a);color:#fff;font-weight:600;cursor:pointer;font-family:inherit;';
+  done.addEventListener('click', closeSharePop);
+  pop.appendChild(done);
+  document.body.appendChild(pop);
+  const b = btn.getBoundingClientRect();
+  const w = pop.offsetWidth;
+  pop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, b.right - w)) + 'px';
+  pop.style.top = Math.min(window.innerHeight - pop.offsetHeight - 8, b.bottom + 4) + 'px';
+  setTimeout(() => document.addEventListener('click', function h(e){ if(!pop.contains(e.target) && e.target !== btn){ closeSharePop(); document.removeEventListener('click', h); } }), 0);
+}
 
 function metaHtml(d){
   let h = 'Added ' + d.added;
@@ -134,7 +192,8 @@ async function addTodo(){
     li.dataset.text = text;
     li.innerHTML = `
       <input type="checkbox" class="todo-check" data-pk="${d.id}">
-      <div class="todo-body" style="flex:1;min-width:0;"><span class="todo-text"></span><div class="todo-meta" onclick="pickDue(${d.id})" title="Tap to set or change the do-by date"></div></div>
+      <div class="todo-body" style="flex:1;min-width:0;"><span class="todo-text"></span><div class="todo-meta" onclick="pickDue(${d.id})" title="Tap to set or change the do-by date"></div><div class="todo-shared" style="display:none"></div></div>
+      <button onclick="shareTodo(${d.id}, this)" title="Share with colleagues" style="color:var(--mut);">👥</button>
       <button onclick="editTodo(${d.id})" title="Edit" style="color:var(--mut);">✎</button>
       <button onclick="deleteTodo(${d.id})" title="Delete">✕</button>`;
     li.querySelector('.todo-text').textContent = text;

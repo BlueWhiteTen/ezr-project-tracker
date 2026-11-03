@@ -57,7 +57,22 @@ textarea{min-height:90px;resize:vertical;}
 <div id="err" class="err" style="display:none"></div>
 
 <div class="step on" id="s0">
-  <div class="card" style="background:transparent;border:none;padding:0 2px;margin-bottom:10px;"><div style="font-size:1.1rem;font-weight:800;">{{ project.project_name }}</div><div class="small" style="margin-top:2px;">What would you like to do?</div></div>
+  <div class="card" style="background:transparent;border:none;padding:0 2px;margin-bottom:10px;"><div style="font-size:1.1rem;font-weight:800;">{{ project.project_name }}</div></div>
+  <div class="card"><h3>The job</h3>
+    {% if addr %}<div class="kv"><span>Address</span><b>{% for a in addr %}{{ a }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</b></div>{% endif %}
+    {% if contact %}<div class="kv"><span>Site contact</span><b>{{ contact }}</b></div>{% endif %}
+    {% if phone %}<div class="kv"><span>Phone</span><b><a href="tel:{{ phone }}" style="color:var(--acc);text-decoration:none;">{{ phone }} 📞</a></b></div>{% endif %}
+    {% if inst %}<div class="kv"><span>Install date</span><b>{{ inst|date:"D d M Y" }}</b></div>{% endif %}
+    {% if maps_q %}<a class="btn ghost" style="margin-top:9px;padding:11px;" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query={{ maps_q|urlencode }}">📍 Open in Maps</a>{% endif %}
+  </div>
+  {% if access %}<div class="card" style="border-color:#f0c48a;background:var(--acc-bg);"><h3 style="color:var(--acc);">⚠ Delivery restrictions</h3><div style="white-space:pre-wrap;line-height:1.5;">{{ access }}</div></div>{% endif %}
+  {% if tasks %}<div class="card"><h3>Scope of works</h3><div style="white-space:pre-wrap;line-height:1.5;">{{ tasks }}</div></div>{% endif %}
+  {% if risk_docs or method_docs or old_rams %}<div class="card"><h3>Safety documents</h3>
+    {% for d in risk_docs %}<a class="btn ghost" style="margin-bottom:8px;" target="_blank" rel="noopener" href="{% url 'fitter_file' link.token 'doc' d.pk %}">🦺 Risk assessment{% if risk_docs|length > 1 %} — {{ d.name }}{% endif %}</a>{% endfor %}
+    {% for d in method_docs %}<a class="btn ghost" style="margin-bottom:8px;" target="_blank" rel="noopener" href="{% url 'fitter_file' link.token 'doc' d.pk %}">📋 Method statement{% if method_docs|length > 1 %} — {{ d.name }}{% endif %}</a>{% endfor %}
+    {% for d in old_rams %}<a class="btn ghost" style="margin-bottom:8px;" target="_blank" rel="noopener" href="{% url 'fitter_file' link.token 'doc' d.pk %}">🦺 RAMS — {{ d.name }}</a>{% endfor %}
+  </div>{% endif %}
+  <div class="small" style="margin:2px 2px 8px;">What would you like to do?</div>
   <button class="menu" type="button" onclick="go('n')"><b>📐 Installation notes</b><span>Drawings, fitting notes and important steps for this job</span></button>
   <button class="menu" type="button" onclick="go(1)"><b>✍ Satisfaction note</b><span>Add photos, answer the checks and get the customer's signature</span></button>
 </div>
@@ -68,7 +83,7 @@ textarea{min-height:90px;resize:vertical;}
   {% if steps_html %}<div class="card"><h3>Important installation steps</h3><div class="steptxt">{{ steps_html|safe }}</div></div>{% endif %}
   {% if drawing or rams or fit_notes or job_files %}<div class="card"><h3>Drawings &amp; documents</h3>
     {% if drawing %}<div class="frow"><div class="fn">📐 {{ drawing.name }}<small>Drawing</small></div><a href="{% url 'fitter_file' link.token 'doc' drawing.pk %}" target="_blank" rel="noopener">View</a><a class="dl" href="{% url 'fitter_file' link.token 'doc' drawing.pk %}?dl=1">Download</a></div>{% endif %}
-    {% for d in rams %}<div class="frow"><div class="fn">🦺 {{ d.name }}<small>RAMS</small></div><a href="{% url 'fitter_file' link.token 'doc' d.pk %}" target="_blank" rel="noopener">View</a><a class="dl" href="{% url 'fitter_file' link.token 'doc' d.pk %}?dl=1">Download</a></div>{% endfor %}
+    {% for d in rams %}<div class="frow"><div class="fn">🦺 {{ d.name }}<small>{{ d.get_doc_type_display }}</small></div><a href="{% url 'fitter_file' link.token 'doc' d.pk %}" target="_blank" rel="noopener">View</a><a class="dl" href="{% url 'fitter_file' link.token 'doc' d.pk %}?dl=1">Download</a></div>{% endfor %}
     {% for n in fit_notes %}<div class="frow"><div class="fn">📄 {{ n.title }}<small>Fitting note</small></div><a href="{% url 'fitter_file' link.token 'note' n.pk %}" target="_blank" rel="noopener">View</a><a class="dl" href="{% url 'fitter_file' link.token 'note' n.pk %}?dl=1">Download</a></div>{% endfor %}
     {% for f in job_files %}<div class="frow"><div class="fn">📎 {{ f.title }}<small>Added for this job</small></div><a href="{% url 'fitter_file' link.token 'pfile' f.pk %}" target="_blank" rel="noopener">View</a><a class="dl" href="{% url 'fitter_file' link.token 'pfile' f.pk %}?dl=1">Download</a></div>{% endfor %}
   </div>{% endif %}

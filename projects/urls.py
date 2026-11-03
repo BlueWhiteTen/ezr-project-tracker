@@ -24,6 +24,7 @@ urlpatterns = [
     path('todo/<int:pk>/toggle/',         views.todo_toggle,            name='todo_toggle'),
     path('todo/<int:pk>/edit/',           views.todo_edit,              name='todo_edit'),
     path('todo/<int:pk>/due/',            views.todo_due,               name='todo_due'),
+    path('todo/<int:pk>/share/',          views.todo_share,             name='todo_share'),
     path('todo/<int:pk>/delete/',         views.todo_delete,            name='todo_delete'),
     path('dashboard/',                    views.dashboard,             name='dashboard'),
     path('project/new/',                  views.project_create,        name='project_create'),

@@ -132,18 +132,31 @@
       </div>
 
       <div class="form-card" id="rams-card">
-        <div class="section-title">RAMS</div>
+        <div class="section-title">RAMS / Risk assessment &amp; method statement</div>
         <input type="hidden" name="rams_present" value="1">
         <div class="chk-row" style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;"><input type="checkbox" name="rams_required" id="rams-required" {% if project.rams_required %}checked{% endif %}><label for="rams-required">RAMS required</label></div>
         <div class="chk-row" style="display:flex;align-items:center;gap:.5rem;margin-bottom:.9rem;"><input type="checkbox" name="rams_sent" id="rams-sent" {% if project.rams_sent %}checked{% endif %}><label for="rams-sent">RAMS sent</label></div>
-        <div style="font-size:.78rem;color:var(--mut);margin-bottom:.4rem;">RAMS documents (the fitter sees these on their link). The tick-boxes are saved with the Save button.</div>
-        <div id="rams-list" class="rams-list"></div>
-        <div id="rams-empty" style="font-size:.85rem;color:var(--mut);padding:.4rem 0;display:none;">No RAMS uploaded yet</div>
-        <label class="upload-zone" for="rams-input" style="margin-top:.6rem;">
-          <input type="file" id="rams-input" multiple onchange="uploadRams(this)">
-          <div id="rams-label">🦺 Click to upload RAMS</div>
+        <div style="font-size:.78rem;color:var(--mut);margin-bottom:.4rem;">The fitter sees these on their link. The tick-boxes are saved with the Save button.</div>
+        <div style="font-weight:600;font-size:.85rem;margin:.5rem 0 .2rem;">Risk assessment</div>
+        <div id="risk-list" class="rams-list"></div>
+        <div id="risk-empty" style="font-size:.85rem;color:var(--mut);padding:.4rem 0;display:none;">No risk assessment uploaded yet</div>
+        <label class="upload-zone" for="risk-input" style="margin-top:.4rem;">
+          <input type="file" id="risk-input" multiple onchange="uploadSafety(this,'risk_assessment','risk')">
+          <div id="risk-label">🦺 Click to upload risk assessment</div>
         </label>
-        <div id="rams-error" style="color:var(--red);font-size:.78rem;margin-top:.4rem;display:none;"></div>
+        <div id="risk-error" style="color:var(--red);font-size:.78rem;margin-top:.4rem;display:none;"></div>
+        <div style="font-weight:600;font-size:.85rem;margin:1rem 0 .2rem;">Method statement</div>
+        <div id="method-list" class="rams-list"></div>
+        <div id="method-empty" style="font-size:.85rem;color:var(--mut);padding:.4rem 0;display:none;">No method statement uploaded yet</div>
+        <label class="upload-zone" for="method-input" style="margin-top:.4rem;">
+          <input type="file" id="method-input" multiple onchange="uploadSafety(this,'method_statement','method')">
+          <div id="method-label">📋 Click to upload method statement</div>
+        </label>
+        <div id="method-error" style="color:var(--red);font-size:.78rem;margin-top:.4rem;display:none;"></div>
+        <div id="rams-old-wrap" style="display:none;">
+          <div style="font-weight:600;font-size:.85rem;margin:1rem 0 .2rem;">Old combined RAMS (uploaded before the split)</div>
+          <div id="old-list" class="rams-list"></div>
+        </div>
       </div>
     </div>
 
@@ -214,8 +227,8 @@
 <script>
 (function(){
   const PK={{ project.pk }}, CSRF='{{ csrf_token }}';
-  const list=document.getElementById('rams-list'), empty=document.getElementById('rams-empty'), err=document.getElementById('rams-error');
   function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML;}
+  const KINDS={risk:'risk_assessment',method:'method_statement',old:'rams'};
   function row(d){
     const r=document.createElement('div'); r.id='rams-doc-'+d.id;
     r.style.cssText='display:flex;align-items:center;gap:.6rem;padding:.4rem 0;border-bottom:.5px solid var(--bdr);font-size:.85rem;';
@@ -225,27 +238,31 @@
       '<button type="button" onclick="deleteRams('+d.id+')" title="Remove" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;padding:2px 6px;">✕</button>';
     return r;
   }
-  function refreshEmpty(){ empty.style.display=list.children.length?'none':'block'; }
+  function refreshEmpty(){
+    ['risk','method'].forEach(k=>{ document.getElementById(k+'-empty').style.display=document.getElementById(k+'-list').children.length?'none':'block'; });
+    document.getElementById('rams-old-wrap').style.display=document.getElementById('old-list').children.length?'block':'none';
+  }
   async function load(){
     try{ const r=await fetch('/project/'+PK+'/documents/'); const docs=await r.json();
-      list.innerHTML=''; docs.filter(d=>d.type==='rams').forEach(d=>list.appendChild(row(d))); }catch(e){}
+      Object.keys(KINDS).forEach(k=>{ const el=document.getElementById(k+'-list'); el.innerHTML=''; docs.filter(d=>d.type===KINDS[k]).forEach(d=>el.appendChild(row(d))); }); }catch(e){}
     refreshEmpty();
   }
-  window.uploadRams=async function(input){
+  window.uploadSafety=async function(input,docType,k){
+    const err=document.getElementById(k+'-error'), label=document.getElementById(k+'-label'), list=document.getElementById(k+'-list');
+    const idle=label.textContent;
     err.style.display='none';
-    const label=document.getElementById('rams-label');
     const files=Array.from(input.files);
     for(let i=0;i<files.length;i++){
       label.textContent='Uploading '+(i+1)+' of '+files.length+'…';
-      const fd=new FormData(); fd.append('file',files[i]); fd.append('name',files[i].name); fd.append('doc_type','rams'); fd.append('csrfmiddlewaretoken',CSRF);
+      const fd=new FormData(); fd.append('file',files[i]); fd.append('name',files[i].name); fd.append('doc_type',docType); fd.append('csrfmiddlewaretoken',CSRF);
       try{ const r=await fetch('/project/'+PK+'/documents/',{method:'POST',body:fd}); const d=await r.json();
         if(d.error) throw new Error(d.error); list.appendChild(row(d)); }
       catch(e){ err.textContent='"'+files[i].name+'" failed to upload: '+e.message; err.style.display='block'; }
     }
-    input.value=''; label.textContent='🦺 Click to upload RAMS'; refreshEmpty();
+    input.value=''; label.textContent=idle; refreshEmpty();
   };
   window.deleteRams=async function(id){
-    if(!confirm('Remove this RAMS document?')) return;
+    if(!confirm('Remove this document?')) return;
     const r=await fetch('/document/'+id+'/delete/',{method:'POST',headers:{'X-CSRFToken':CSRF}});
     if(r.ok){ const el=document.getElementById('rams-doc-'+id); if(el) el.remove(); refreshEmpty(); }
   };

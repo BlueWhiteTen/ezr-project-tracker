@@ -257,6 +257,7 @@ class Notification(models.Model):
         ('message',  'New message'),
         ('reminder', 'Reminder'),
         ('quote_accepted', 'Quote accepted online'),
+        ('todo',     'Shared to-do'),
     ]
     user      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     type      = models.CharField(max_length=20, choices=TYPES)
@@ -294,6 +295,10 @@ class TodoItem(models.Model):
     sort_order = models.PositiveIntegerField(default=0)
     due_date   = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Sharing: a shared item is a copy of the owner's item for each colleague, so
+    # everyone ticks their own. shared_from points at the owner's original.
+    shared_from = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='shared_copies')
+    shared_by   = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='todo_items_shared')
 
     class Meta:
         ordering = ['is_done', 'sort_order', 'created_at']
@@ -650,7 +655,9 @@ class ProjectDocument(models.Model):
         ('drawing',      'Drawing'),
         ('quote',        'Quote'),
         ('contract',     'Contract'),
-        ('rams',         'RAMS'),
+        ('risk_assessment', 'Risk Assessment'),
+        ('method_statement', 'Method Statement'),
+        ('rams',         'RAMS (old, combined)'),
         ('survey',       'Survey'),
         ('photo',        'Photo'),
         ('other',        'Other'),

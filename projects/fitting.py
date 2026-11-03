@@ -81,5 +81,19 @@ def latest_drawing(project):
     return project.documents.filter(doc_type='drawing').order_by('-uploaded_at').first()
 
 
+def risk_docs(project):
+    return list(project.documents.filter(doc_type='risk_assessment').order_by('-uploaded_at'))
+
+
+def method_docs(project):
+    return list(project.documents.filter(doc_type='method_statement').order_by('-uploaded_at'))
+
+
 def rams_docs(project):
+    """Old combined RAMS uploads (before Risk Assessment / Method Statement were split)."""
     return list(project.documents.filter(doc_type='rams').order_by('-uploaded_at'))
+
+
+def safety_docs(project):
+    """Risk assessments, method statements and old combined RAMS, in that order."""
+    return risk_docs(project) + method_docs(project) + rams_docs(project)

@@ -960,12 +960,12 @@ def picking_fitting_notes(request, pk):
     """Show all fitting notes matching the stock items in this picking list, for printing."""
     pl = get_object_or_404(PickingList, pk=pk)
     project = pl.project
-    from ..fitting import job_notes, latest_drawing, rams_docs
+    from ..fitting import job_notes, latest_drawing, safety_docs
     notes, hidden = job_notes(project, pl)
     return render(request, 'projects/fitting_notes_print.html', {
         'pl': pl, 'project': project, 'notes': notes, 'hidden_notes': hidden,
         'job_files': project.fitting_files.all(),
-        'drawing': latest_drawing(project), 'rams': rams_docs(project),
+        'drawing': latest_drawing(project), 'rams': safety_docs(project),
         'steps_html': project.install_steps,
     })
 

@@ -63,11 +63,11 @@
 </div>
 
 <div class="card">
-  <h2>Drawing &amp; RAMS from the project page</h2>
+  <h2>Drawing, risk assessment &amp; method statement from the project page</h2>
   {% if drawing %}<div class="doc-row" style="margin-bottom:.4rem;"><span class="doc-icon">📐</span><div class="doc-info"><div class="doc-title">Latest drawing: {{ drawing.name }}</div><div class="doc-meta">{{ drawing.uploaded_at|date:"d M Y" }}</div></div><a class="doc-open" target="_blank" href="{% url 'document_download' drawing.pk %}">Open ↗</a></div>
   {% else %}<div class="muted">No drawing uploaded on the project page yet.</div>{% endif %}
-  {% for r in rams %}<div class="doc-row" style="margin-bottom:.4rem;"><span class="doc-icon">🦺</span><div class="doc-info"><div class="doc-title">RAMS: {{ r.name }}</div></div><a class="doc-open" target="_blank" href="{% url 'document_download' r.pk %}">Open ↗</a></div>{% endfor %}
-  <div class="muted" style="margin-top:.4rem;">Manage these in the project's documents. The fitter link shows the latest drawing and any RAMS automatically.</div>
+  {% for r in rams %}<div class="doc-row" style="margin-bottom:.4rem;"><span class="doc-icon">🦺</span><div class="doc-info"><div class="doc-title">{{ r.get_doc_type_display }}: {{ r.name }}</div></div><a class="doc-open" target="_blank" href="{% url 'document_download' r.pk %}">Open ↗</a></div>{% endfor %}
+  <div class="muted" style="margin-top:.4rem;">Manage these in the project's documents. The fitter link shows the latest drawing, risk assessment and method statement automatically.</div>
 </div>
 
 <div class="card">
