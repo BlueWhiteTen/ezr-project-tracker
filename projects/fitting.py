@@ -81,6 +81,10 @@ def latest_drawing(project):
     return project.documents.filter(doc_type='drawing').order_by('-uploaded_at').first()
 
 
+def drawing_docs(project):
+    return list(project.documents.filter(doc_type='drawing').order_by('-uploaded_at'))
+
+
 def risk_docs(project):
     return list(project.documents.filter(doc_type='risk_assessment').order_by('-uploaded_at'))
 

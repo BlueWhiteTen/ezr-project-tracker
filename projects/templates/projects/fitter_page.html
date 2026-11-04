@@ -81,8 +81,8 @@ textarea{min-height:90px;resize:vertical;}
   <div class="card"><h3>{{ project.project_name }}</h3><div class="small" style="margin:0;">Installation notes</div></div>
   {% if not has_notes %}<div class="card" style="text-align:center;color:var(--mut);">No installation notes have been added for this job yet.</div>{% endif %}
   {% if steps_html %}<div class="card"><h3>Important installation steps</h3><div class="steptxt">{{ steps_html|safe }}</div></div>{% endif %}
-  {% if drawing or fit_notes or job_files %}<div class="card"><h3>Drawings &amp; documents</h3>
-    {% if drawing %}<div class="frow"><div class="fn">📐 {{ drawing.name }}<small>Drawing</small></div><a href="{% url 'fitter_file' link.token 'doc' drawing.pk %}" target="_blank" rel="noopener">View</a><a class="dl" href="{% url 'fitter_file' link.token 'doc' drawing.pk %}?dl=1">Download</a></div>{% endif %}
+  {% if drawings or fit_notes or job_files %}<div class="card"><h3>Drawings &amp; documents</h3>
+    {% for drawing in drawings %}<div class="frow"><div class="fn">📐 {{ drawing.name }}<small>Drawing</small></div><a href="{% url 'fitter_file' link.token 'doc' drawing.pk %}" target="_blank" rel="noopener">View</a><a class="dl" href="{% url 'fitter_file' link.token 'doc' drawing.pk %}?dl=1">Download</a></div>{% endfor %}
     {% for n in fit_notes %}<div class="frow"><div class="fn">📄 {{ n.title }}<small>Fitting note</small></div><a href="{% url 'fitter_file' link.token 'note' n.pk %}" target="_blank" rel="noopener">View</a><a class="dl" href="{% url 'fitter_file' link.token 'note' n.pk %}?dl=1">Download</a></div>{% endfor %}
     {% for f in job_files %}<div class="frow"><div class="fn">📎 {{ f.title }}<small>Added for this job</small></div><a href="{% url 'fitter_file' link.token 'pfile' f.pk %}" target="_blank" rel="noopener">View</a><a class="dl" href="{% url 'fitter_file' link.token 'pfile' f.pk %}?dl=1">Download</a></div>{% endfor %}
   </div>{% endif %}

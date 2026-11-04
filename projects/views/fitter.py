@@ -147,20 +147,20 @@ def fitter_page(request, token):
         maps_q = f'{project.addr_line1}, {project.addr_postcode}'
     else:
         maps_q = ', '.join(addr)
-    from ..fitting import job_notes, latest_drawing, risk_docs, method_docs, rams_docs, safety_docs
+    from ..fitting import job_notes, drawing_docs, risk_docs, method_docs, rams_docs, safety_docs
     notes, _hidden = job_notes(project)
-    drawing = latest_drawing(project)
+    drawings = drawing_docs(project)
     return render(request, 'projects/fitter_page.html', {
         'link': link, 'project': project, 'ref': _ref(project), 'addr': addr, 'maps_q': maps_q,
         'inst': inst, 'tasks': (report.job_tasks if report and report.job_tasks else project.description),
         'contact': project.addr_fao, 'phone': project.addr_phone,
         'photo_ids': photos,
         'steps_html': project.install_steps,
-        'drawing': drawing, 'rams': safety_docs(project),
+        'drawings': drawings, 'rams': safety_docs(project),
         'risk_docs': risk_docs(project), 'method_docs': method_docs(project), 'old_rams': rams_docs(project),
         'access': (project.addr_access or '').strip(),
         'fit_notes': notes, 'job_files': list(project.fitting_files.all()),
-        'has_notes': bool(project.install_steps or drawing or notes or project.fitting_files.exists()),
+        'has_notes': bool(project.install_steps or drawings or notes or project.fitting_files.exists()),
     })
 
 
