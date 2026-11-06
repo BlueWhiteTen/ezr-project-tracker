@@ -7,7 +7,7 @@ from django.db.models import Q
 from django.contrib.auth.models import User
 
 from ..models import (
-    Project, ProjectLog, ProjectCost, ProjectCostLine, UprightAccessory,
+    Project, ProjectLog, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride,
     PurchaseOrder, Reminder, Notification, Product
 )
 
@@ -161,14 +161,69 @@ def require_feature(flag_name):
     return decorator
 
 
+BTB_FALLBACK_PER_FIXING = 0.10   # used only when Stock has no cost price for the bolt + nut
+
+
+def _kit_unit_cost(kit):
+    """Cost of ONE set of a fixing kit ({stock code: qty per set}), from Stock cost prices.
+    Returns (unit_cost, [codes with no cost price])."""
+    total, missing = 0.0, []
+    for code, per in kit.items():
+        pr = Product.objects.filter(code__iexact=code).first()
+        c = float(pr.cost_price) if pr else 0.0
+        if c <= 0:
+            missing.append(code)
+        total += c * per
+    return total, missing
+
+
+def cost_buying_parts(cost, lines=None):
+    """THE one calculation of a costing option's buying price. Everything that shows or
+    uses a buying/sell price (costing page, print, quotes, pro-forma, reports) calls this,
+    so the numbers can never disagree.
+
+    buying = cost lines + project accessories + fixings (wall, back-to-back, mobile base)
+    - Accessories: an active accessory with a custom qty is charged at that qty (ticked or not);
+      otherwise a ticked one is charged once per upright.
+    - Fixings: the same stock kits the picking list uses, at Stock cost price."""
+    from .picking import BACK_TO_BACK_KIT, MOBILE_BASE_KIT, WALL_FIXING_KIT
+    lines = list(lines) if lines is not None else list(cost.lines.all())
+    lines_total = sum(l.line_total for l in lines)
+    total_uprights = sum(int(float(l.quantity)) * 2 for l in lines if l.line_type == 'frame')
+
+    overrides = {o.accessory_id: o.override_qty for o in AccessoryOverride.objects.filter(cost=cost)}
+    selected = set(cost.accessories.values_list('id', flat=True))
+    acc_totals = {}
+    for acc in UprightAccessory.objects.filter(is_active=True):
+        qty = overrides.get(acc.id)
+        if qty is None:
+            qty = total_uprights if acc.id in selected else 0
+        acc_totals[acc.id] = round(float(acc.unit_price) * qty, 2)
+    acc_total = sum(acc_totals.values())
+
+    wall_unit, wall_missing = _kit_unit_cost(WALL_FIXING_KIT)
+    btb_unit, btb_missing = _kit_unit_cost(BACK_TO_BACK_KIT)
+    if btb_unit <= 0:
+        btb_unit, btb_missing = BTB_FALLBACK_PER_FIXING, []
+    mob_unit, mob_missing = _kit_unit_cost(MOBILE_BASE_KIT)
+    n_wall, n_btb, n_mob = int(cost.wall_fixings or 0), int(cost.back_to_back_fixings or 0), int(cost.mobile_base_sets or 0)
+    wall_total, btb_total, mob_total = round(wall_unit * n_wall, 2), round(btb_unit * n_btb, 2), round(mob_unit * n_mob, 2)
+    missing = []
+    for n, codes in ((n_wall, wall_missing), (n_btb, btb_missing), (n_mob, mob_missing)):
+        if n:
+            missing += [c for c in codes if c not in missing]
+    return {
+        'lines_total': round(lines_total, 2), 'acc_total': round(acc_total, 2), 'acc_totals': acc_totals,
+        'wall_total': wall_total, 'btb_total': btb_total, 'mob_total': mob_total,
+        'fixings_total': round(wall_total + btb_total + mob_total, 2),
+        'missing_prices': missing, 'total_uprights': total_uprights,
+        'buying_total': round(lines_total + acc_total + wall_total + btb_total + mob_total, 2),
+    }
+
+
 def _calc_sell_price(cost):
     """Read-only sell-price calculation from already-saved cost lines."""
-    lines = list(cost.lines.all())
-    buying_total = sum(l.line_total for l in lines)
-    total_uprights = sum(int(float(l.quantity)) * 2 for l in lines if l.line_type == 'frame')
-    if hasattr(cost, 'accessories'):
-        for acc in cost.accessories.all():
-            buying_total += float(acc.unit_price) * total_uprights
+    buying_total = cost_buying_parts(cost)['buying_total']
     markup_amount = buying_total * float(cost.markup) / 100
     sell_price = round(buying_total + markup_amount + float(cost.labour) + float(cost.delivery), 2)
     return sell_price
@@ -205,12 +260,7 @@ def _calc_cost_breakdown(cost):
     reporting (Sales Summary). Margin = markup only — labour and delivery
     are treated as pass-through costs, not profit, matching how the costing
     screen itself presents them."""
-    lines = list(cost.lines.all())
-    buying_total = sum(l.line_total for l in lines)
-    total_uprights = sum(int(float(l.quantity)) * 2 for l in lines if l.line_type == 'frame')
-    if hasattr(cost, 'accessories'):
-        for acc in cost.accessories.all():
-            buying_total += float(acc.unit_price) * total_uprights
+    buying_total = cost_buying_parts(cost)['buying_total']
     markup_amount = round(buying_total * float(cost.markup) / 100, 2)
     labour = float(cost.labour)
     delivery = float(cost.delivery)

@@ -299,7 +299,7 @@ tr.repriced{background:rgba(245,158,11,.10);}
         </div>
         <span style="flex:1;"></span>
         <span id="acc-total-{{ acc.id }}" style="font-size:.85rem;font-weight:600;font-family:var(--fm);color:{% if acc.checked or acc.override_qty %}var(--acc){% else %}var(--mut){% endif %};">
-          {% if acc.checked or acc.override_qty %}£{{ acc.total_cost }}{% else %}—{% endif %}
+          {% if acc.checked or acc.override_qty %}£{{ acc.total_cost|floatformat:2 }}{% else %}—{% endif %}
         </span>
       </div>
       {% empty %}
@@ -312,6 +312,7 @@ tr.repriced{background:rgba(245,158,11,.10);}
             class="form-input" style="width:80px;padding:3px 7px;font-size:.82rem;"
             onblur="saveWallFixings(this.value)">
           <span style="font-size:.78rem;color:var(--mut);">M6 washer + brown wall plug + 3" screw per fixing</span>
+          <span style="flex:1;"></span><span id="fix-total-wall" style="font-size:.85rem;font-weight:600;font-family:var(--fm);color:{% if fix.wall_total %}var(--acc){% else %}var(--mut){% endif %};">{% if fix.wall_total %}£{{ fix.wall_total|floatformat:2 }}{% else %}—{% endif %}</span>
         </div>
         <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
           <label style="font-size:.88rem;color:var(--txt2);min-width:210px;">Back-to-back fixings required:</label>
@@ -319,6 +320,7 @@ tr.repriced{background:rgba(245,158,11,.10);}
             class="form-input" style="width:80px;padding:3px 7px;font-size:.82rem;"
             onblur="saveExtras()">
           <span style="font-size:.78rem;color:var(--mut);">M8x50 bolt + M8 nut per fixing (~£0.10 each)</span>
+          <span style="flex:1;"></span><span id="fix-total-btb" style="font-size:.85rem;font-weight:600;font-family:var(--fm);color:{% if fix.btb_total %}var(--acc){% else %}var(--mut){% endif %};">{% if fix.btb_total %}£{{ fix.btb_total|floatformat:2 }}{% else %}—{% endif %}</span>
         </div>
         <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
           <label style="font-size:.88rem;color:var(--txt2);min-width:210px;">Mobile base upright fixing sets:</label>
@@ -326,9 +328,10 @@ tr.repriced{background:rgba(245,158,11,.10);}
             class="form-input" style="width:80px;padding:3px 7px;font-size:.82rem;"
             onblur="saveExtras()">
           <span style="font-size:.78rem;color:var(--mut);">Adds mobile base fixing kit per upright. Subtracts equivalent SM foot fixings.</span>
+          <span style="flex:1;"></span><span id="fix-total-mob" style="font-size:.85rem;font-weight:600;font-family:var(--fm);color:{% if fix.mob_total %}var(--acc){% else %}var(--mut){% endif %};">{% if fix.mob_total %}£{{ fix.mob_total|floatformat:2 }}{% else %}—{% endif %}</span>
         </div>
       </div>
-      <div style="font-size:.74rem;color:var(--mut);padding-top:.4rem;margin-top:.1rem;">Costs are calculated per upright and included in the buying total.</div>
+      <div style="font-size:.74rem;color:var(--mut);padding-top:.4rem;margin-top:.1rem;">Accessory and fixing costs are included in the buying total.{% if fix.missing_prices %} <span style="color:var(--red);">No cost price in Stock for: {{ fix.missing_prices|join:", " }} (counted as £0).</span>{% endif %}</div>
     </div>
   </div>
 
@@ -1446,6 +1449,13 @@ function recalcFromDOM(){
   // Add accessory totals — count any accessory showing a £ value
   // (covers both "all uprights" checked AND custom override qty where checkbox is unchecked)
   document.querySelectorAll('[id^="acc-total-"]').forEach(tot=>{
+    const txt = tot.textContent.trim();
+    if(txt.startsWith('£')){
+      buying += parseFloat(txt.replace('£',''))||0;
+    }
+  });
+  // Fixings (wall / back-to-back / mobile base) - shown beside each count
+  document.querySelectorAll('[id^="fix-total-"]').forEach(tot=>{
     const txt = tot.textContent.trim();
     if(txt.startsWith('£')){
       buying += parseFloat(txt.replace('£',''))||0;

@@ -15,7 +15,7 @@ import json
 
 from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence
 from ..forms import RegisterForm, ProjectForm
-from .utils import _calc_cost_breakdown, _calc_cost_flags, inboard_rail_code
+from .utils import _calc_cost_breakdown, _calc_cost_flags, inboard_rail_code, cost_buying_parts
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -196,18 +196,10 @@ def project_cost(request, pk, cost_pk=None):
             price_changes += 1
     has_unsaved = _draft_differs(real_cost, cost)
 
-    buying_total = sum(l.line_total for l in lines)
+    parts = cost_buying_parts(cost, lines)
+    buying_total = parts['buying_total']
+    total_uprights = parts['total_uprights']
 
-    # Count total uprights from frame lines (must be before accessory calc)
-    total_uprights = 0
-    for line in lines:
-        if line.line_type == 'frame':
-            total_uprights += int(float(line.quantity)) * 2
-
-    # Add selected accessory costs
-    if hasattr(cost, 'accessories'):
-        for acc in cost.accessories.all():
-            buying_total += float(acc.unit_price) * total_uprights
     markup_amount = buying_total * float(cost.markup) / 100
     sell_price = buying_total + markup_amount + float(cost.labour) + float(cost.delivery)
     # Margin on goods only — exclude labour (installation) and delivery
@@ -228,7 +220,7 @@ def project_cost(request, pk, cost_pk=None):
             'unit_price': float(acc.unit_price),
             'checked': acc.id in selected_acc_ids,
             'override_qty': override,
-            'total_cost': round(float(acc.unit_price) * eff_qty, 2) if acc.id in selected_acc_ids else 0,
+            'total_cost': parts['acc_totals'].get(acc.id, 0),
         })
 
     # Build accessory list with upright counts for picking reference
@@ -319,6 +311,7 @@ def project_cost(request, pk, cost_pk=None):
         'picking_ref': picking_ref_enriched,
         'accessories': acc_data,
         'total_uprights': total_uprights,
+        'fix': parts,
         'buying_total': round(buying_total, 2),
         'markup_amount': round(markup_amount, 2),
         'sell_price': round(sell_price, 2),
@@ -994,18 +987,8 @@ def project_cost_print(request, pk):
     if not cost:
         cost, _ = ProjectCost.objects.get_or_create(project=project)
     lines = cost.lines.select_related('product').all()
-    buying_total = sum(l.line_total for l in lines)
-    # Project Accessories (floor fixings etc.) are part of the price on the
-    # costing screen, so include them here too. Same rule as the screen: a
-    # custom qty counts as-is, otherwise a ticked accessory counts once per upright.
-    total_uprights = sum(int(float(l.quantity)) * 2 for l in lines if l.line_type == 'frame')
-    overrides = {o.accessory_id: o.override_qty for o in AccessoryOverride.objects.filter(cost=cost)}
-    selected_ids = set(cost.accessories.values_list('id', flat=True))
-    for acc in UprightAccessory.objects.filter(Q(is_active=True) | Q(pk__in=selected_ids)):
-        qty = overrides.get(acc.id)
-        if qty is None:
-            qty = total_uprights if acc.id in selected_ids else 0
-        buying_total += float(acc.unit_price) * qty
+    # Same calculation as the costing page (lines + accessories + fixings).
+    buying_total = cost_buying_parts(cost, lines)['buying_total']
     markup_amount = buying_total * float(cost.markup) / 100
     sell_price = buying_total + markup_amount + float(cost.labour) + float(cost.delivery)
     goods_sell = buying_total + markup_amount

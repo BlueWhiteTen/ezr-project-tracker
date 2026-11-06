@@ -692,6 +692,78 @@ async function deleteTodo(pk){
   }
 }
 
+
+// ── Live sync: pick up items shared with you, ticks and edits without a manual refresh ──
+function syncBuildRow(d){
+  const li = document.createElement('li');
+  li.id = `todo-row-${d.id}`;
+  li.dataset.text = d.text;
+  li.style.cssText = 'display:flex;align-items:flex-start;gap:.5rem;';
+  const meta = d.is_copy ? '<div class="todo-meta"></div>' : `<div class="todo-meta" onclick="pickDue(${d.id})" title="Click to set or change the do-by date"></div>`;
+  const extra = d.is_copy ? '<div class="todo-from"></div>' : '<div class="todo-shared" style="display:none"></div>';
+  const btns = d.is_copy ? '' : `<button onclick="shareTodo(${d.id}, this)" title="Share with colleagues" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:.85rem;padding:.35rem .3rem;line-height:1;">👥</button><button onclick="editTodo(${d.id})" title="Edit" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:.85rem;padding:.35rem .3rem;line-height:1;">✎</button><button onclick="deleteTodo(${d.id})" title="Delete" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:.9rem;padding:.35rem .3rem;line-height:1;">✕</button>`;
+  li.innerHTML = `<input type="checkbox" class="todo-check" data-pk="${d.id}" style="margin-top:.4rem;cursor:pointer;flex-shrink:0;"><div class="todo-body" style="flex:1;min-width:0;"><span class="home-row todo-text" style="cursor:default;"></span>${meta}${extra}</div>${btns}`;
+  li.querySelector('.todo-check').addEventListener('change', (e) => toggleTodo(d.id, e.target));
+  return li;
+}
+function syncUpdateRow(row, d){
+  const cb = row.querySelector('.todo-check');
+  if(cb && cb.checked !== d.is_done) cb.checked = d.is_done;
+  const span = row.querySelector('.todo-text');
+  if(span){
+    if(span.textContent !== d.text) span.textContent = d.text;
+    row.dataset.text = d.text;
+    span.style.textDecoration = d.is_done ? 'line-through' : 'none';
+    span.style.color = d.is_done ? 'var(--mut2)' : '';
+  }
+  applyMeta(row, d);
+  if(d.is_copy){
+    const f = row.querySelector('.todo-from');
+    if(f) f.textContent = '↪ from ' + d.from_name;
+  } else {
+    renderShare(row, d.share_info);
+  }
+}
+function applySync(items){
+  const list = document.getElementById('todo-list');
+  if(!list) return;
+  const keep = new Set(items.map(d => 'todo-row-' + d.id));
+  list.querySelectorAll('li[id^="todo-row-"]').forEach(li => { if(!keep.has(li.id)) li.remove(); });
+  const empty = document.getElementById('todo-empty');
+  if(items.length){ if(empty) empty.remove(); }
+  else if(!empty){
+    const e = document.createElement('div');
+    e.className = 'home-empty'; e.id = 'todo-empty'; e.textContent = 'Nothing on your list yet.';
+    list.appendChild(e);
+  }
+  let prev = null;
+  items.forEach(d => {
+    let row = document.getElementById('todo-row-' + d.id);
+    if(!row){
+      row = syncBuildRow(d);
+      if(prev) prev.after(row); else list.prepend(row);
+    }
+    syncUpdateRow(row, d);
+    prev = row;
+  });
+}
+let _syncBusy = false;
+async function syncTodos(){
+  if(_syncBusy || document.hidden) return;
+  // don't disturb something being typed / picked
+  if(document.querySelector('.todo-edit-input, .todo-due-input') || document.getElementById('share-pop')) return;
+  const ti = document.getElementById('todo-input');
+  if(ti && document.activeElement === ti && ti.value) return;
+  _syncBusy = true;
+  try{
+    const r = await fetch('/todo/sync/', {cache:'no-store'});
+    if(r.ok){ const d = await r.json(); if(d.ok) applySync(d.items); }
+  }catch(e){} finally{ _syncBusy = false; }
+}
+setInterval(syncTodos, 8000);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) syncTodos(); });
+window.addEventListener('focus', syncTodos);
+
 document.querySelectorAll('.todo-check').forEach(cb => {
   cb.addEventListener('change', () => toggleTodo(cb.dataset.pk, cb));
 });

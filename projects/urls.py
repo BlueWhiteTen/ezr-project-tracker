@@ -20,6 +20,7 @@ urlpatterns = [
     path('home/layout/',                  views.home_layout_save,      name='home_layout_save'),
     path('home/layout/reset/',            views.home_layout_reset,     name='home_layout_reset'),
     path('todo-widget/',                  views.todo_widget,            name='todo_widget'),
+    path('todo/sync/',                    views.todo_sync,              name='todo_sync'),
     path('todo/add/',                     views.todo_add,               name='todo_add'),
     path('todo/<int:pk>/toggle/',         views.todo_toggle,            name='todo_toggle'),
     path('todo/<int:pk>/edit/',           views.todo_edit,              name='todo_edit'),

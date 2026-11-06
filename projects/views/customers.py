@@ -1,6 +1,7 @@
 import math
 import random
 from django.utils import timezone
+from .utils import cost_buying_parts
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -49,10 +50,7 @@ def customer_history(request, pk):
     for p in projects:
         if hasattr(p, 'cost'):
             c = p.cost
-            lines_total = sum(l.line_total for l in c.lines.all())
-            uprights = sum(int(float(l.quantity))*2 for l in c.lines.all() if l.line_type=='frame')
-            for acc in c.accessories.all():
-                lines_total += float(acc.unit_price) * uprights
+            lines_total = cost_buying_parts(c)['buying_total']
             markup_amt = lines_total * float(c.markup) / 100
             sell = lines_total + markup_amt + float(c.labour) + float(c.delivery)
             total_value += sell

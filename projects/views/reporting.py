@@ -176,6 +176,26 @@ def todo_widget(request):
 
 
 @login_required
+def todo_sync(request):
+    """The current to-do list for the polling the pages do, so shared items, ticks and edits
+    show up without a manual refresh."""
+    out = []
+    for t in _todo_items(request.user):
+        info = t.due_info
+        out.append({
+            'id': t.pk, 'text': t.text, 'is_done': t.is_done,
+            'added': t.created_at.astimezone(timezone.get_current_timezone()).strftime('%-d %b'),
+            'due': t.due_date.isoformat() if t.due_date else None,
+            'due_text': t.due_date.strftime('%a %-d %b') if t.due_date else '',
+            'level': info['level'], 'label': info['label'],
+            'is_copy': t.is_copy, 'from_name': t.from_name, 'share_info': t.share_info,
+        })
+    resp = JsonResponse({'ok': True, 'items': out})
+    resp['Cache-Control'] = 'no-store'
+    return resp
+
+
+@login_required
 @require_POST
 def todo_add(request):
     data = json.loads(request.body)

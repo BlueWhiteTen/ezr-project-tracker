@@ -15,7 +15,7 @@ import json
 
 from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, QuoteShareLink
 from ..forms import RegisterForm, ProjectForm
-from .utils import (_calc_sell_price, require_feature, _client_ip)
+from .utils import (_calc_sell_price, require_feature, _client_ip, cost_buying_parts)
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -44,10 +44,7 @@ def customer_quote(request, pk, cost_pk=None):
         if not cost:
             cost, _ = ProjectCost.objects.get_or_create(project=project)
     lines = cost.lines.select_related('product').all()
-    buying_total = sum(l.line_total for l in lines)
-    uprights = sum(int(float(l.quantity))*2 for l in lines if l.line_type=='frame')
-    for acc in cost.accessories.all():
-        buying_total += float(acc.unit_price) * uprights
+    buying_total = cost_buying_parts(cost, lines)['buying_total']
     markup_amount = buying_total * float(cost.markup) / 100
     sell_price = round(buying_total + markup_amount + float(cost.labour) + float(cost.delivery), 2)
 
@@ -468,10 +465,7 @@ def proforma_invoice(request, pk, cost_pk=None):
             messages.error(request, 'Please approve a costing option before creating a Pro-Forma invoice.')
             return redirect('project_edit', pk=pk)
     lines = cost.lines.select_related('product').all()
-    buying_total = sum(l.line_total for l in lines)
-    uprights = sum(int(float(l.quantity))*2 for l in lines if l.line_type=='frame')
-    for acc in cost.accessories.all():
-        buying_total += float(acc.unit_price) * uprights
+    buying_total = cost_buying_parts(cost, lines)['buying_total']
     markup_amount = buying_total * float(cost.markup) / 100
     sell_price = round(buying_total + markup_amount + float(cost.labour) + float(cost.delivery), 2)
 
