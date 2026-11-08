@@ -994,7 +994,7 @@ document.addEventListener('DOMContentLoaded', function(){
   initMultiRows('inhang', 5);
   initMultiRows('outhang', 5);
   for(let i=0;i<5;i++) addLsRow('ls_frame');
-  addLsRow('ls_shelf'); addLsRow('ls_shelf');
+  for(let i=0;i<5;i++) addLsRow('ls_shelf');
   // Restore product line (trimline/longspan) after reload
   const savedProduct = sessionStorage.getItem('cost-product-{{ project.pk }}');
   if(savedProduct === 'longspan'){
