@@ -272,6 +272,12 @@ tr.repriced{background:rgba(245,158,11,.10);}
     </div>
   </div>
 
+  <!-- PRODUCT LINE TABS (above the accessories so those sit under Trimline) -->
+  <div style="display:flex;gap:6px;margin-bottom:1rem;">
+    <button class="prod-toggle active" id="pt-trimline" onclick="showProduct('trimline')" style="flex:1;padding:8px;border:1px solid var(--acc-bdr);background:var(--acc-bg);color:var(--acc);border-radius:var(--rad);font-weight:700;cursor:pointer;">Trimline</button>
+    <button class="prod-toggle" id="pt-longspan" onclick="showProduct('longspan')" style="flex:1;padding:8px;border:1px solid var(--bdr);background:none;color:var(--mut);border-radius:var(--rad);font-weight:700;cursor:pointer;">Longspan</button>
+  </div>
+
   <!-- PROJECT ACCESSORIES (Trimline only) -->
   <div class="cost-card" id="project-accessories-card" style="margin-bottom:1.2rem;">
     <div class="cost-card-head" style="display:flex;align-items:center;justify-content:space-between;">
@@ -339,12 +345,6 @@ tr.repriced{background:rgba(245,158,11,.10);}
   <div class="cost-card">
     <div class="cost-card-head">Add Line</div>
     <div class="cost-card-body">
-      <!-- Product line toggle -->
-      <div style="display:flex;gap:6px;margin-bottom:1rem;border-bottom:2px solid var(--bdr);padding-bottom:.75rem;">
-        <button class="prod-toggle active" id="pt-trimline" onclick="showProduct('trimline')" style="flex:1;padding:8px;border:1px solid var(--acc-bdr);background:var(--acc-bg);color:var(--acc);border-radius:var(--rad);font-weight:700;cursor:pointer;">Trimline</button>
-        <button class="prod-toggle" id="pt-longspan" onclick="showProduct('longspan')" style="flex:1;padding:8px;border:1px solid var(--bdr);background:none;color:var(--mut);border-radius:var(--rad);font-weight:700;cursor:pointer;">Longspan</button>
-      </div>
-
       <!-- TRIMLINE tabs -->
       <div id="trimline-tabs">
       <div class="add-tabs">
@@ -590,6 +590,7 @@ tr.repriced{background:rgba(245,158,11,.10);}
 
       <!-- ═══ LS FRAME (multi-row) ═══ -->
       <div class="add-panel" id="panel-ls_frame">
+        {% if ls_missing %}<div style="font-size:.78rem;color:var(--red);margin-bottom:.5rem;">No cost price in Stock for: {{ ls_missing|join:", " }} (counted as £0 in the Longspan frames).</div>{% endif %}
         <div id="ls_frame-rows"></div>
         <div style="display:flex;align-items:center;gap:1rem;margin-top:.5rem;">
           <button class="btn btn-ghost btn-sm" onclick="addLsRow('ls_frame')">+ Add row</button>
@@ -992,7 +993,7 @@ document.addEventListener('DOMContentLoaded', function(){
   initMultiRows('beams', 5);
   initMultiRows('inhang', 5);
   initMultiRows('outhang', 5);
-  addLsRow('ls_frame'); addLsRow('ls_frame');
+  for(let i=0;i<5;i++) addLsRow('ls_frame');
   addLsRow('ls_shelf'); addLsRow('ls_shelf');
   // Restore product line (trimline/longspan) after reload
   const savedProduct = sessionStorage.getItem('cost-product-{{ project.pk }}');

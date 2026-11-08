@@ -276,16 +276,27 @@ def ls_component_prices():
 
 
 
-def ls_calc_frame_price(height, depth):
-    """Frame price = sum of its exploded component prices."""
-    from ..longspan_data import ls_explode_frame, LS_FRAME_PRICES
-    comp = ls_component_prices()
-    if not comp:
-        return LS_FRAME_PRICES.get(height, {}).get(depth, 0)
-    total = 0
+def ls_frame_cost(height, depth):
+    """Longspan frame cost built only from Stock cost prices (Product.cost_price):
+    2 posts + horizontals + diagonals + feet + spacers + M8 bolt sets, per the frame
+    components drawing. Returns (price, missing_codes); a component with no Stock
+    cost counts as 0 and is listed in missing_codes."""
+    from ..longspan_data import ls_explode_frame
+    from .utils import stock_lookup_by_code, resolve_stock_item
+    stock_by_code = stock_lookup_by_code()
+    total, missing = 0.0, []
     for code, qty in ls_explode_frame(height, depth, 1).items():
-        total += comp.get(code, 0) * qty
-    return round(total, 2)
+        item = resolve_stock_item(code, stock_by_code)
+        cost = float(item.cost_price or 0) if item else 0.0
+        if cost <= 0 and code not in missing:
+            missing.append(code)
+        total += cost * qty
+    return round(total, 2), missing
+
+
+def ls_calc_frame_price(height, depth):
+    """Frame price = sum of its components at Stock cost price."""
+    return ls_frame_cost(height, depth)[0]
 
 
 

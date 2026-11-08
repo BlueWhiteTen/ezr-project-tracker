@@ -108,7 +108,7 @@ from .pdf import (
 )
 from .price_list import (
     price_list, price_list_update, _seed_price_list,
-    ls_component_prices, ls_calc_frame_price, ls_calc_shelf_price,
+    ls_component_prices, ls_frame_cost, ls_calc_frame_price, ls_calc_shelf_price,
     ls_calc_trolley_price,
 )
 

@@ -299,7 +299,21 @@ def project_cost(request, pk, cost_pk=None):
         })
     current_flags = next((row['flags'] for row in cost_comparison if row['pk'] == real_cost.pk), [])
 
+    # Longspan frame components with no cost in Stock (priced at 0)
+    from .price_list import ls_frame_cost
+    ls_missing = []
+    for ln in lines:
+        if ln.line_type == 'ls_frame':
+            try:
+                pp = [x.strip() for x in ln.size.replace('"', '').split('x')]
+                for code in ls_frame_cost(int(pp[1]), int(pp[2]))[1]:
+                    if code not in ls_missing:
+                        ls_missing.append(code)
+            except (ValueError, IndexError):
+                pass
+
     return render(request, 'projects/project_cost.html', {
+        'ls_missing': ls_missing,
         'project': project, 'cost': cost, 'lines': lines,
         'real_cost': real_cost, 'cur_pk': real_cost.pk,
         'price_changes': price_changes, 'has_unsaved': has_unsaved,
