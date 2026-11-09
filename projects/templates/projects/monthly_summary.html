@@ -15,7 +15,7 @@
 .bar-group{flex:1;display:flex;flex-direction:column;gap:3px;}
 .bar-track{height:14px;background:var(--surf2);border-radius:4px;overflow:hidden;}
 .bar-fill{height:100%;border-radius:4px;transition:width .4s ease;}
-.bar-del{background:var(--acc);}
+.bar-del{background:var(--amb);}
 .bar-inst{background:var(--grn);}
 .bar-comp{background:#6366f1;}
 .bar-nums{display:flex;gap:8px;font-size:.72rem;color:var(--mut);}
@@ -59,7 +59,7 @@ table.ps-table th.num{text-align:right;}
 <div class="summary-grid">
   <div class="summary-stat">
     <div class="summary-stat-l">Total delivered</div>
-    <div class="summary-stat-v" style="color:var(--acc)">{{ total_del }}</div>
+    <div class="summary-stat-v" style="color:var(--amb)">{{ total_del }}</div>
   </div>
   <div class="summary-stat">
     <div class="summary-stat-l">Total installed</div>
@@ -74,7 +74,7 @@ table.ps-table th.num{text-align:right;}
 <div class="chart-wrap">
   <div class="chart-title">Jobs per month</div>
   <div class="legend">
-    <div class="leg-item"><div class="leg-dot" style="background:var(--acc)"></div>Delivered</div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--amb)"></div>Delivered</div>
     <div class="leg-item"><div class="leg-dot" style="background:var(--grn)"></div>Installed</div>
     <div class="leg-item"><div class="leg-dot" style="background:#6366f1"></div>Completed</div>
   </div>
@@ -87,7 +87,7 @@ table.ps-table th.num{text-align:right;}
       <div class="bar-track"><div class="bar-fill bar-comp" style="width:{% widthratio m.completed 20 100 %}%"></div></div>
     </div>
     <div class="bar-nums">
-      <div class="bar-num"><div class="bar-dot" style="background:var(--acc)"></div>{{ m.delivered }}</div>
+      <div class="bar-num"><div class="bar-dot" style="background:var(--amb)"></div>{{ m.delivered }}</div>
       <div class="bar-num"><div class="bar-dot" style="background:var(--grn)"></div>{{ m.installed }}</div>
       <div class="bar-num"><div class="bar-dot" style="background:#6366f1"></div>{{ m.completed }}</div>
     </div>
