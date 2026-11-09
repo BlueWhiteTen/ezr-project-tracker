@@ -59,6 +59,15 @@ def project_cost_refresh_prices(request, pk, cost_pk):
                 line.unit_cost = calc_shelf_price(stype, w, d, line.melamine, chipboard, melamine_p, chip18, no_deck=line.no_deck)
                 line.save()
                 updated += 1
+        elif line.line_type == 'inhang':
+            # Description: Inboard Hanging 48" x 18"
+            try:
+                parts = line.description.replace('"', '').split('x')
+                line.unit_cost = calc_in_hang_price(parts[0].split()[-1], parts[-1].strip().split()[0])
+                line.save()
+                updated += 1
+            except (ValueError, IndexError):
+                pass
         elif line.line_type == 'ls_frame':
             # Real format: "lsframe x H x D x galv" (4 parts)
             parts = [p.strip() for p in line.size.replace('"', '').split('x')]
@@ -299,6 +308,18 @@ def project_cost(request, pk, cost_pk=None):
         })
     current_flags = next((row['flags'] for row in cost_comparison if row['pk'] == real_cost.pk), [])
 
+    # Inboard hanging parts with no cost in Stock (priced at 0)
+    inhang_missing = []
+    for ln in lines:
+        if ln.line_type == 'inhang':
+            try:
+                pp = ln.description.replace('"', '').split('x')
+                for code in inhang_cost(pp[0].split()[-1], pp[-1].strip().split()[0])[1]:
+                    if code not in inhang_missing:
+                        inhang_missing.append(code)
+            except (ValueError, IndexError):
+                pass
+
     # Longspan frame components with no cost in Stock (priced at 0)
     from .price_list import ls_frame_cost
     ls_missing = []
@@ -314,6 +335,7 @@ def project_cost(request, pk, cost_pk=None):
 
     return render(request, 'projects/project_cost.html', {
         'ls_missing': ls_missing,
+        'inhang_missing': inhang_missing,
         'project': project, 'cost': cost, 'lines': lines,
         'real_cost': real_cost, 'cur_pk': real_cost.pk,
         'price_changes': price_changes, 'has_unsaved': has_unsaved,
@@ -1327,10 +1349,32 @@ IN_HANG_FOOT   = 1.5
 
 
 
+INHANG_TUBE = '25MMFLOCOATTUBE1MM'
+
+
+def inhang_cost(width, depth):
+    """Inboard hanging set cost from Stock cost prices: 2 rail supports (HRS code for the
+    depth) + 1 tube (2 tubes for 30" and 36" depths), matching the picking list. No foot.
+    Returns (price, missing_codes); a part with no Stock cost counts as 0."""
+    from .utils import stock_lookup_by_code, resolve_stock_item, inboard_rail_code
+    try:
+        depth = str(int(float(depth)))
+    except (TypeError, ValueError):
+        return 0.0, []
+    stock_by_code = stock_lookup_by_code()
+    parts = [(inboard_rail_code(depth), 2), (INHANG_TUBE, 2 if depth in ('30', '36') else 1)]
+    total, missing = 0.0, []
+    for code, n in parts:
+        item = resolve_stock_item(code, stock_by_code)
+        cost = float(item.cost_price or 0) if item else 0.0
+        if cost <= 0 and code not in missing:
+            missing.append(code)
+        total += cost * n
+    return round(total, 2), missing
+
+
 def calc_in_hang_price(width, depth):
-    rail = IN_HANG_RAILS.get(depth, 0)
-    feet = 2 if depth == '36' else 1
-    return round(2*rail + feet*IN_HANG_FOOT, 2)
+    return inhang_cost(width, depth)[0]
 
 # Outboard hanging
 OUT_HANG = {'915mm': 2.93, '1000mm': 2.93, '1220mm': 2.93}

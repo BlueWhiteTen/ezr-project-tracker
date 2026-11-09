@@ -110,10 +110,8 @@
 
   <!-- My reminders -->
   <div class="home-tile hg-item" data-tile="reminders" data-title="Reminders" style="max-height:520px;">
-    <div class="home-tile-title">⏰ Reminders{% if my_reminders %}<span class="home-badge">{{ my_reminders|length }}</span>{% endif %}</div>
-    {% if my_reminders %}
-    <ul class="home-list" style="flex:1;overflow-y:auto;min-height:0;">
-      {% now "U" as now_ts %}
+    <div class="home-tile-title">⏰ Reminders<span class="home-badge" id="rem-badge"{% if not my_reminders_total %} style="display:none"{% endif %}>{% if my_reminders_total > 10 %}10+{% else %}{{ my_reminders_total }}{% endif %}</span></div>
+    <ul class="home-list" id="rem-list" style="flex:1;overflow-y:auto;min-height:0;{% if not my_reminders %}display:none;{% endif %}">
       {% for r in my_reminders %}
       <li id="reminder-row-{{ r.pk }}" style="display:flex;align-items:flex-start;gap:.5rem;">
         <a href="{% url 'project_edit' r.project.pk %}" class="home-row" style="flex:1;{% if r.sent %}color:var(--acc);font-weight:500;{% else %}opacity:.85;{% endif %}">
@@ -126,9 +124,7 @@
       </li>
       {% endfor %}
     </ul>
-    {% else %}
-    <div class="home-empty">No reminders — you're all caught up.</div>
-    {% endif %}
+    <div class="home-empty" id="rem-empty"{% if my_reminders %} style="display:none"{% endif %}>No reminders — you're all caught up.</div>
   </div>
 
   <!-- Messages -->
@@ -465,34 +461,64 @@ const homeChat = (function(){
   }, 4000);
 })();
 
+function renderReminders(d){
+  const list = document.getElementById('rem-list');
+  const empty = document.getElementById('rem-empty');
+  const badge = document.getElementById('rem-badge');
+  if(!list || !d || !d.ok) return;
+  const ids = new Set(d.items.map(x => 'reminder-row-' + x.id));
+  list.querySelectorAll('li[id^="reminder-row-"]').forEach(li => { if(!ids.has(li.id)) li.remove(); });
+  let prev = null;
+  d.items.forEach(x => {
+    let li = document.getElementById('reminder-row-' + x.id);
+    if(!li){
+      li = document.createElement('li');
+      li.id = 'reminder-row-' + x.id;
+      li.style.cssText = 'display:flex;align-items:flex-start;gap:.5rem;';
+      li.innerHTML = `<a class="home-row" style="flex:1;"><span class="rem-msg"></span><div class="home-row-meta"></div></a>
+        <button onclick="dismissReminder(${x.id})" title="Dismiss" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:.9rem;padding:.35rem .3rem;line-height:1;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--mut)'">✕</button>`;
+      if(prev) prev.after(li); else list.prepend(li);
+    }
+    const a = li.querySelector('a');
+    if(!a.querySelector('.rem-msg')) a.innerHTML = '<span class="rem-msg"></span><div class="home-row-meta"></div>';
+    a.href = x.url;
+    a.style.cssText = 'flex:1;' + (x.sent ? 'color:var(--acc);font-weight:500;' : 'opacity:.85;');
+    li.querySelector('.rem-msg').textContent = x.message;
+    li.querySelector('.home-row-meta').textContent = (x.sent ? '⚠ Due ' : '') + x.when + ' · ' + x.project;
+    prev = li;
+  });
+  list.style.display = d.items.length ? '' : 'none';
+  if(empty) empty.style.display = d.items.length ? 'none' : '';
+  if(badge){
+    badge.style.display = d.total ? '' : 'none';
+    badge.textContent = d.total > d.max ? d.max + '+' : String(d.total);
+  }
+}
+let _remBusy = false;
+async function syncReminders(){
+  if(_remBusy || document.hidden) return;
+  _remBusy = true;
+  try{
+    const r = await fetch('/reminders/state/', {cache:'no-store'});
+    if(r.ok) renderReminders(await r.json());
+  }catch(e){} finally{ _remBusy = false; }
+}
 async function dismissReminder(pk){
   const row = document.getElementById('reminder-row-' + pk);
   if(row) row.style.opacity = '.4';
-  const r = await fetch(`/reminder/${pk}/dismiss/`, {
-    method: 'POST',
-    headers: {'X-CSRFToken': '{{ csrf_token }}'},
-  });
-  const d = await r.json();
-  if(d.ok && row){
-    row.style.transition = 'opacity .2s';
-    row.style.opacity = '0';
-    setTimeout(()=>{
-      row.remove();
-      // If no rows left, show the empty state
-      const list = document.querySelector('.home-list');
-      if(list && !list.querySelector('li')){
-        list.closest('.home-tile').querySelector('.home-list').style.display = 'none';
-        const empty = document.createElement('div');
-        empty.className = 'home-empty';
-        empty.textContent = "No reminders — you're all caught up.";
-        list.closest('.home-tile').appendChild(empty);
-      }
-    }, 200);
-  } else if(!d.ok) {
-    if(row) row.style.opacity = '1';
-  }
+  try{
+    const r = await fetch(`/reminder/${pk}/dismiss/`, {
+      method: 'POST',
+      headers: {'X-CSRFToken': '{{ csrf_token }}'},
+    });
+    const d = await r.json();
+    if(d.ok){ if(row) row.remove(); await syncReminders(); }
+    else if(row) row.style.opacity = '1';
+  }catch(e){ if(row) row.style.opacity = '1'; }
 }
-
+setInterval(syncReminders, 15000);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) syncReminders(); });
+window.addEventListener('focus', syncReminders);
 
 const CSRF_TODO = '{{ csrf_token }}';
 

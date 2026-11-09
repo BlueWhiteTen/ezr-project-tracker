@@ -90,6 +90,31 @@ def reminder_dismiss(request, pk):
 
 
 
+REMINDER_TILE_MAX = 10
+
+
+@login_required
+def reminders_state(request):
+    """The home-page reminder tile, for live refresh: the first 10 due reminders plus the
+    true total (the badge shows '10+' when there are more than 10)."""
+    from django.urls import reverse
+    now = timezone.now()
+    qs = Reminder.objects.filter(
+        notify_user=request.user, dismissed=False, remind_at__lte=now, project__deleted_at__isnull=True)
+    total = qs.count()
+    items = []
+    for r in qs.select_related('project').order_by('remind_at')[:REMINDER_TILE_MAX]:
+        items.append({
+            'id': r.pk, 'message': r.message, 'sent': r.sent,
+            'when': timezone.localtime(r.remind_at).strftime('%d %b, %H:%M'),
+            'project': r.project.project_name,
+            'url': reverse('project_edit', args=[r.project.pk]),
+        })
+    resp = JsonResponse({'ok': True, 'total': total, 'items': items, 'max': REMINDER_TILE_MAX})
+    resp['Cache-Control'] = 'no-store'
+    return resp
+
+
 @login_required
 def reminders_list(request, pk):
     project = get_object_or_404(Project, pk=pk)

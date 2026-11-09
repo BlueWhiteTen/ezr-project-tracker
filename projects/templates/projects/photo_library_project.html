@@ -47,7 +47,7 @@
     <img src="{% url 'report_photo_thumb' p.pk %}?s=500" data-full="{% url 'report_photo_file' p.pk %}" loading="lazy" alt="{{ p.caption }}" onclick="openLb(this)">
     <div class="gal-name" title="{{ p.file_original_name }}">{{ p.file_original_name|default:"(no name)" }}</div>
     <div class="gal-actions">
-      <span class="gal-caption" data-caption>{{ p.caption|default:"—" }} · {{ p.uploaded_at|date:"d M Y" }}</span>
+      <span class="gal-caption" data-caption>{{ p.caption|default:"—" }} · {{ p.uploaded_at|date:"j M Y" }}</span>
       <a href="{% url 'report_photo_file' p.pk %}" download class="btn btn-ghost btn-sm" style="padding:2px 8px;">⬇</a>
     </div>
   </div>

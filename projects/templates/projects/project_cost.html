@@ -338,6 +338,7 @@ tr.repriced{background:rgba(245,158,11,.10);}
         </div>
       </div>
       <div style="font-size:.74rem;color:var(--mut);padding-top:.4rem;margin-top:.1rem;">Accessory and fixing costs are included in the buying total.{% if fix.missing_prices %} <span style="color:var(--red);">No cost price in Stock for: {{ fix.missing_prices|join:", " }} (counted as £0).</span>{% endif %}</div>
+      {% if inhang_missing %}<div style="font-size:.74rem;color:var(--red);margin-top:.2rem;">Inboard hanging: no cost price in Stock for: {{ inhang_missing|join:", " }} (counted as £0).</div>{% endif %}
     </div>
   </div>
 

@@ -29,7 +29,7 @@ from .projects import (
     projects_search, project_address_save,
 )
 from .reminders import (
-    reminder_add, reminder_delete, reminder_dismiss, reminders_list, check_reminders,
+    reminder_add, reminder_delete, reminder_dismiss, reminders_state, reminders_list, check_reminders,
 )
 from .customers import (
     customer_autocomplete, customer_history, customer_list, customer_import, customer_address_import,

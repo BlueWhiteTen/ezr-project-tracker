@@ -52,6 +52,7 @@ def project_documents(request, pk):
                 'url': f'/document/{doc.pk}/download/',
                 'uploaded_by': request.user.get_full_name() or request.user.username,
                 'uploaded_at': timezone.localtime(doc.uploaded_at).strftime('%d %b %Y, %H:%M'),
+                'uploaded_date': timezone.localtime(doc.uploaded_at).strftime('%-d %b %Y'),
                 'notes': doc.notes,
                 'ext': f.name.split('.')[-1].upper(),
             })
@@ -69,6 +70,7 @@ def project_documents(request, pk):
             'url': f'/document/{d.pk}/download/',
             'uploaded_by': (d.uploaded_by.get_full_name() or d.uploaded_by.username) if d.uploaded_by else '',
             'uploaded_at': timezone.localtime(d.uploaded_at).strftime('%d %b %Y, %H:%M'),
+            'uploaded_date': timezone.localtime(d.uploaded_at).strftime('%-d %b %Y'),
             'notes': d.notes,
             'ext': ext,
         })

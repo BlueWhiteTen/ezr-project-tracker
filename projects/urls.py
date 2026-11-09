@@ -262,6 +262,7 @@ urlpatterns = [
     path('project/<int:pk>/reminders/',        views.reminders_list,  name='reminders_list'),
     path('project/<int:pk>/reminders/add/',    views.reminder_add,    name='reminder_add'),
     path('reminder/<int:pk>/delete/',          views.reminder_delete,    name='reminder_delete'),
+    path('reminders/state/',                   views.reminders_state,    name='reminders_state'),
     path('reminder/<int:pk>/dismiss/',         views.reminder_dismiss,   name='reminder_dismiss'),
     path('api/check-reminders/',               views.check_reminders, name='check_reminders'),
     path('api/fitting-crews/', views.fitting_crew_api, name='fitting_crew_api'),

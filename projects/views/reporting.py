@@ -67,6 +67,10 @@ def home(request):
         notify_user=request.user, dismissed=False, remind_at__lte=now, project__deleted_at__isnull=True
     ).select_related('project').order_by('remind_at')[:10]
 
+    my_reminders_total = Reminder.objects.filter(
+        notify_user=request.user, dismissed=False, remind_at__lte=now, project__deleted_at__isnull=True
+    ).count()
+
     upcoming_reminders = Reminder.objects.filter(
         notify_user=request.user, sent=False, remind_at__gt=now, dismissed=False, project__deleted_at__isnull=True
     ).select_related('project').order_by('remind_at')[:5]
@@ -111,6 +115,7 @@ def home(request):
         'week': weekly_summary(),
         'home_layout': home_layout,
         'my_reminders': my_reminders,
+        'my_reminders_total': my_reminders_total,
         'upcoming_reminders': upcoming_reminders,
         'leave_week': leave_week,
         'slideshow_photos': slideshow_photos,

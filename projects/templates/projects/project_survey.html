@@ -60,6 +60,7 @@ function surveyThumbHtml(p, idx){
   return `
     <div style="position:relative;width:90px;height:90px;border-radius:var(--rad);overflow:hidden;border:1px solid var(--bdr);cursor:pointer;background:#000;" data-pk="${p.pk}" onclick="openSurveyPhoto(${idx})">
       ${inner}
+      ${p.date ? `<div style="position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);color:#fff;font-size:.62rem;text-align:center;padding:1px 0;pointer-events:none;">${p.date}</div>` : ''}
       <button onclick="event.stopPropagation();deleteSurveyPhoto(${p.pk})" title="Remove" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.55);border:none;color:#fff;border-radius:50%;width:20px;height:20px;line-height:20px;text-align:center;cursor:pointer;font-size:.75rem;padding:0;">✕</button>
     </div>`;
 }

@@ -128,7 +128,7 @@ def report_photo_upload(request, pk):
             file_original_name=photo.name,
             caption=request.POST.get('photo_caption', ''),
         )
-        created.append({'pk': p.pk, 'url': f'/report/photo/{p.pk}/file/', 'thumb': f'/report/photo/{p.pk}/thumb/'})
+        created.append({'pk': p.pk, 'url': f'/report/photo/{p.pk}/file/', 'thumb': f'/report/photo/{p.pk}/thumb/', 'date': timezone.localtime(p.uploaded_at).strftime('%-d %b %Y')})
     return JsonResponse({'ok': True, 'photos': created})
 
 
@@ -246,7 +246,7 @@ def survey_photos(request, pk):
                 file_original_name=name,
                 uploaded_by=request.user,
             )
-            created.append({'pk': p.pk, 'url': f'/survey-photo/{p.pk}/file/', 'thumb': f'/survey-photo/{p.pk}/thumb/', 'is_video': p.is_video, 'name': p.file_original_name})
+            created.append({'pk': p.pk, 'url': f'/survey-photo/{p.pk}/file/', 'thumb': f'/survey-photo/{p.pk}/thumb/', 'is_video': p.is_video, 'name': p.file_original_name, 'date': timezone.localtime(p.uploaded_at).strftime('%-d %b %Y')})
         return JsonResponse({'ok': True, 'photos': created})
 
     photos = project.survey_photos.defer('file_data').select_related('uploaded_by')
@@ -256,6 +256,7 @@ def survey_photos(request, pk):
         'thumb': f'/survey-photo/{p.pk}/thumb/',
         'is_video': p.is_video,
         'name': p.file_original_name,
+        'date': timezone.localtime(p.uploaded_at).strftime('%-d %b %Y'),
         'uploaded_by': p.uploaded_by.get_full_name() if p.uploaded_by and p.uploaded_by.get_full_name() else (p.uploaded_by.username if p.uploaded_by else ''),
     } for p in photos], safe=False)
 
