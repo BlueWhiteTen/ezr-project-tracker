@@ -14,6 +14,13 @@
 <div class="two-col">
 <div class="form-card col-list" style="border-color:rgba(37,99,235,.3);background:rgba(37,99,235,.03);">
         <div class="section-title" style="color:#2563eb;">Documents</div>
+        <div id="doc-head" style="display:none;align-items:center;gap:.6rem;padding:.3rem 0;border-bottom:1px solid var(--bdr);font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);">
+          <span style="width:150px;flex-shrink:0;">Type</span>
+          <span style="flex:1;">Title</span>
+          <span style="width:84px;flex-shrink:0;">Upload date</span>
+          <span style="width:110px;flex-shrink:0;">Uploader</span>
+          <span style="width:30px;flex-shrink:0;"></span>
+        </div>
         <div id="doc-list" class="list-box"></div>
         <div class="empty-msg">No documents uploaded yet</div>
       </div>
@@ -128,13 +135,9 @@ async function uploadDoc(pk){
       if(list){
         const row = document.createElement('div');
         row.style.cssText='display:flex;align-items:center;gap:.6rem;padding:.4rem 0;border-bottom:.5px solid var(--bdr);font-size:.85rem;';
-        row.innerHTML = `<span style="font-family:var(--fm);font-size:.7rem;background:var(--acc-bg);color:var(--acc);padding:1px 6px;border-radius:3px;flex-shrink:0;">${d.ext}</span>
-          <span style="font-size:.72rem;color:var(--mut);flex-shrink:0;min-width:50px;">${d.doc_type}</span>
-          <a href="${d.url}" target="_blank" style="flex:1;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}</a>
-          <span style="font-size:.72rem;color:var(--mut);flex-shrink:0;white-space:nowrap;">${d.uploaded_date || ''}</span>
-          <span style="font-size:.72rem;color:var(--mut);flex-shrink:0;">${d.uploaded_by}</span>
-          <button onclick="deleteDoc(${d.id}, this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;padding:2px 6px;flex-shrink:0;">✕</button>`;
+        row.innerHTML = docRowHtml(d);
         list.appendChild(row);
+        syncDocHead();
       }
     } catch(e) {
       if(errEl){ errEl.textContent = `"${sf.name}" failed to upload: ${e.message}`; errEl.style.display='block'; }
@@ -145,6 +148,18 @@ async function uploadDoc(pk){
   document.getElementById('doc-file').value = '';
   renderStagedDocs();
   btn.disabled = false;
+}
+
+function docRowHtml(d){
+  return `<span style="width:150px;flex-shrink:0;display:flex;align-items:center;gap:.4rem;overflow:hidden;"><span style="font-family:var(--fm);font-size:.7rem;background:var(--acc-bg);color:var(--acc);padding:1px 6px;border-radius:3px;flex-shrink:0;">${d.ext}</span><span style="font-size:.72rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.doc_type}</span></span>
+    <a href="${d.url}" target="_blank" style="flex:1;min-width:0;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}</a>
+    <span style="width:84px;flex-shrink:0;font-size:.72rem;color:var(--mut);white-space:nowrap;">${d.uploaded_date || ''}</span>
+    <span style="width:110px;flex-shrink:0;font-size:.72rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.uploaded_by}</span>
+    <button onclick="deleteDoc(${d.id}, this)" style="width:30px;background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;padding:2px 6px;flex-shrink:0;">✕</button>`;
+}
+function syncDocHead(){
+  const l = document.getElementById('doc-list'), h = document.getElementById('doc-head');
+  if(l && h) h.style.display = l.children.length ? 'flex' : 'none';
 }
 
 // Load existing docs on page open
@@ -159,14 +174,10 @@ async function loadDocs(pk){
       const row = document.createElement('div');
       row.style.cssText='display:flex;align-items:center;gap:.6rem;padding:.4rem 0;border-bottom:.5px solid var(--bdr);font-size:.85rem;';
       row.dataset.docId = d.id;
-      row.innerHTML = `<span style="font-family:var(--fm);font-size:.7rem;background:var(--acc-bg);color:var(--acc);padding:1px 6px;border-radius:3px;flex-shrink:0;">${d.ext}</span>
-        <span style="font-size:.72rem;color:var(--mut);flex-shrink:0;min-width:50px;">${d.doc_type}</span>
-        <a href="${d.url}" target="_blank" style="flex:1;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}</a>
-        <span style="font-size:.72rem;color:var(--mut);flex-shrink:0;white-space:nowrap;">${d.uploaded_date || ''}</span>
-          <span style="font-size:.72rem;color:var(--mut);flex-shrink:0;">${d.uploaded_by}</span>
-        <button onclick="deleteDoc(${d.id}, this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;padding:2px 6px;flex-shrink:0;">✕</button>`;
+      row.innerHTML = docRowHtml(d);
       list.appendChild(row);
     });
+    syncDocHead();
   } catch(e) { console.log('Could not load docs', e); }
 }
 {% if project %}document.addEventListener('DOMContentLoaded', ()=>loadDocs({{ project.pk }}));{% endif %}
@@ -182,6 +193,7 @@ async function deleteDoc(id, btn){
   if(d.ok){
     // Remove the row from the DOM
     btn.closest('div').remove();
+    syncDocHead();
   } else {
     alert('Could not delete document.');
   }
