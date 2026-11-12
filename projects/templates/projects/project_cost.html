@@ -6,12 +6,12 @@
 .cost-grid{display:grid;grid-template-columns:1fr 520px;gap:1.4rem;align-items:start;}
 .cost-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow);overflow:hidden;}
 .cost-card-head{padding:.85rem 1.2rem;border-bottom:1px solid var(--bdr);background:var(--surf2);font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);}
-.cost-table .mv-col{width:58px;white-space:nowrap;padding-left:.4rem;padding-right:0;}
-.drag-h{cursor:grab;color:var(--mut2);font-size:1rem;user-select:none;padding:2px 6px;line-height:1;display:inline-block;}
+.cost-table .mv-col{width:1%;white-space:nowrap;padding:.55rem .15rem .55rem .45rem;}
+.drag-h{cursor:grab;color:var(--mut2);font-size:1rem;user-select:none;padding:2px 2px;line-height:1;display:inline-block;}
 .drag-h:hover{color:var(--acc);}
 .mv-btns{display:none;gap:2px;}
 .mv-btns button{background:var(--surf2);border:1px solid var(--bdr);color:var(--txt2);border-radius:5px;width:26px;height:26px;font-size:.7rem;cursor:pointer;padding:0;line-height:1;}
-@media (pointer:coarse){.drag-h{display:none;}.mv-btns{display:inline-flex;}.cost-table .mv-col{width:62px;}}
+@media (pointer:coarse){.drag-h{display:none;}.mv-btns{display:inline-flex;}}
 #cost-tbody tr.dragging{opacity:.4;}
 #cost-tbody tr.drop-before td{box-shadow:inset 0 2px 0 var(--acc);}
 #cost-tbody tr.drop-after td{box-shadow:inset 0 -2px 0 var(--acc);}
@@ -22,7 +22,7 @@
 .cost-table td{padding:.55rem .75rem;font-size:.875rem;border-bottom:.5px solid var(--bdr);vertical-align:middle;}
 .cost-table tr:last-child td{border-bottom:none;}
 .cost-table tr:hover td{background:var(--surf2);}
-.line-type{font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:99px;text-transform:uppercase;}
+.line-type{font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:99px;text-transform:uppercase;white-space:nowrap;}
 .lt-frame{background:#ede9fe;color:#6d28d9;}
 .lt-shelf{background:#d1fae5;color:#065f46;}
 .lt-stock{background:var(--acc-bg);color:var(--acc);}
