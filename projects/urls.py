@@ -228,6 +228,7 @@ urlpatterns = [
     path('project/<int:pk>/cost/print/',    views.project_cost_print,   name='project_cost_print'),
     path('project/<int:pk>/cost/save/',     views.project_cost_save,    name='project_cost_save'),
     path('project/<int:pk>/cost/add-line/', views.cost_line_add,        name='cost_line_add'),
+    path('cost/<int:cost_pk>/reorder/', views.cost_lines_reorder, name='cost_lines_reorder'),
     path('cost/<int:cost_pk>/clear/', views.cost_clear_lines, name='cost_clear_lines'),
     path('cost-line/<int:line_pk>/delete/', views.cost_line_delete,     name='cost_line_delete'),
     path('cost-line/<int:line_pk>/update/', views.cost_line_update,     name='cost_line_update'),

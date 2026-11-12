@@ -6,6 +6,15 @@
 .cost-grid{display:grid;grid-template-columns:1fr 520px;gap:1.4rem;align-items:start;}
 .cost-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rad-lg);box-shadow:var(--shadow);overflow:hidden;}
 .cost-card-head{padding:.85rem 1.2rem;border-bottom:1px solid var(--bdr);background:var(--surf2);font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);}
+.cost-table .mv-col{width:58px;white-space:nowrap;padding-left:.4rem;padding-right:0;}
+.drag-h{cursor:grab;color:var(--mut2);font-size:1rem;user-select:none;padding:2px 6px;line-height:1;display:inline-block;}
+.drag-h:hover{color:var(--acc);}
+.mv-btns{display:none;gap:2px;}
+.mv-btns button{background:var(--surf2);border:1px solid var(--bdr);color:var(--txt2);border-radius:5px;width:26px;height:26px;font-size:.7rem;cursor:pointer;padding:0;line-height:1;}
+@media (pointer:coarse){.drag-h{display:none;}.mv-btns{display:inline-flex;}.cost-table .mv-col{width:62px;}}
+#cost-tbody tr.dragging{opacity:.4;}
+#cost-tbody tr.drop-before td{box-shadow:inset 0 2px 0 var(--acc);}
+#cost-tbody tr.drop-after td{box-shadow:inset 0 -2px 0 var(--acc);}
 .cost-card-body{padding:1.1rem;}
 /* Lines table */
 .cost-table{width:100%;border-collapse:collapse;}
@@ -206,7 +215,7 @@ tr.repriced{background:rgba(245,158,11,.10);}
     <div style="overflow-x:auto;">
     <table class="cost-table">
       <thead><tr>
-        <th>Type</th><th>Description</th>
+        <th class="mv-col" title="Drag to rearrange (arrows on a phone). Stored when you Save."></th><th>Type</th><th>Description</th>
         <th style="text-align:center;">Melamine</th>
         <th style="text-align:center;">No Deck</th>
         <th style="text-align:right;">Qty</th>
@@ -217,6 +226,7 @@ tr.repriced{background:rgba(245,158,11,.10);}
       <tbody id="cost-tbody">
       {% for line in lines %}
       <tr id="cl-{{ line.pk }}"{% if line.was_price is not None %} class="repriced"{% endif %}>
+        <td class="mv-col"><span class="drag-h" title="Drag to move this line">⠿</span><span class="mv-btns"><button type="button" onclick="moveLine({{ line.pk }},-1)" title="Move up">▲</button><button type="button" onclick="moveLine({{ line.pk }},1)" title="Move down">▼</button></span></td>
         <td><span class="line-type lt-{{ line.line_type }}">{{ line.get_line_type_display }}</span></td>
         <td>{{ line.description }}</td>
         <td style="text-align:center;">
@@ -265,7 +275,7 @@ tr.repriced{background:rgba(245,158,11,.10);}
         </td>
       </tr>
       {% empty %}
-      <tr id="empty-row"><td colspan="8" style="text-align:center;color:var(--mut);padding:1.5rem;">No lines yet — add items below</td></tr>
+      <tr id="empty-row"><td colspan="9" style="text-align:center;color:var(--mut);padding:1.5rem;">No lines yet — add items below</td></tr>
       {% endfor %}
       </tbody>
     </table>
@@ -748,7 +758,7 @@ let dirty = {{ has_unsaved|yesno:"true,false" }};
 let skipUnload = false;
 let bannerTimer = null;
 const _fetch = window.fetch.bind(window);
-const DIRTY_URL = /\/cost-line\/\d+\/(update|delete)\/|\/cost\/\d+\/clear\/|\/cost\/(add-line|wall-fixings|extras|accessory-toggle|accessory-override)\/|\/refresh-prices\//;
+const DIRTY_URL = /\/cost-line\/\d+\/(update|delete)\/|\/cost\/\d+\/(clear|reorder)\/|\/cost\/(add-line|wall-fixings|extras|accessory-toggle|accessory-override)\/|\/refresh-prices\//;
 window.fetch = function(url, opts){
   if(opts && opts.method === 'POST' && DIRTY_URL.test(String(url))) markDirty();
   return _fetch(url, opts);
@@ -1438,6 +1448,59 @@ async function toggleNoDeck(pk,noDeck){
     refreshStockReference();
   }
 }
+// ── Rearrange cost lines (stored in the working copy; kept when you Save) ─────
+async function saveLineOrder(){
+  const ids = Array.from(document.querySelectorAll('#cost-tbody tr[id^="cl-"]')).map(r => parseInt(r.id.slice(3), 10));
+  try{
+    const r = await fetch(`/cost/${COST_PK}/reorder/`, {method:'POST', headers:{'X-CSRFToken':CSRF,'Content-Type':'application/json'}, body: JSON.stringify({ids})});
+    const d = await r.json();
+    if(!d.ok) alert(d.error || 'Could not store the new order');
+  }catch(e){ alert('Could not store the new order'); }
+}
+function moveLine(pk, dir){
+  const row = document.getElementById(`cl-${pk}`);
+  if(!row) return;
+  const sib = dir < 0 ? row.previousElementSibling : row.nextElementSibling;
+  if(!sib || !sib.id.startsWith('cl-')) return;
+  if(dir < 0) row.parentNode.insertBefore(row, sib); else row.parentNode.insertBefore(sib, row);
+  row.scrollIntoView({block:'nearest'});
+  saveLineOrder();
+}
+(function(){
+  const tb = document.getElementById('cost-tbody');
+  if(!tb) return;
+  let dragRow = null;
+  const clearMarks = () => tb.querySelectorAll('.drop-before,.drop-after').forEach(r => r.classList.remove('drop-before','drop-after'));
+  tb.addEventListener('mousedown', e => { const h = e.target.closest('.drag-h'); if(h) h.closest('tr').draggable = true; });
+  document.addEventListener('mouseup', () => tb.querySelectorAll('tr[draggable="true"]').forEach(r => { if(r !== dragRow) r.draggable = false; }));
+  tb.addEventListener('dragstart', e => {
+    const tr = e.target.closest('tr[id^="cl-"]');
+    if(!tr || !tr.draggable){ e.preventDefault(); return; }
+    dragRow = tr; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', tr.id);
+    setTimeout(() => tr.classList.add('dragging'), 0);
+  });
+  tb.addEventListener('dragover', e => {
+    if(!dragRow) return;
+    const tr = e.target.closest('tr[id^="cl-"]');
+    if(!tr || tr === dragRow) return;
+    e.preventDefault();
+    const r = tr.getBoundingClientRect();
+    clearMarks();
+    tr.classList.add(e.clientY > r.top + r.height / 2 ? 'drop-after' : 'drop-before');
+  });
+  tb.addEventListener('drop', e => {
+    if(!dragRow) return;
+    const tr = e.target.closest('tr[id^="cl-"]');
+    if(!tr || tr === dragRow) return;
+    e.preventDefault();
+    const r = tr.getBoundingClientRect();
+    if(e.clientY > r.top + r.height / 2) tr.after(dragRow); else tr.before(dragRow);
+    clearMarks();
+    saveLineOrder();
+  });
+  tb.addEventListener('dragend', () => { if(dragRow){ dragRow.classList.remove('dragging'); dragRow.draggable = false; } dragRow = null; clearMarks(); });
+})();
+
 async function deleteLine(pk){
   await fetch(`/cost-line/${pk}/delete/`,{method:'POST',headers:{'X-CSRFToken':CSRF}});
   document.getElementById(`cl-${pk}`)?.remove();

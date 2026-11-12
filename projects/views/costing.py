@@ -2,6 +2,7 @@ import math
 import random
 from django.conf import settings
 from django.utils import timezone
+from django.db.models import Max
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -549,7 +550,7 @@ def cost_line_add(request, pk):
     # this module at the top level, so this can't be a module-level import.
     from .price_list import ls_calc_frame_price, ls_calc_shelf_price, ls_calc_trolley_price
     qty   = float(data.get('quantity', 1))
-    sort  = cost.lines.count()
+    sort  = (cost.lines.aggregate(m=Max('sort_order'))['m'] + 1) if cost.lines.exists() else 0
 
     if ltype == 'frame':
         grey = bool(data.get('grey_posts', False))
@@ -803,6 +804,29 @@ def cost_line_delete(request, line_pk):
     return JsonResponse({'ok': True})
 
 
+
+
+@login_required
+@require_POST
+def cost_lines_reorder(request, cost_pk):
+    """Store a new line order on a costing working copy. Like every other edit it is only
+    kept for good when the user clicks Save."""
+    from django.db import transaction
+    cost = get_object_or_404(ProjectCost.all_objects, pk=cost_pk)
+    try:
+        ids = [int(i) for i in json.loads(request.body or '{}').get('ids', [])]
+    except (ValueError, TypeError):
+        return JsonResponse({'ok': False, 'error': 'Bad order'}, status=400)
+    mine = {l.pk: l for l in cost.lines.all()}
+    ordered = [mine[i] for i in ids if i in mine]
+    seen = {l.pk for l in ordered}
+    ordered += [l for l in mine.values() if l.pk not in seen]   # anything not listed keeps its place at the end
+    with transaction.atomic():
+        for n, l in enumerate(ordered):
+            if l.sort_order != n:
+                l.sort_order = n
+                l.save(update_fields=['sort_order'])
+    return JsonResponse({'ok': True})
 
 
 @login_required
