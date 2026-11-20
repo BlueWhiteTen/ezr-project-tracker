@@ -114,10 +114,10 @@
     <ul class="home-list" id="rem-list" style="flex:1;overflow-y:auto;min-height:0;{% if not my_reminders %}display:none;{% endif %}">
       {% for r in my_reminders %}
       <li id="reminder-row-{{ r.pk }}" style="display:flex;align-items:flex-start;gap:.5rem;">
-        <a href="{% url 'project_edit' r.project.pk %}" class="home-row" style="flex:1;{% if r.sent %}color:var(--acc);font-weight:500;{% else %}opacity:.85;{% endif %}">
+        <a href="{{ r.link }}" class="home-row" style="flex:1;{% if r.sent %}color:var(--acc);font-weight:500;{% else %}opacity:.85;{% endif %}">
           {{ r.message }}
           <div class="home-row-meta">
-            {% if r.sent %}⚠ Due {% endif %}{{ r.remind_at|date:"d M, H:i" }} · {{ r.project.project_name }}
+            {% if r.sent %}⚠ Due {% endif %}{{ r.remind_at|date:"d M, H:i" }} · {{ r.source }}
           </div>
         </a>
         <button onclick="dismissReminder({{ r.pk }})" title="Dismiss" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--mut);font-size:.9rem;padding:.35rem .3rem;line-height:1;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--mut)'">✕</button>

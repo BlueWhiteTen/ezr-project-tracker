@@ -821,7 +821,7 @@ def calendar_view(request):
             'all_day': ev.all_day, 'start': ev.start_time.strftime('%H:%M') if ev.start_time else '',
             'end': ev.end_time.strftime('%H:%M') if ev.end_time else '', 'time_text': ev.time_text,
             'location': ev.location, 'notes': ev.notes, 'visibility': ev.visibility,
-            'private': ev.visibility == 'private',
+            'private': ev.visibility == 'private', 'remind': ev.remind,
             'owner': (ev.created_by.get_full_name() or ev.created_by.username) if ev.created_by else '',
             'can_edit': request.user.is_superuser or ev.created_by_id == request.user.pk,
         })

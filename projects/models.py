@@ -281,7 +281,8 @@ class Notification(models.Model):
 
 
 class Reminder(models.Model):
-    project     = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='reminders')
+    project     = models.ForeignKey(Project, null=True, blank=True, on_delete=models.CASCADE, related_name='reminders')
+    event       = models.ForeignKey('CalendarEvent', null=True, blank=True, on_delete=models.CASCADE, related_name='reminders')
     notify_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reminders')
     created_by  = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='reminders_created')
     message     = models.CharField(max_length=300)
@@ -295,6 +296,21 @@ class Reminder(models.Model):
 
     def __str__(self):
         return f"Reminder for {self.notify_user} at {self.remind_at}"
+
+    @property
+    def link(self):
+        if self.project_id:
+            return f'/project/{self.project_id}/edit/'
+        if self.event_id:
+            d = self.event.date
+            return f'/calendar/?year={d.year}&month={d.month}'
+        return '/'
+
+    @property
+    def source(self):
+        if self.project_id:
+            return self.project.project_name
+        return '📅 Calendar'
 
 
 class TodoItem(models.Model):
@@ -1531,6 +1547,15 @@ class CalendarEvent(models.Model):
     location   = models.CharField(max_length=300, blank=True, help_text='Place, address or meeting link')
     notes      = models.TextField(blank=True)
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='private')
+    REMIND_CHOICES = [
+        ('',      'No reminder'),
+        ('0',     'At the start time'),
+        ('15',    '15 minutes before'),
+        ('60',    '1 hour before'),
+        ('1440',  '1 day before'),
+        ('morning', 'Morning of the day (8:00)'),
+    ]
+    remind = models.CharField(max_length=8, blank=True, default='', choices=REMIND_CHOICES)
     created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='calendar_events')
     created_at = models.DateTimeField(auto_now_add=True)
 

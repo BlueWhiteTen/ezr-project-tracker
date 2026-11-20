@@ -5,7 +5,9 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_POST
 
-from ..models import CalendarEvent
+from datetime import timedelta, time as dtime
+from django.utils import timezone
+from ..models import CalendarEvent, Reminder
 
 
 def _can_change(user, ev):
@@ -56,7 +58,26 @@ def calendar_event_save(request, pk=None):
     ev.location = (data.get('location') or '').strip()[:300]
     ev.notes = (data.get('notes') or '').strip()
     ev.visibility = vis
+    remind = data.get('remind') or ''
+    if remind not in dict(CalendarEvent.REMIND_CHOICES):
+        remind = ''
+    ev.remind = remind
+    # work out when the reminder fires (all-day events count as 09:00)
+    remind_at = None
+    if remind:
+        if remind == 'morning':
+            base = datetime.combine(ev.date, dtime(8, 0))
+        else:
+            base = datetime.combine(ev.date, ev.start_time or dtime(9, 0)) - timedelta(minutes=int(remind))
+        remind_at = timezone.make_aware(base)
+        if remind_at <= timezone.now() and not pk:
+            return JsonResponse({'ok': False, 'error': 'That reminder time has already passed - pick a shorter lead time.'}, status=400)
     ev.save()
+    ev.reminders.all().delete()
+    if remind_at and remind_at > timezone.now() and ev.created_by_id:
+        when = 'all day' if ev.all_day else ev.start_time.strftime('%H:%M')
+        Reminder.objects.create(event=ev, project=None, notify_user=ev.created_by, created_by=ev.created_by,
+                                message=f'{ev.title} ({ev.date.strftime("%d %b")}, {when})', remind_at=remind_at)
     return JsonResponse({'ok': True, 'id': ev.pk})
 
 

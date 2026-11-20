@@ -107,8 +107,8 @@ def reminders_state(request):
         items.append({
             'id': r.pk, 'message': r.message, 'sent': r.sent,
             'when': timezone.localtime(r.remind_at).strftime('%d %b, %H:%M'),
-            'project': r.project.project_name,
-            'url': reverse('project_edit', args=[r.project.pk]),
+            'project': r.source,
+            'url': r.link,
         })
     resp = JsonResponse({'ok': True, 'total': total, 'items': items, 'max': REMINDER_TILE_MAX})
     resp['Cache-Control'] = 'no-store'
@@ -144,11 +144,11 @@ def check_reminders(request):
             user=r.notify_user,
             type='reminder',
             text=r.message,
-            link=f'/project/{r.project.pk}/edit/',
+            link=r.link,
         )
         r.sent = True
         r.save()
-        fired.append({'id': r.pk, 'message': r.message, 'link': f'/project/{r.project.pk}/edit/'})
+        fired.append({'id': r.pk, 'message': r.message, 'link': r.link})
     return JsonResponse({'fired': fired})
 
 

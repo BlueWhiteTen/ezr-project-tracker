@@ -147,6 +147,8 @@
     </div>
     <div class="sp-fld"><label class="sp-lbl">Location or meeting link</label><input class="sp-inp" id="ev-loc" type="text"></div>
     <div class="sp-fld"><label class="sp-lbl">Notes</label><textarea class="sp-inp" id="ev-notes" rows="2"></textarea></div>
+    <div class="sp-fld"><label class="sp-lbl">Remind me (only you get the reminder)</label>
+      <select class="sp-inp" id="ev-remind"><option value="">No reminder</option><option value="0">At the start time</option><option value="15">15 minutes before</option><option value="60">1 hour before</option><option value="1440">1 day before</option><option value="morning">Morning of the day (8:00)</option></select></div>
     <div class="sp-fld"><label class="sp-lbl">Who can see it</label>
       <div class="ev-vis">
         <button type="button" class="dt-btn on" id="ev-vis-private" onclick="setEvVis('private')">🔒 Private (only me)</button>
@@ -260,6 +262,7 @@ function openEv(dateStr, id){
   document.getElementById('ev-loc').value = e ? e.location : '';
   document.getElementById('ev-notes').value = e ? e.notes : '';
   setEvVis(e ? e.visibility : 'private');
+  document.getElementById('ev-remind').value = e ? (e.remind||'') : '';
   evAllDay();
   document.getElementById('ev-delete').style.display = e ? 'block' : 'none';
   document.getElementById('ev-error').style.display='none';
@@ -273,7 +276,7 @@ async function saveEv(){
   const body={title:document.getElementById('ev-title').value,kind:document.getElementById('ev-kind').value,
     date:document.getElementById('ev-date').value,all_day:document.getElementById('ev-allday').checked,
     start_time:document.getElementById('ev-start').value,end_time:document.getElementById('ev-end').value,
-    location:document.getElementById('ev-loc').value,notes:document.getElementById('ev-notes').value,visibility:evVis};
+    remind:document.getElementById('ev-remind').value,location:document.getElementById('ev-loc').value,notes:document.getElementById('ev-notes').value,visibility:evVis};
   const r=await fetch(evId?`/calendar/event/${evId}/save/`:'/calendar/event/save/',{method:'POST',
     headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},body:JSON.stringify(body)});
   const d=await r.json().catch(()=>({ok:false,error:'Something went wrong'}));
