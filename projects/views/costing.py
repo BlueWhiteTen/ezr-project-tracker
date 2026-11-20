@@ -334,7 +334,10 @@ def project_cost(request, pk, cost_pk=None):
             except (ValueError, IndexError):
                 pass
 
+    _cp = project.customer_profile or (CustomerProfile.objects.filter(name__iexact=project.customer).first() if project.customer else None)
+    customer_notes = (_cp.important_notes or '').strip() if _cp else ''
     return render(request, 'projects/project_cost.html', {
+        'customer_notes': customer_notes,
         'ls_missing': ls_missing,
         'inhang_missing': inhang_missing,
         'project': project, 'cost': cost, 'lines': lines,

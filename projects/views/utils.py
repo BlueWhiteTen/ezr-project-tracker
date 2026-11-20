@@ -17,6 +17,8 @@ def inboard_rail_code(depth):
     Stock holds these as HRS{depth}/3N (21, 24, 27 are known to be /3N); an older plain
     HRS{depth} row may also exist, often inactive. Prefer whichever one is active."""
     depth = str(depth)
+    if depth == '15':
+        return 'HRS15'   # 15" rails are always stocked under the plain code
     cands = [f'HRS{depth}/3N', f'HRS{depth}']
     found = {}
     for pr in Product.objects.filter(Q(code__iexact=cands[0]) | Q(code__iexact=cands[1])):

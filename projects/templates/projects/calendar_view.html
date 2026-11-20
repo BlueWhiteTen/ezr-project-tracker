@@ -29,6 +29,11 @@
 .cal-event-inst{background:var(--grn-bg);color:var(--grn);border:1px solid rgba(22,163,74,.2);}
 .cal-event-both{background:#ede9fe;color:#7c3aed;border:1px solid #ddd6fe;}
 [data-theme="dark"] .cal-event-both{background:rgba(124,58,237,.15);color:#a78bfa;border-color:rgba(167,139,250,.3);}
+.cal-event-evt{background:var(--blue-bg,#eff6ff);color:var(--blue,#2563eb);border:1px solid rgba(37,99,235,.25);}
+.dp-type-evt{background:var(--blue-bg,#eff6ff);color:var(--blue,#2563eb);border:1px solid rgba(37,99,235,.25);}
+.ev-row{display:flex;gap:.6rem;}
+.ev-row>div{flex:1;}
+.ev-vis{display:flex;gap:.5rem;}
 .cal-event-more{font-size:.68rem;color:var(--mut);padding:1px 4px;cursor:pointer;}
 /* Day popup */
 .dp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s;}
@@ -81,6 +86,7 @@
     <div class="leg"><div class="leg-dot" style="background:var(--acc)"></div>D — Delivery</div>
     <div class="leg"><div class="leg-dot" style="background:var(--grn)"></div>I — Installation</div>
     <div class="leg"><div class="leg-dot" style="background:#7c3aed"></div>D + I — Both</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--blue,#2563eb)"></div>Event (🔒 private)</div>
   </div>
 </div>
 
@@ -99,10 +105,14 @@
     <div class="cal-day-num">{{ day.date|date:"j" }}</div>
     <div class="cal-events">
       {% for e in day.events %}
+        {% if e.type == 'event' %}
+        <div class="cal-event cal-event-evt" title="{{ e.title }}">{% if e.private %}🔒 {% endif %}{% if not e.all_day %}{{ e.start }} {% endif %}{{ e.title }}</div>
+        {% else %}
         <div class="cal-event {% if e.type == 'delivery' %}cal-event-del{% elif e.type == 'both' %}cal-event-both{% else %}cal-event-inst{% endif %}" style="display:flex;justify-content:space-between;align-items:center;gap:4px;">
           <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ e.customer|default:e.name }}{% if e.location %} — {{ e.location }}{% endif %}</span>
           <strong style="flex-shrink:0;">{{ e.badge }}</strong>
         </div>
+        {% endif %}
       {% endfor %}
     </div>
   </div>
@@ -117,6 +127,38 @@
     <button class="sp-close" onclick="closeDay()">✕</button>
   </div>
   <div class="dp-body" id="dp-body"></div>
+</div>
+
+<!-- Event popup -->
+<div class="qc-overlay" id="ev-overlay" onclick="closeEv()"></div>
+<div class="qc-modal" id="ev-modal" style="width:460px;max-width:95vw;max-height:90vh;overflow-y:auto;">
+  <div class="qc-head"><div class="qc-title" id="ev-heading">New event</div><button class="sp-close" onclick="closeEv()">✕</button></div>
+  <div class="qc-body">
+    <div class="sp-fld"><label class="sp-lbl">Title *</label><input class="sp-inp" id="ev-title" type="text" placeholder="e.g. Site visit – Smith"></div>
+    <div class="ev-row">
+      <div class="sp-fld"><label class="sp-lbl">Type</label>
+        <select class="sp-inp" id="ev-kind"><option value="meeting">Meeting</option><option value="site_visit">Site visit</option><option value="zoom">Zoom meeting</option><option value="other">Other</option></select></div>
+      <div class="sp-fld"><label class="sp-lbl">Date</label><input class="sp-inp" id="ev-date" type="date"></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;margin-bottom:.75rem;cursor:pointer;"><input type="checkbox" id="ev-allday" onchange="evAllDay()"> All day</label>
+    <div class="ev-row" id="ev-times">
+      <div class="sp-fld"><label class="sp-lbl">Start</label><input class="sp-inp" id="ev-start" type="time"></div>
+      <div class="sp-fld"><label class="sp-lbl">End (optional)</label><input class="sp-inp" id="ev-end" type="time"></div>
+    </div>
+    <div class="sp-fld"><label class="sp-lbl">Location or meeting link</label><input class="sp-inp" id="ev-loc" type="text"></div>
+    <div class="sp-fld"><label class="sp-lbl">Notes</label><textarea class="sp-inp" id="ev-notes" rows="2"></textarea></div>
+    <div class="sp-fld"><label class="sp-lbl">Who can see it</label>
+      <div class="ev-vis">
+        <button type="button" class="dt-btn on" id="ev-vis-private" onclick="setEvVis('private')">🔒 Private (only me)</button>
+        <button type="button" class="dt-btn" id="ev-vis-everyone" onclick="setEvVis('everyone')">👥 Everyone</button>
+      </div></div>
+    <div id="ev-error" style="color:var(--red);font-size:.82rem;display:none;"></div>
+  </div>
+  <div class="qc-foot">
+    <button class="sp-btn-cancel" id="ev-delete" style="display:none;margin-right:auto;color:var(--red);" onclick="deleteEv()">Delete</button>
+    <button class="sp-btn-cancel" onclick="closeEv()">Cancel</button>
+    <button class="sp-btn-save" id="ev-save" onclick="saveEv()">Save</button>
+  </div>
 </div>
 
 <!-- Quick-create popup (reused from dashboard) -->
@@ -166,6 +208,14 @@ function openDay(dateStr, dateLabel){
   let html = '';
   if(events.length){
     html += events.map(e=>{
+      if(e.type==='event'){
+        const who = e.can_edit ? '' : (e.owner?' · '+escH(e.owner):'');
+        return `<div class="dp-item" onclick="${e.can_edit?`openEv('${dateStr}',${e.ev})`:''}">
+          <span class="dp-type dp-type-evt">${escH(e.kind_label)}</span>
+          <div><div class="dp-name">${e.private?'🔒 ':''}${escH(e.title)}</div>
+          <div class="dp-sub">${escH(e.time_text)}${e.location?' · '+escH(e.location):''}${who}</div>
+          ${e.notes?`<div class="dp-sub">${escH(e.notes)}</div>`:''}</div></div>`;
+      }
       const typeLabel = e.type==='delivery'?'Delivery':e.type==='both'?'Delivery + Installation':e.type==='leave'?'🏖 Leave':'Installation';
       const typeStyle = e.type==='delivery'
         ? 'background:var(--acc-bg);color:var(--acc);border-color:var(--acc-bdr);'
@@ -183,12 +233,58 @@ function openDay(dateStr, dateLabel){
       </div>`;
     }).join('');
   } else {
-    html += '<div class="dp-empty">No projects on this date</div>';
+    html += '<div class="dp-empty">Nothing on this date</div>';
   }
+  html += `<div class="dp-add" onclick="openEv('${dateStr}')">＋ Add event (meeting, site visit…)</div>`;
   html += `<div class="dp-add" onclick="openQCForDate('${dateStr}', '${dateLabel}')">＋ Add project on this date</div>`;
   body.innerHTML = html;
   document.getElementById('dp-overlay').classList.add('open');
   document.getElementById('dp-modal').classList.add('open');
+}
+
+function escH(t){return String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+let evId=null, evVis='private';
+function setEvVis(v){evVis=v;document.getElementById('ev-vis-private').classList.toggle('on',v==='private');document.getElementById('ev-vis-everyone').classList.toggle('on',v==='everyone');}
+function evAllDay(){document.getElementById('ev-times').style.display=document.getElementById('ev-allday').checked?'none':'flex';}
+function openEv(dateStr, id){
+  closeDay();
+  const e = id ? (calData[dateStr]||[]).find(x=>x.type==='event'&&x.ev===id) : null;
+  evId = e ? e.ev : null;
+  document.getElementById('ev-heading').textContent = e ? 'Edit event' : 'New event';
+  document.getElementById('ev-title').value = e ? e.title : '';
+  document.getElementById('ev-kind').value = e ? e.kind : 'meeting';
+  document.getElementById('ev-date').value = dateStr;
+  document.getElementById('ev-allday').checked = e ? e.all_day : false;
+  document.getElementById('ev-start').value = e ? e.start : '09:00';
+  document.getElementById('ev-end').value = e ? e.end : '';
+  document.getElementById('ev-loc').value = e ? e.location : '';
+  document.getElementById('ev-notes').value = e ? e.notes : '';
+  setEvVis(e ? e.visibility : 'private');
+  evAllDay();
+  document.getElementById('ev-delete').style.display = e ? 'block' : 'none';
+  document.getElementById('ev-error').style.display='none';
+  document.getElementById('ev-overlay').classList.add('open');
+  document.getElementById('ev-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('ev-title').focus(),100);
+}
+function closeEv(){document.getElementById('ev-overlay').classList.remove('open');document.getElementById('ev-modal').classList.remove('open');}
+async function saveEv(){
+  const err=document.getElementById('ev-error');
+  const body={title:document.getElementById('ev-title').value,kind:document.getElementById('ev-kind').value,
+    date:document.getElementById('ev-date').value,all_day:document.getElementById('ev-allday').checked,
+    start_time:document.getElementById('ev-start').value,end_time:document.getElementById('ev-end').value,
+    location:document.getElementById('ev-loc').value,notes:document.getElementById('ev-notes').value,visibility:evVis};
+  const r=await fetch(evId?`/calendar/event/${evId}/save/`:'/calendar/event/save/',{method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},body:JSON.stringify(body)});
+  const d=await r.json().catch(()=>({ok:false,error:'Something went wrong'}));
+  if(!d.ok){err.textContent=d.error||'Could not save';err.style.display='block';return;}
+  window.location.reload();
+}
+async function deleteEv(){
+  if(!evId||!confirm('Delete this event?'))return;
+  const r=await fetch(`/calendar/event/${evId}/delete/`,{method:'POST',headers:{'X-CSRFToken':'{{ csrf_token }}'}});
+  const d=await r.json().catch(()=>({ok:false}));
+  if(d.ok) window.location.reload(); else {const err=document.getElementById('ev-error');err.textContent=d.error||'Could not delete';err.style.display='block';}
 }
 
 function closeDay(){
@@ -282,7 +378,7 @@ function qcAcWire(){
 }
 
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeDay();closeQC();}
+  if(e.key==='Escape'){closeDay();closeQC();closeEv();}
 });
 </script>
 {% endblock %}

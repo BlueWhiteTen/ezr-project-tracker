@@ -119,3 +119,4 @@ from .fitting_job import (fitting_steps_save, fitting_note_hide, fitting_note_un
                           fitting_file_delete, fitting_file_download)
 
 from .pins import pin_toggle, project_activity
+from .calendar_events import calendar_event_save, calendar_event_delete

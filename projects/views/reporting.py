@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 import json
 
-from ..models import Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, ExchangeRate, GoodsInTransit, StockValuationItem, TodoItem
+from ..models import CalendarEvent, Project, ProjectLog, Customer, Comment, Message, Notification, TeamMessage, StaffProfile, LeaveRequest, InstallationReport, ReportPhoto, SatisfactionNote, CustomerProfile, ProjectDocument, Product, PickingList, PickingListItem, PickingTemplate, PickingTemplateItem, MaterialPrice, ProjectCost, ProjectCostLine, UprightAccessory, AccessoryOverride, Reminder, FittingCrew, Supplier, PurchaseOrder, PurchaseOrderLine, StockMovement, FittingNote, ProjectQuote, PriceListItem, QuotePhoto, QuoteAttachedPhoto, ProformaInvoice, DeliveryPhase, ProjectPresence, ExchangeRate, GoodsInTransit, StockValuationItem, TodoItem
 from ..forms import RegisterForm, ProjectForm
 from .utils import (_calc_sell_price, _calc_cost_breakdown, _can_view_reports, require_feature)
 
@@ -813,6 +813,19 @@ def calendar_view(request):
                 'status_label': p.get_status_display(),
             })
 
+    # Meetings, site visits etc. added by users: your own plus anything shared with everyone
+    for ev in CalendarEvent.objects.filter(date__gte=start, date__lte=end).filter(
+            Q(visibility='everyone') | Q(created_by=request.user)).select_related('created_by'):
+        event_map.setdefault(ev.date.isoformat(), []).append({
+            'type': 'event', 'ev': ev.pk, 'title': ev.title, 'kind': ev.kind, 'kind_label': ev.get_kind_display(),
+            'all_day': ev.all_day, 'start': ev.start_time.strftime('%H:%M') if ev.start_time else '',
+            'end': ev.end_time.strftime('%H:%M') if ev.end_time else '', 'time_text': ev.time_text,
+            'location': ev.location, 'notes': ev.notes, 'visibility': ev.visibility,
+            'private': ev.visibility == 'private',
+            'owner': (ev.created_by.get_full_name() or ev.created_by.username) if ev.created_by else '',
+            'can_edit': request.user.is_superuser or ev.created_by_id == request.user.pk,
+        })
+
     # Build day list for template
     today = date.today()
     calendar_days = []
@@ -840,7 +853,7 @@ def calendar_view(request):
 
     return render(request, 'projects/calendar_view.html', {
         'calendar_days':     calendar_days,
-        'calendar_data_json': json.dumps(event_map),
+        'calendar_data_json': json.dumps(event_map).replace('<', '\\u003c'),
         'year': year, 'month': month,
         'month_name': first_day.strftime('%B %Y'),
         'prev_year': prev_year, 'prev_month': prev_month,

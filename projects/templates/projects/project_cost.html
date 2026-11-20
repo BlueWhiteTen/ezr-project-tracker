@@ -186,6 +186,12 @@ tr.repriced{background:rgba(245,158,11,.10);}
 {% endif %}
 
 
+{% if customer_notes %}
+<div style="background:var(--amb-bg);color:var(--amb);border:1px solid var(--amb);border-radius:8px;padding:.6rem .85rem;margin-bottom:1rem;font-size:.85rem;">
+  <div style="font-weight:700;margin-bottom:.2rem;">⚠ Important notes for {{ project.customer }}</div>
+  <div style="white-space:pre-wrap;">{{ customer_notes }}</div>
+</div>
+{% endif %}
 <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:1rem;">
   <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.875rem;font-weight:500;">
     <input type="checkbox" id="accepted-checkbox" {% if real_cost.is_accepted %}checked{% endif %} onchange="toggleAccepted()" style="width:16px;height:16px;accent-color:#16a34a;">

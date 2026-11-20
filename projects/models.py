@@ -1507,3 +1507,42 @@ class PinnedProject(models.Model):
     class Meta:
         unique_together = ('user', 'project')
         ordering = ['-created_at']
+
+
+class CalendarEvent(models.Model):
+    """A meeting, site visit, Zoom call etc. put on the calendar by a user.
+    Private events are only shown to their creator; 'everyone' events show on every user's calendar."""
+    KIND_CHOICES = [
+        ('meeting',    'Meeting'),
+        ('site_visit', 'Site visit'),
+        ('zoom',       'Zoom meeting'),
+        ('other',      'Other'),
+    ]
+    VISIBILITY_CHOICES = [
+        ('private',  'Private (only me)'),
+        ('everyone', 'Visible to everyone'),
+    ]
+    title      = models.CharField(max_length=200)
+    kind       = models.CharField(max_length=12, choices=KIND_CHOICES, default='meeting')
+    date       = models.DateField(db_index=True)
+    all_day    = models.BooleanField(default=False)
+    start_time = models.TimeField(null=True, blank=True)
+    end_time   = models.TimeField(null=True, blank=True)
+    location   = models.CharField(max_length=300, blank=True, help_text='Place, address or meeting link')
+    notes      = models.TextField(blank=True)
+    visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='private')
+    created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='calendar_events')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['date', '-all_day', 'start_time', 'id']
+
+    def __str__(self):
+        return f'{self.title} ({self.date})'
+
+    @property
+    def time_text(self):
+        if self.all_day or not self.start_time:
+            return 'All day'
+        t = self.start_time.strftime('%H:%M')
+        return f'{t}–{self.end_time.strftime("%H:%M")}' if self.end_time else t
